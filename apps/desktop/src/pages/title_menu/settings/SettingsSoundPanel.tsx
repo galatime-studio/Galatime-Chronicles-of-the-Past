@@ -13,12 +13,13 @@ const MAX_VOLUME = 100;
 const QUIET_THRESHOLD = 20;
 
 /** Which running joke the player just triggered; drives the card's copy and tone. */
-type VolumeHintId = 'turnItUp' | 'sneaky' | 'fullBlast';
+type VolumeHintId = 'turnItUp' | 'sneaky' | 'masterMuted' | 'fullBlast';
 
 /** Tone of each hint: warnings for the jabs, a cheerful card for the full-volume payoff. */
 const HINT_MODES: Record<VolumeHintId, PopupMode> = {
     turnItUp: 'warning',
     sneaky: 'warning',
+    masterMuted: 'warning',
     fullBlast: 'success',
 };
 
@@ -40,6 +41,8 @@ export function SettingsSoundPanel({ settings, updateSettings }: SettingsPanelPr
     const musicLoweredRef = useRef(false);
     // Set when the player raises the music back up after that drop — the setup for the jab.
     const musicRestoredRef = useRef(false);
+    // Latch so the "master is muted" jab only fires once per muted streak.
+    const masterMutedRef = useRef(false);
     // Latch so the "music at max" celebration only fires once per full-volume streak.
     const fullBlastRef = useRef(false);
 
@@ -59,8 +62,9 @@ export function SettingsSoundPanel({ settings, updateSettings }: SettingsPanelPr
      * The joke only lands when the player plays out the whole sequence: they drop the music into
      * the "practically muted" zone (and get scolded for it), raise it back above that zone as if
      * they had listened, and then quietly drop the master into the same zone instead. Only that
-     * final move earns the "I know what you're doing" line. Pinning the music slider at the top
-     * earns a congratulatory card instead, whatever the master is doing.
+     * final move earns the "I know what you're doing" line. Raising the music while the master is
+     * at zero earns a knowing jab instead, and pinning the music slider at the top earns a
+     * congratulatory card once there is actually something to hear.
      */
     const checkVolumeGag = (channel: keyof typeof settings.audio, value: number, previous: number) => {
         const crossedDown = previous > QUIET_THRESHOLD && value <= QUIET_THRESHOLD;
@@ -82,8 +86,18 @@ export function SettingsSoundPanel({ settings, updateSettings }: SettingsPanelPr
             showHint('sneaky');
         }
 
-        const { music } = lastVolumesRef.current;
-        if (music >= MAX_VOLUME) {
+        const { music, master } = lastVolumesRef.current;
+
+        if (channel === 'music' && value > previous && master <= 0) {
+            if (!masterMutedRef.current) {
+                masterMutedRef.current = true;
+                showHint('masterMuted');
+            }
+        } else if (master > 0) {
+            masterMutedRef.current = false;
+        }
+
+        if (master > 0 && music >= MAX_VOLUME) {
             if (!fullBlastRef.current) {
                 fullBlastRef.current = true;
                 showHint('fullBlast');
