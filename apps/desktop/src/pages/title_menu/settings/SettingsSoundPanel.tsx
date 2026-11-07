@@ -40,7 +40,7 @@ export function SettingsSoundPanel({ settings, updateSettings }: SettingsPanelPr
     const musicLoweredRef = useRef(false);
     // Set when the player raises the music back up after that drop — the setup for the jab.
     const musicRestoredRef = useRef(false);
-    // Latch so the "both at max" celebration only fires once per full-volume streak.
+    // Latch so the "music at max" celebration only fires once per full-volume streak.
     const fullBlastRef = useRef(false);
 
     const [hint, setHint] = useState<VolumeHint | null>(null);
@@ -59,8 +59,8 @@ export function SettingsSoundPanel({ settings, updateSettings }: SettingsPanelPr
      * The joke only lands when the player plays out the whole sequence: they drop the music into
      * the "practically muted" zone (and get scolded for it), raise it back above that zone as if
      * they had listened, and then quietly drop the master into the same zone instead. Only that
-     * final move earns the "I know what you're doing" line. Pinning both sliders at the top earns
-     * a congratulatory card instead.
+     * final move earns the "I know what you're doing" line. Pinning the music slider at the top
+     * earns a congratulatory card instead, whatever the master is doing.
      */
     const checkVolumeGag = (channel: keyof typeof settings.audio, value: number, previous: number) => {
         const crossedDown = previous > QUIET_THRESHOLD && value <= QUIET_THRESHOLD;
@@ -82,8 +82,8 @@ export function SettingsSoundPanel({ settings, updateSettings }: SettingsPanelPr
             showHint('sneaky');
         }
 
-        const { master, music } = lastVolumesRef.current;
-        if (master >= MAX_VOLUME && music >= MAX_VOLUME) {
+        const { music } = lastVolumesRef.current;
+        if (music >= MAX_VOLUME) {
             if (!fullBlastRef.current) {
                 fullBlastRef.current = true;
                 showHint('fullBlast');

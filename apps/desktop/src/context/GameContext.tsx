@@ -182,7 +182,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   actionsTooltipVisible: true,
   dialogueTooltipVisible: true,
   dialogueTextSpeed: DIALOGUE_DEFAULT_TEXT_SPEED,
-  showNowPlayingMusic: false,
+  showNowPlayingMusic: true,
   combatAnimations: true,
   audio: { ...DEFAULT_AUDIO_VOLUMES },
   currentMusicTrackId: DEFAULT_MUSIC_TRACK_ID,

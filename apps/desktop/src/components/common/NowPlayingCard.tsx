@@ -9,7 +9,7 @@ import type { AudioTrackDefinition } from '../../types/AudioType';
 /**
  * Announces the music that just started playing, using the same `CommonPopupCard` as the rest
  * of the interface. It is opt-in through the "Now Playing" switch in the Sound settings
- * (`showNowPlayingMusic`, off by default) and mounted once at the app root, so the card shows
+ * (`showNowPlayingMusic`, on by default) and mounted once at the app root, so the card shows
  * on every screen — splash, title menu, settings and credits alike.
  */
 export function NowPlayingCard() {
