@@ -56,6 +56,9 @@ export function normalizeTargeting(raw: unknown): CombatTargetRule {
         case 'both_teams':
         case 'all':
             return 'both_teams';
+        case 'enemies_lane':
+        case 'enemies_local':
+            return 'enemies_lane';
         case 'any_one':
         case 'enemy_one':
         case 'ally_one':
@@ -117,6 +120,60 @@ function readBonusVsHpBelow(source: unknown): { threshold: number; multiplier: n
     return { threshold, multiplier };
 }
 
+/** Reads a `bonus_vs_status` trait (object or list); every entry folds in. */
+function readBonusVsStatus(source: Record<string, unknown>): CombatAction['bonusVsStatus'] {
+    const raw = source.bonus_vs_status;
+    const records = Array.isArray(raw) ? raw : [raw];
+    const specs: Array<{ status: string; multiplier: number; defensePierce: number }> = [];
+
+    for (const entry of records) {
+        const record = asRecord(entry);
+        const status = record ? readString(record.status, '').trim() : '';
+        if (!status) continue;
+
+        specs.push({
+            status,
+            multiplier: Math.max(1, readNumber(record?.multiplier, 1)),
+            defensePierce: clamp(readNumber(record?.defense_pierce, 0), 0, 1),
+        });
+    }
+
+    return specs.length > 0 ? specs : null;
+}
+
+/** Reads a `collateral` splash spec (`riptide` clips the target's neighbours). */
+function readCollateral(source: Record<string, unknown>): CombatAction['collateral'] {
+    const record = asRecord(source.collateral);
+    if (!record) return null;
+
+    // O Forger autoriza um intervalo (`[min, max]`); o motor usa a média.
+    const multiplier = Array.isArray(record.damage_multiplier)
+        ? (Number(record.damage_multiplier[0]) + Number(record.damage_multiplier[1])) / 2
+        : readNumber(record.damage_multiplier, 0.5);
+    const chance = readNumber(record.chance, 1);
+
+    return {
+        // Half of the main power is the supported-authored default.
+        damageMultiplier: clamp(Number.isFinite(multiplier) ? multiplier : 0.5, 0, 1),
+        chance: clamp(Number.isFinite(chance) ? chance : 1, 0, 1),
+        includePrimaryTargets: readBoolean(record.include_primary_targets, false),
+        includeCaster: readBoolean(record.include_caster, false),
+    };
+}
+
+/** Reads a `bonus_per_charge` trait (`avalanche` spends Freeze charges). */
+function readBonusPerCharge(source: Record<string, unknown>): CombatAction['bonusPerCharge'] {
+    const record = asRecord(source.bonus_per_charge);
+    const status = record ? readString(record.status, '').trim() : '';
+    if (!status) return null;
+
+    return {
+        status,
+        multiplierPerCharge: Math.max(0, readNumber(record?.multiplier_per_charge, 0)),
+        consume: readBoolean(record?.consume, true),
+    };
+}
+
 /**
  * The traits every action carries, whatever it came from.
  *
@@ -127,6 +184,7 @@ function defaultTraits(): Pick<
     CombatAction,
     'solar' | 'lunar' | 'onlyDuringDay' | 'onlyDuringNight' | 'critChance' | 'ignoreAccuracy' | 'defensePierce'
     | 'bonusVsElements' | 'bonusVsHpBelow' | 'fleeBelowHp' | 'guaranteedCritVsStatus'
+    | 'bonusVsStatus' | 'bonusPerCharge' | 'collateral'
     | 'scatterTargets' | 'scatterHits' | 'canHitAnyEnemy' | 'ignorePositionPenalty'
 > {
     return {
@@ -141,6 +199,9 @@ function defaultTraits(): Pick<
         bonusVsHpBelow: null,
         fleeBelowHp: null,
         guaranteedCritVsStatus: null,
+        bonusVsStatus: null,
+        bonusPerCharge: null,
+        collateral: null,
         scatterTargets: false,
         scatterHits: null,
         canHitAnyEnemy: false,
@@ -204,6 +265,9 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
             ? clamp(skill.flee_below_hp, 0, 1)
             : null,
         guaranteedCritVsStatus: readString(skill.guaranteed_crit_vs_status, '') || null,
+        bonusVsStatus: readBonusVsStatus(skill as unknown as Record<string, unknown>),
+        bonusPerCharge: readBonusPerCharge(skill as unknown as Record<string, unknown>),
+        collateral: readCollateral(skill as unknown as Record<string, unknown>),
     };
 }
 

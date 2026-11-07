@@ -6,12 +6,23 @@
     var PATTERNS = [
         ['regen', 'Recuperar recurso'],
         ['regen_turn', 'Regenerar por turno'],
+        ['regen_max', 'Regenerar % por turno'],
         ['buff', 'Buff'],
         ['debuff', 'Debuff'],
         ['damage', 'Dano'],
         ['drain', 'Drenar recurso'],
         ['cleanse', 'Purificar'],
         ['dispel', 'Dissipar'],
+        ['cleanse_turn', 'Purificação contínua'],
+        ['heal_max', 'Cura % vida máxima'],
+        ['regen_max_once', 'Restaurar % do máximo'],
+        ['random_regen', 'Recurso aleatório'],
+        ['spend_trigger', 'Punir gasto de recurso'],
+        ['modulate', 'Modulação elemental'],
+        ['shield_effect', 'Escudo'],
+        ['charges', 'Cargas'],
+        ['upgrade_status', 'Reforço condicional'],
+        ['trip', 'Armadilha'],
         ['deferred', 'Dano atrasado'],
         ['echo', 'Repetir ação'],
         ['move', 'Mover posição'],
@@ -20,6 +31,7 @@
     ];
     var TARGET_LABELS = {
         any_one: 'qualquer personagem', enemies_all: 'todos os inimigos',
+        enemies_lane: 'os inimigos da lane do alvo',
         allies_all: 'todos os aliados',
         self: 'o próprio atacante', both_teams: 'ambas as equipas',
     };
@@ -39,6 +51,7 @@
         defenderLine: 'front',
         defenderDefending: false,
         defenderElements: [],
+        defenderStatuses: [],
         targetHpPercent: 100,
         phase: 'day',
         level: 1,
@@ -252,7 +265,13 @@
                 state.simulator[SIM_NUMBER_FIELDS[id]] = numberValue(event.target.value, 0);
                 renderSimulator();
             });
-        });        var SIM_SELECT_FIELDS = {
+        });
+        byId('sim-defender-statuses').addEventListener('input', function (event) {
+            var labels = String(event.target.value || '').split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
+            state.simulator.defenderStatuses = labels;
+            renderSimulator();
+        });
+        var SIM_SELECT_FIELDS = {
             'sim-attacker-line': 'attackerLine',
             'sim-defender-line': 'defenderLine',
             'sim-phase': 'phase',
@@ -379,6 +398,13 @@
         form.elements.bonus_vs_hp_below_threshold.value = skill.bonus_vs_hp_below?.threshold ?? '';
         form.elements.bonus_vs_hp_below_multiplier.value = skill.bonus_vs_hp_below?.multiplier ?? '';
         form.elements.flee_below_hp.value = skill.flee_below_hp ?? '';
+        var bonusVsStatus = Array.isArray(skill.bonus_vs_status) ? skill.bonus_vs_status[0] : skill.bonus_vs_status;
+        form.elements.bonus_vs_status_status.value = bonusVsStatus?.status || '';
+        form.elements.bonus_vs_status_multiplier.value = bonusVsStatus?.multiplier ?? '';
+        form.elements.bonus_vs_status_pierce.value = bonusVsStatus?.defense_pierce ?? '';
+        form.elements.bonus_per_charge_status.value = skill.bonus_per_charge?.status || '';
+        form.elements.bonus_per_charge_multiplier.value = skill.bonus_per_charge?.multiplier_per_charge ?? '';
+        form.elements.bonus_per_charge_consume.checked = Boolean(skill.bonus_per_charge?.consume);
         updatePowerFields(false);
         if (form.elements.power_kind.value === 'random' && form.elements.power_max) form.elements.power_max.value = power?.max ?? form.elements.power_value.value;
         if (form.elements.power_kind.value === 'attribute' && form.elements.power_stat) form.elements.power_stat.value = power?.stat || 'magical_attack';
@@ -723,6 +749,7 @@
             defenderLine: state.simulator.defenderLine,
             defenderDefending: state.simulator.defenderDefending,
             defenderElements: state.simulator.defenderElements,
+            defenderStatuses: state.simulator.defenderStatuses,
             targetHpFraction: (numberValue(state.simulator.targetHpPercent, 100) || 0) / 100,
             phase: state.simulator.phase,
             level: state.simulator.level,
@@ -751,6 +778,7 @@
         byId('sim-defender-evasion').value = state.simulator.defenderEvasion;
         byId('sim-target-hp').value = state.simulator.targetHpPercent;
         byId('sim-defender-line').value = state.simulator.defenderLine;
+        byId('sim-defender-statuses').value = (state.simulator.defenderStatuses || []).join(', ');
         byId('sim-defending').checked = state.simulator.defenderDefending;
         byId('sim-phase').value = state.simulator.phase;
         byId('sim-level').value = state.simulator.level;
@@ -1056,6 +1084,30 @@
         } else {
             delete skill.bonus_vs_hp_below;
         }
+        var bonusStatus = form.elements.bonus_vs_status_status.value.trim();
+        var bonusMultiplier = form.elements.bonus_vs_status_multiplier.value;
+        var bonusPierce = form.elements.bonus_vs_status_pierce.value;
+        if (bonusStatus) {
+            skill.bonus_vs_status = {
+                status: bonusStatus,
+                multiplier: bonusMultiplier !== '' ? Math.max(1, numberValue(bonusMultiplier, 1)) : 1,
+                defense_pierce: bonusPierce !== '' ? Math.min(1, Math.max(0, numberValue(bonusPierce, 0))) : 0,
+            };
+        } else {
+            delete skill.bonus_vs_status;
+        }
+        var chargeStatus = form.elements.bonus_per_charge_status.value.trim();
+        var chargeMultiplier = form.elements.bonus_per_charge_multiplier.value;
+        if (chargeStatus && chargeMultiplier !== '') {
+            skill.bonus_per_charge = {
+                status: chargeStatus,
+                multiplier_per_charge: numberValue(chargeMultiplier, 0),
+                consume: form.elements.bonus_per_charge_consume.checked,
+            };
+            if (!skill.bonus_per_charge.consume) delete skill.bonus_per_charge.consume;
+        } else {
+            delete skill.bonus_per_charge;
+        }
         syncBonusVs(skill);
 
         if (form.elements.direct_action.value === 'damage') {
@@ -1288,6 +1340,80 @@
                 + '<label class="effect-field"><span>Estado específico</span><input class="control" data-effect-field="dispel_status" value="' + escapeHtml(effect.dispel_status || '') + '" placeholder="darkness_shroud"><small>Remove só este estado, ignorando os restantes.</small></label>'
                 + '<label class="effect-stack"><input type="checkbox" data-effect-field="dispel_all" ' + (effect.dispel_all ? 'checked' : '') + '> Remover todos</label>';
         }
+        if (pattern === 'regen_max') {
+            var perTurnPercent = effect.regen_per_turn_percent || {};
+            return resourceInput('Vida % por turno', 'hp', perTurnPercent.hp, 'regen_per_turn_percent')
+                + resourceInput('Mana % por turno', 'mana', perTurnPercent.mana, 'regen_per_turn_percent')
+                + resourceInput('Stamina % por turno', 'stamina', perTurnPercent.stamina, 'regen_per_turn_percent')
+                + '<small>Percentagem do máximo atual do recurso, paga no início de cada turno do alvo.</small>';
+        }
+        if (pattern === 'cleanse_turn') {
+            var perTurnCleanse = effect.cleanse_per_turn || {};
+            return '<label class="effect-field"><span>Quantidade por turno</span><input class="control" data-effect-field="cleanse_per_turn.count" type="number" min="1" value="' + escapeHtml(perTurnCleanse.count ?? 1) + '"><small>Remove estados no início de cada turno de quem o carrega.</small></label>'
+                + '<label class="effect-field"><span>Polaridade</span><select class="control" data-effect-field="cleanse_per_turn.polarity">'
+                + optionMarkup('negative', 'Só estados negativos', (perTurnCleanse.polarity || 'negative') === 'negative')
+                + optionMarkup('positive', 'Só estados positivos', perTurnCleanse.polarity === 'positive')
+                + optionMarkup('any', 'Qualquer estado', perTurnCleanse.polarity === 'any') + '</select></label>';
+        }
+        if (pattern === 'heal_max') {
+            return '<label class="effect-field"><span>Cura</span><div class="input-suffix"><input class="control" data-effect-field="heal_percent_of_max" type="number" min="0" max="100" value="' + escapeHtml(effect.heal_percent_of_max ?? '') + '" placeholder="0"><span>%</span></div><small>Percentagem da vida máxima atual paga de uma vez.</small></label>';
+        }
+        if (pattern === 'regen_max_once') {
+            var maxOnce = effect.resource_regen_percent_of_max || {};
+            return resourceInput('Vida', 'hp', maxOnce.hp, 'resource_regen_percent_of_max')
+                + resourceInput('Mana', 'mana', maxOnce.mana, 'resource_regen_percent_of_max')
+                + resourceInput('Stamina', 'stamina', maxOnce.stamina, 'resource_regen_percent_of_max')
+                + '<small>Cada valor é uma percentagem do máximo atual do resource, paga uma única vez.</small>';
+        }
+        if (pattern === 'random_regen') {
+            return '<label class="effect-field"><span>Recurso aleatório</span><div class="input-suffix"><input class="control" data-effect-field="random_resource_regen.percent" type="number" min="0" max="100" value="' + escapeHtml(asPercent(effect.random_resource_regen)) + '" placeholder="0"><span>%</span></div><small>Sorteia um dos três recursos e restaura esta percentagem do seu máximo.</small></label>'
+                + '<label class="effect-field"><span>Recurso aleatório por turno</span><div class="input-suffix"><input class="control" data-effect-field="random_resource_regen_per_turn.percent" type="number" min="0" max="100" value="' + escapeHtml(asPercent(effect.random_resource_regen_per_turn)) + '" placeholder="0"><span>%</span></div><small>O mesmo, feito no início de cada turno do alvo.</small></label>';
+        }
+        if (pattern === 'spend_trigger') {
+            var spend = effect.spend_trigger || {};
+            return '<label class="effect-field"><span>Dano por gasto</span><input class="control" data-effect-field="spend_trigger.damage" type="number" min="0" value="' + escapeHtml(spend.damage ?? '') + '" placeholder="0"><small>Sofre este dano sempre que gasta mana ou stamina.</small></label>'
+                + '<label class="effect-field"><span>Cura do castor</span><input class="control" data-effect-field="spend_trigger.heal_to_source" type="number" min="0" value="' + escapeHtml(spend.heal_to_source ?? '') + '" placeholder="0"><small>Quem aplicou o estado cura este valor por cada gasto.</small></label>';
+        }
+        if (pattern === 'modulate') {
+            return pairsEditor('Modulação elemental', effect.element_modulation || {}, 'element_modulation_pairs', 'ignis: 0.25, aqua: 2')
+                + '<label class="effect-field"><span>Caducidade por elemento</span><input class="control" data-effect-field="expire_on_elements" value="' + escapeHtml(listValue(effect.expire_on_elements)) + '" placeholder="ignis"><small>O estado é levantado quando um ataque deste elemento acerta o portador (lista separada por vírgulas).</small></label>'
+                + '<small>Multipliesores que os ataques e efeitos desses elementos sofrem ao atingir o portador (pares \"elemento: múltiplo\").</small>';
+        }
+        if (pattern === 'shield_effect') {
+            var shield = effect.shield || {};
+            return '<label class="effect-field"><span>Vida absorvida</span><div class="input-suffix"><input class="control" data-effect-field="shield.percent_of_max_hp" type="number" min="0" max="100" value="' + escapeHtml(shield.percent_of_max_hp ?? '') + '" placeholder="0"><span>%</span></div><small>Fração da vida máxima do portador, recalcada sempre que o estado é aplicado.</small></label>'
+                + '<label class="effect-field"><span>Chance de ser atingido</span><div class="input-suffix"><input class="control" data-effect-field="shield.hit_chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(shield.hit_chance)) + '" placeholder="100"><span>%</span></div><small>Escudo “guardado”: abaixo da chance de acerto, o golpe passa ao próprio portador.</small></label>'
+                + '<label class="effect-field"><span>Golpes que aguenta</span><input class="control" data-effect-field="shield.max_hits" type="number" min="0" value="' + escapeHtml(shield.max_hits ?? '') + '" placeholder="—"><small>Limita o número de golpes absorvidos; a última quebra o estado.</small></label>';
+        }
+        if (pattern === 'charges') {
+            var charges = effect.charges || {};
+            var release = charges.release || {};
+            return '<label class="effect-field"><span>Cargas máximas</span><input class="control" data-effect-field="charges.max" type="number" min="1" value="' + escapeHtml(charges.max ?? 3) + '"><small>Cada acerto com o mesmo estado soma uma carga (os atributos escalam por carga).</small></label>'
+                + '<label class="effect-field"><span>Cargas iniciais</span><input class="control" data-effect-field="charges.initial" type="number" min="1" value="' + escapeHtml(charges.initial ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Estado ao esgotar</span><input class="control" data-effect-field="charges.release.status_effect" value="' + escapeHtml(release.status_effect || '') + '" placeholder="Frozen"><small>O que o portador sofre ao chegar às cargas máximas.</small></label>'
+                + '<label class="effect-field"><span>Duração do esgotamento</span><input class="control" data-effect-field="charges.release.turns" type="number" min="1" value="' + escapeHtml(release.turns ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Proibido durante o esgotamento</span><input class="control" data-effect-field="charges.release.prevent_actions" value="' + escapeHtml(listValue(release.prevent_actions)) + '" placeholder="attack, defend"><small>Lista de ações separadas por vírgulas (' + Model.PREVENT_ACTIONS.join(', ') + ').</small></label>';
+        }
+        if (pattern === 'upgrade_status') {
+            var upgrade = effect.upgrade_vs_status || {};
+            return '<label class="effect-field"><span>Estado de referência</span><input class="control" data-effect-field="upgrade_vs_status.status" value="' + escapeHtml(upgrade.status || '') + '" placeholder="Wet"><small>Aplica estes reforços só quando o alvo já tem este estado.</small></label>'
+                + '<label class="effect-field"><span>Turnos extra</span><input class="control" data-effect-field="upgrade_vs_status.extra_turns" type="number" min="0" value="' + escapeHtml(upgrade.extra_turns ?? '') + '" placeholder="0"></label>'
+                + '<label class="effect-field"><span>Chance dos turnos extra</span><div class="input-suffix"><input class="control" data-effect-field="upgrade_vs_status.extra_turns_chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(upgrade.extra_turns_chance)) + '" placeholder="100"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Cura % extra</span><div class="input-suffix"><input class="control" data-effect-field="upgrade_vs_status.extra_heal_percent_of_max" type="number" min="0" max="100" value="' + escapeHtml(upgrade.extra_heal_percent_of_max ?? '') + '" placeholder="0"><span>%</span></div></label>'
+                + pairsEditor('Regen % extra', upgrade.extra_regen_per_turn_percent || {}, 'upgrade_regen_pairs', 'hp: 5')
+                + '<label class="effect-field"><span>Lava status antes</span><input class="control" data-effect-field="also_remove_status" value="' + escapeHtml(listValue(effect.also_remove_status)) + '" placeholder="Wet"><small>Estados (por rótulo ou ID) removidos quando este aterrissa.</small></label>';
+        }
+        if (pattern === 'trip') {
+            var trip = effect.trip_on_action || {};
+            return '<label class="effect-field"><span>Ações que armam</span><input class="control" data-effect-field="trip_on_action.actions" value="' + escapeHtml(listValue(trip.actions)) + '" placeholder="attack, switch_line"><small>Lista de tipos de ação (' + Model.PREVENT_ACTIONS.join(', ') + ').</small></label>'
+                + '<label class="effect-field"><span>Só canais de dano</span><input class="control" data-effect-field="trip_on_action.damage_types" value="' + escapeHtml(listValue(trip.damage_types)) + '" placeholder="physical"><small>Vazio arma em qualquer canal (physical/magical).</small></label>'
+                + '<label class="effect-field"><span>Chance de deslizar</span><div class="input-suffix"><input class="control" data-effect-field="trip_on_action.chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(trip.chance)) + '" placeholder="50"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Dano da queda</span><input class="control" data-effect-field="trip_on_action.damage" type="number" min="0" value="' + escapeHtml(trip.damage ?? '') + '" placeholder="0"></label>'
+                + '<label class="effect-field"><span>Estado da queda</span><input class="control" data-effect-field="trip_on_action.spawn.status_effect" value="' + escapeHtml((trip.spawn || {}).status_effect || '') + '" placeholder="Slipped"></label>'
+                + '<label class="effect-field"><span>Duração do estado</span><input class="control" data-effect-field="trip_on_action.spawn.turns" type="number" min="1" value="' + escapeHtml((trip.spawn || {}).turns ?? 1) + '"></label>'
+                + statRowsPicker(trip.spawn || {}, 'trip_on_action.spawn.debuff', 'Debuff da queda')
+                + '<small>A armadilha dura os turnos do estado e desliza quem usa uma das ações listadas.</small>';
+        }
         if (pattern === 'deferred') {
             var deferred = effect.deferred_damage || {};
             return '<label class="effect-field"><span>Dano</span><input class="control" data-effect-field="deferred_damage.amount" type="number" min="0" value="' + escapeHtml(deferred.amount ?? 12) + '"><small>O golpe cai mais tarde, não agora.</small></label>'
@@ -1376,6 +1502,13 @@
             + '<label class="effect-stack"><input type="checkbox" data-effect-field="prevent_skills" ' + (effect.prevent_skills ? 'checked' : '') + '> O alvo não pode usar skills</label>'
             + '<label class="effect-stack"><input type="checkbox" data-effect-field="heal_block" ' + (effect.heal_block ? 'checked' : '') + '> O alvo não pode ser curado por outros</label>'
             + '<label class="effect-stack"><input type="checkbox" data-effect-field="counter" ' + (effect.counter ? 'checked' : '') + '> Reflete o próximo golpe recebido</label>'
+            + '<label class="effect-field" data-effect-conditional="counter_chance"' + (effect.counter || effect.counter_chance !== undefined ? '' : ' hidden') + '><span>Chance de reflexão</span><div class="input-suffix"><input class="control" data-effect-field="counter_chance" type="number" min="0" max="100" step="5" value="' + escapeHtml(percentOf(effect.counter_chance)) + '" placeholder="100"><span>%</span></div><small>Abaixo da chance o golpe não é refletido (e o estado sobrevive).</small></label>'
+            + '<label class="effect-field"><span>Reflexão salvo elementos</span><input class="control" data-effect-field="counter_except_elements" value="' + escapeHtml(listValue(effect.counter_except_elements)) + '" placeholder="ignis"><small>Ataques destes elementos nunca refletem (lista separada por vírgulas).</small></label>'
+            + '<label class="effect-stack"><input type="checkbox" data-effect-field="refresh_status" ' + (effect.refresh_status ? 'checked' : '') + '> Atualiza estados com o mesmo rótulo</label>'
+            + '<label class="effect-field"><span>Ações que exigem todos os golpes</span><input type="checkbox" data-effect-field="require_all_hits" ' + (effect.require_all_hits ? 'checked' : '') + '> <span>Só quando todos os golpes acertam</span></label>'
+            + '<label class="effect-field"><span>Proíbe canais de dano</span><input class="control" data-effect-field="prevent_damage_channels" value="' + escapeHtml(listValue(effect.prevent_damage_channels)) + '" placeholder="physical"><small>O portador não pode usar ataques desses canais (physical/magical).</small></label>'
+            + '<label class="effect-field"><span>Bloqueia buffs aos atributos</span><input class="control" data-effect-field="block_stat_buffs" value="' + escapeHtml(listValue(effect.block_stat_buffs)) + '" placeholder="speed"><small>Os buffs do portador a estes atributos são ignorados (' + Model.STAT_NAMES.join(', ') + ').</small></label>'
+            + pairsEditor('Modulação de canal de dano', effect.damage_channel_modulation || {}, 'damage_channel_modulation_pairs', 'physical: 0.5')
             + '</div></div>'
             + '<div class="effect-advanced-group">'
             + '<span class="effect-group-title">Mecânica do motor</span>'
@@ -1428,6 +1561,46 @@
         return '<label class="effect-field"><span>' + label + '</span><input class="control" data-effect-resource="' + namespace + '.' + key + '" type="number" min="0" value="' + escapeHtml(value ?? '') + '" placeholder="0"></label>';
     }
 
+    /** Editor de pares "chave: valor" (String, modulações elementais). */
+    function pairsEditor(label, pairs, fieldKey, placeholder) {
+        var text = Object.keys(pairs).map(function (key) { return key + ': ' + pairs[key]; }).join(', ');
+        return '<label class="effect-field effect-field-wide"><span>' + label + '</span><input class="control" data-effect-field="' + fieldKey + '" value="' + escapeHtml(text) + '" placeholder="' + placeholder + '"><small>Pares separados por vírgulas.</small></label>';
+    }
+
+    /** Editor de linhas de atributo de dentro de um objeto aninhado (spawn.debuff). */
+    function statRowsPicker(owner, statsPath, label) {
+        var parts = statsPath.split('.');
+        var stats = (owner[parts[0]] || {})[parts[1]] || {};
+        var rows = Object.keys(stats).map(function (name) {
+            return '<div class="stat-row" data-stat-row>'
+                + '<select class="control control-small" data-stat-name>' + Model.STAT_NAMES.map(function (id) {
+                    return optionMarkup(id, Model.STAT_LABELS[id] || id, id === name);
+                }).join('') + '</select>'
+                + '<input class="control control-small" data-stat-value type="number" step="1" value="' + escapeHtml(stats[name]) + '">'
+                + '<button class="icon-button icon-button-small" type="button" data-remove-stat title="Remover atributo">×</button>'
+                + '</div>';
+        }).join('');
+        return '<div class="effect-field effect-field-wide" data-effect-stats="' + statsPath + '">'
+            + '<span>' + label + '</span>'
+            + (rows || '<p class="no-effects">Sem atributos — usa “+ Atributo”.</p>')
+            + '<button class="button button-small button-quiet" type="button" data-add-stat>+ Atributo</button>'
+            + '</div>';
+    }
+
+    function listValue(list) { return Array.isArray(list) ? list.join(', ') : (list || ''); }
+
+    /** Guarda percentagens como frações (0…1) e mostra-nas 0…100. */
+    function percentOf(value) {
+        if (value === undefined || value === null || value === '') return '';
+        var number = Number(value);
+        return Number.isFinite(number) ? Math.round(number * 100) : '';
+    }
+
+    function asPercent(holder) {
+        if (!holder || typeof holder !== 'object') return '';
+        return percentOf(holder.percent);
+    }
+
     function targetOptions(selected, skill) {
         var labels = { allies_all: 'Todos os aliados', enemies_all: 'Todos os inimigos', both_teams: 'Ambas as equipas' };
         var targets = availableTeamTargets(skill);
@@ -1441,6 +1614,17 @@
     }
 
     function detectPattern(effect) {
+        if (effect.charges) return 'charges';
+        if (effect.trip_on_action) return 'trip';
+        if (effect.spend_trigger) return 'spend_trigger';
+        if (effect.cleanse_per_turn) return 'cleanse_turn';
+        if (effect.regen_per_turn_percent) return 'regen_max';
+        if (effect.resource_regen_percent_of_max) return 'regen_max_once';
+        if (effect.random_resource_regen || effect.random_resource_regen_per_turn) return 'random_regen';
+        if (effect.heal_percent_of_max) return 'heal_max';
+        if (effect.upgrade_vs_status) return 'upgrade_status';
+        if (effect.element_modulation || effect.expire_on_elements) return 'modulate';
+        if (effect.shield_percent_of_max_hp !== undefined || effect.shield) return 'shield_effect';
         if (effect.cleanse !== undefined || effect.cleanse_all) return 'cleanse';
         if (effect.dispel !== undefined || effect.dispel_all || effect.dispel_status) return 'dispel';
         if (effect.deferred_damage) return 'deferred';
@@ -1528,6 +1712,17 @@
         var properties = {};
         if (pattern === 'regen') properties.resource_regen = { hp: 15 };
         if (pattern === 'regen_turn') properties.regen_per_turn = { hp: 10 };
+        if (pattern === 'regen_max') properties.regen_per_turn_percent = { hp: 10 };
+        if (pattern === 'regen_max_once') properties.resource_regen_percent_of_max = { hp: 10 };
+        if (pattern === 'random_regen') properties.random_resource_regen = { percent: 10 };
+        if (pattern === 'heal_max') properties.heal_percent_of_max = 8;
+        if (pattern === 'spend_trigger') properties.spend_trigger = { damage: 6, heal_to_source: 3 };
+        if (pattern === 'modulate') { properties.element_modulation = { ignis: 0.25 }; properties.expire_on_elements = ['ignis']; }
+        if (pattern === 'shield_effect') properties.shield = { percent_of_max_hp: 12 };
+        if (pattern === 'charges') properties.charges = { max: 3, initial: 1, release: { status_effect: 'Frozen', turns: 1 } };
+        if (pattern === 'upgrade_status') properties.upgrade_vs_status = { status: 'Wet', extra_turns: 1 };
+        if (pattern === 'trip') properties.trip_on_action = { actions: ['attack'], chance: 0.5, damage: 8 };
+        if (pattern === 'cleanse_turn') properties.cleanse_per_turn = { count: 1, polarity: 'any' };
         if (pattern === 'buff') properties.buff = { physical_attack: 10 };
         if (pattern === 'debuff') properties.debuff = { physical_attack: 10 };
         if (pattern === 'damage') properties.damage_per_turn = 5;
@@ -1579,10 +1774,21 @@
         if (!skill || !card) return;
         var effect = skill.effects.find(function (item) { return item.effect_id === card.dataset.effectId; });
         if (!effect) return;
-        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'resource_drain', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind'].forEach(function (key) { delete effect[key]; });
+        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind'].forEach(function (key) { delete effect[key]; });
         var type = select.value;
         if (type === 'regen') effect.resource_regen = { hp: 15 };
         if (type === 'regen_turn') effect.regen_per_turn = { hp: 10 };
+        if (type === 'regen_max') effect.regen_per_turn_percent = { hp: 10 };
+        if (type === 'regen_max_once') effect.resource_regen_percent_of_max = { hp: 10 };
+        if (type === 'random_regen') effect.random_resource_regen = { percent: 10 };
+        if (type === 'heal_max') effect.heal_percent_of_max = 8;
+        if (type === 'spend_trigger') effect.spend_trigger = { damage: 6, heal_to_source: 3 };
+        if (type === 'modulate') { effect.element_modulation = { ignis: 0.25 }; effect.expire_on_elements = ['ignis']; }
+        if (type === 'shield_effect') effect.shield = { percent_of_max_hp: 12 };
+        if (type === 'charges') effect.charges = { max: 3, initial: 1, release: { status_effect: 'Frozen', turns: 1 } };
+        if (type === 'upgrade_status') effect.upgrade_vs_status = { status: 'Wet', extra_turns: 1 };
+        if (type === 'trip') effect.trip_on_action = { actions: ['attack'], chance: 0.5, damage: 8 };
+        if (type === 'cleanse_turn') effect.cleanse_per_turn = { count: 1, polarity: 'any' };
         if (type === 'buff') effect.buff = { physical_attack: 10 };
         if (type === 'debuff') effect.debuff = { physical_attack: 10 };
         if (type === 'damage') effect.damage_per_turn = 5;
@@ -1645,10 +1851,52 @@
                 } else if (key === 'polarity') {
                     if (field.value) effect.polarity = field.value;
                     else delete effect.polarity;
-                } else if (key === 'status_immunities' || key === 'prevent_actions') {
+                } else if (key === 'status_immunities' || key === 'prevent_actions'
+                    || key === 'expire_on_elements' || key === 'also_remove_status'
+                    || key === 'block_stat_buffs' || key === 'counter_except_elements'
+                    || key === 'prevent_damage_channels') {
                     var list = String(field.value || '').split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
                     if (list.length) effect[key] = list;
                     else delete effect[key];
+                } else if (key === 'element_modulation_pairs' || key === 'damage_channel_modulation_pairs' || key === 'upgrade_regen_pairs') {
+                    // Pares "chave: valor"; cada editor dirige o seu destino.
+                    var targetKey = key === 'element_modulation_pairs' ? 'element_modulation'
+                        : key === 'damage_channel_modulation_pairs' ? 'damage_channel_modulation'
+                            : 'upgrade_vs_status.extra_regen_per_turn_percent';
+                    var parsedPairs = {};
+                    String(field.value || '').split(',').forEach(function (entry) {
+                        var halves = entry.split(':');
+                        var pairKey = (halves[0] || '').trim();
+                        var pairValue = Number((halves[1] ?? '').trim());
+                        if (pairKey && Number.isFinite(pairValue) && pairValue !== 0) parsedPairs[pairKey] = pairValue;
+                    });
+                    if (Object.keys(parsedPairs).length) setNested(effect, targetKey, parsedPairs);
+                    else { setNested(effect, targetKey, undefined); pruneEmpty(effect, targetKey); }
+                } else if (key === 'shield.hit_chance' || key === 'trip_on_action.chance'
+                    || key === 'upgrade_vs_status.extra_turns_chance') {
+                    // Mostram-se em percentagem mas guardam-se como fração.
+                    var fractionLeaf = key.split('.');
+                    var fractionParent = readNested(effect, fractionLeaf.slice(0, -1).join('.')) || {};
+                    var fractionName = fractionLeaf[fractionLeaf.length - 1];
+                    if (field.value === '') {
+                        delete fractionParent[fractionName];
+                        pruneEmpty(effect, key);
+                    } else {
+                        // Garante o pai mesmo que só a chance exista.
+                        var parentPath = fractionLeaf.slice(0, -1).join('.');
+                        setNested(effect, parentPath + '.' + fractionName,
+                            numberValue(field.value, 100) / 100 >= 1 ? 1 : numberValue(field.value, 100) / 100);
+                    }
+                } else if (key === 'trip_on_action.actions' || key === 'trip_on_action.damage_types'
+                    || key === 'charges.release.prevent_actions') {
+                    var commaLeaf = key.split('.');
+                    var commaName = commaLeaf[commaLeaf.length - 1];
+                    var commaList = String(field.value || '').split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
+                    if (commaList.length) setNested(effect, key, commaList);
+                    else {
+                        setNested(effect, key, undefined);
+                        pruneEmpty(effect, key);
+                    }
                 } else if (key === 'drain_percent_of_damage' || key === 'heal_on_kill_percent' || key === 'confusion_chance') {
                     // Mostram-se em percentagem mas guardam-se como fração, à
                     // maneira da precisão do efeito.
@@ -1734,8 +1982,17 @@
                     var amount = numberValue(row.querySelector('[data-stat-value]')?.value, 0);
                     if (name) parsed[name] = amount;
                 });
-                if (Object.keys(parsed).length) effect[key] = parsed;
-                else delete effect[key];
+                if (key.indexOf('.') === -1) {
+                    if (Object.keys(parsed).length) effect[key] = parsed;
+                    else delete effect[key];
+                    return;
+                }
+                // Caminho aninhado (`trip_on_action.spawn.debuff`).
+                if (Object.keys(parsed).length) setNested(effect, key, parsed);
+                else {
+                    setNested(effect, key, undefined);
+                    pruneEmpty(effect, key);
+                }
             });
             var minVariance = card.querySelector('[data-effect-variance="min"]');
             var maxVariance = card.querySelector('[data-effect-variance="max"]');
@@ -1762,6 +2019,20 @@
             if (effect.random_buff && typeof effect.random_buff === 'object' && !Object.keys(effect.random_buff).length) {
                 delete effect.random_buff;
             }
+            // Cascas vazias das novas mecânicas também somem.
+            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent']].forEach(function (path) {
+                var holder = effect;
+                var valid = true;
+                for (var index = 0; index < path.length; index += 1) {
+                    if (!holder || typeof holder !== 'object') { valid = false; break; }
+                    holder = holder[path[index]];
+                }
+                if (valid && holder && typeof holder === 'object' && !Object.keys(holder).length) {
+                    var parent = effect;
+                    for (var step = 0; step < path.length - 1; step += 1) parent = parent[path[step]];
+                    delete parent[path[path.length - 1]];
+                }
+            });
             updateConditionalEffectFields(card, effect);
             updatedById.set(effect.effect_id, effect);
         });
@@ -1776,6 +2047,8 @@
         var phaseField = card.querySelector('[data-effect-conditional="phase_rounds"]');
         if (phaseField) phaseField.hidden = !effect.set_phase;
         if (!effect.set_phase) delete effect.phase_rounds;
+        var counterChanceField = card.querySelector('[data-effect-conditional="counter_chance"]');
+        if (counterChanceField) counterChanceField.hidden = !(effect.counter || effect.counter_chance !== undefined);
     }
 
     function syncCollateral(skill) {
@@ -2140,6 +2413,8 @@
         if (skill.flee_below_hp !== undefined) result.flee_below_hp = skill.flee_below_hp;
         if (skill.guaranteed_crit_vs_status) result.guaranteed_crit_vs_status = skill.guaranteed_crit_vs_status;
         if (skill.bonus_vs_hp_below) result.bonus_vs_hp_below = Model.clone(skill.bonus_vs_hp_below);
+        if (skill.bonus_vs_status) result.bonus_vs_status = Model.clone(skill.bonus_vs_status);
+        if (skill.bonus_per_charge) result.bonus_per_charge = Model.clone(skill.bonus_per_charge);
         if (skill.bonus_vs_elements && Object.keys(skill.bonus_vs_elements).length) {
             result.bonus_vs_elements = Model.clone(skill.bonus_vs_elements);
         }

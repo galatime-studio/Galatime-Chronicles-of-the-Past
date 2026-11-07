@@ -1,0 +1,1893 @@
+skills:
+  - id: water
+    name: Water
+    description: "The caster will wet the bearer, lowering the effectiveness of ignis skills on them; For 8 turns or until the bearer is hit with an ignis skill, the effectiveness of ignis skills on the bearer is lowered to 25%, other aqua and chaos skills are doubled."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids: []
+    targeting: any_one
+    kind: control
+    costs:
+      mana: 2
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: water_effect
+        status_effect: Wet
+        apply_to: target
+        turns: 8
+        polarity: positive
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: water_bolt
+    name: Water Bolt
+    description: "A concentrated water bolt projectile."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - water
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 6
+    accuracy: 100
+    hit_count: 1
+    costs:
+      mana: 3
+      stamina: 0
+      cooldown: 0
+  - id: water_jet
+    name: Water Jet
+    description: "A concentrated jet of water. May leave the target wet for 3 turns or until the bearer is hit with an ignis skill, the effectiveness of ignis skills on the bearer is lowered to 25%. other aqua and chaos skills are doubled."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - water_bolt
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 9
+    accuracy: 100
+    hit_count: 1
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: water_jet_effect
+        status_effect: Wet
+        apply_to: target
+        turns: 3
+        polarity: positive
+        effect_hit_chance: 0.25
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: hydro_lance
+    name: Hydro Lance
+    description: "A thin spear of water punctures the target. Ignores 10% of the target's defenses. If the target is wet, ignores an additional 5% of their defenses. Has a chance to apply wet for 2 turns."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - water_jet
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 10
+    accuracy: 95
+    hit_count: 1
+    defense_pierce: 0.1
+    bonus_vs_status:
+      status: Wet
+      defense_pierce: 0.05
+    costs:
+      mana: 6
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: hydro_lance_effect
+        status_effect: Wet
+        apply_to: target
+        turns: 2
+        polarity: positive
+        effect_hit_chance: 0.25
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: waterfall
+    name: Waterfall
+    description: "A modest waterfall hits the target. May leave the target wet for 4 turns or until the bearer is hit with an ignis skill, the effectiveness of ignis skills on the bearer is lowered to 25%. other aqua and chaos skills are doubled."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - water_bolt
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 12
+    accuracy: 100
+    hit_count: 1
+    costs:
+      mana: 9
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: waterfall_effect
+        status_effect: Wet
+        apply_to: target
+        turns: 4
+        polarity: positive
+        effect_hit_chance: 0.25
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: briny_surge
+    name: Briny Surge
+    description: "Pressurized water corrodes the target. On hit, debuff the target's Physical and Magical Attack by 8% for 2 turns. Leaves the target wet for 3 turns."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - waterfall
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 14
+    accuracy: 95
+    hit_count: 1
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: briny_surge_effect
+        status_effect: Brined
+        apply_to: target
+        turns: 2
+        debuff:
+          physical_attack: 8
+          magical_attack: 8
+        polarity: negative
+      - effect_id: briny_surge_wet_effect
+        status_effect: Wet
+        apply_to: target
+        turns: 3
+        polarity: positive
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: undertow
+    name: Undertow
+    description: "The caster draws water from the target, draining it to themselves; On hit, heal 8-12% HP of the damage to the user."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - water
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 6
+    accuracy: 80
+    hit_count: 1
+    costs:
+      mana: 4
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: undertow_effect
+        apply_to: target
+        drain_percent_of_damage: 0.1
+  - id: water_absorption
+    name: Water Absorption
+    description: "The caster draws moisture from the target, draining it to themselves; On hit, heal 15-18% HP of the damage to the user."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - undertow
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 9
+    accuracy: 95
+    hit_count: 1
+    costs:
+      mana: 6
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: water_absorption_effect
+        apply_to: target
+        drain_percent_of_damage: 0.16
+  - id: riptide
+    name: Riptide
+    description: "The caster pulls the target with a small current, damaging them and any adjacent enemies. If they are on the back lane, they are moved to the front; On hit, heal 12-15% HP of the damage to the user, may hit adjacent enemies."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - undertow
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 11
+    accuracy: 100
+    hit_count: 1
+    costs:
+      mana: 9
+      stamina: 0
+      cooldown: 0
+    collateral:
+      damage_multiplier: 0.5
+      include_primary_targets: false
+      include_caster: false
+    effects:
+      - effect_id: riptide_drain_effect
+        apply_to: target
+        drain_percent_of_damage: 0.13
+      - effect_id: riptide_move_effect
+        apply_to: target
+        move:
+          who: target
+          to_line: front
+  - id: whirlpool
+    name: Whirlpool
+    description: "A small whirlpool ensnares the target, holding them in place. Deals magic damage and roots the target for 1 turn. On hit, heal the caster for 10-12% of the damage dealt. If the target is wet, the root has a chance to persist for an extra turn."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - riptide
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 9
+    accuracy: 90
+    hit_count: 1
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: whirlpool_root_effect
+        status_effect: Rooted
+        apply_to: target
+        turns: 1
+        polarity: negative
+        prevent_actions:
+          - switch_line
+        upgrade_vs_status:
+          status: Wet
+          extra_turns: 1
+          extra_turns_chance: 0.5
+      - effect_id: whirlpool_drain_effect
+        apply_to: target
+        drain_percent_of_damage: 0.11
+  - id: maelstrom
+    name: Maelstrom
+    description: "A modest whirlpool drags enemies into its current. Deals AoE magical damage to all enemies. Heal the caster for 10-12% of the total damage dealt by this skill. Each enemy hit has a 30% chance to become wet for 2 turns."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - riptide
+    targeting: enemies_all
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 11
+    accuracy: 90
+    hit_count: 1
+    costs:
+      mana: 16
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: maelstrom_drain_effect
+        apply_to: target
+        drain_percent_of_damage: 0.11
+      - effect_id: maelstrom_wet_effect
+        status_effect: Wet
+        apply_to: target
+        turns: 2
+        polarity: positive
+        effect_hit_chance: 0.3
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: mist
+    name: Mist
+    description: "A mist surrounds the bearer, only disappearing after being hit, thereby lowering the effectiveness of ignis attacks; The mist disappears once hit with a ignis skill, any ignis skill, by the bearer or by any other entity targeting the bearer, will lower the effectiveness of the ignis attack by half, ACC -5%."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - water
+    targeting: any_one
+    kind: control
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: mist_effect
+        status_effect: Mist
+        apply_to: target
+        polarity: positive
+        debuff:
+          accuracy: 5
+        element_modulation:
+          ignis: 0.5
+        expire_on_elements:
+          - ignis
+  - id: hangover
+    name: Hangover
+    description: "Each time the bearer uses mana or stamina, they take slight damage and the caster heals slightly; For 3 turns, everytime the target uses MN or SN, they take damage and the caster heals slightly."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - mist
+    targeting: any_one
+    kind: control
+    costs:
+      mana: 25
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: hangover_effect
+        status_effect: Hangover
+        apply_to: target
+        turns: 3
+        polarity: negative
+        spend_trigger:
+          damage: 6
+          heal_to_source: 3
+  - id: fog
+    name: Fog
+    description: "A fog surrounds the area, lowering the effectiveness of ignis attacks; The fog disappears once hit with a ignis skill, or after 3 turns, by the bearer or by any other entity targeting the bearer, will lower the effectiveness of the ignis attack by half, ACC -10% EVASION +20, 25% chance of each of the entities afected of getting wet."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - mist
+    targeting: both_teams
+    kind: control
+    costs:
+      mana: 25
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: fog_effect
+        status_effect: Fog
+        apply_to: both_teams
+        turns: 3
+        polarity: neutral
+        buff:
+          evasion: 20
+        debuff:
+          accuracy: 10
+        element_modulation:
+          ignis: 0.5
+        expire_on_elements:
+          - ignis
+      - effect_id: fog_wet_effect
+        status_effect: Wet
+        apply_to: both_teams
+        turns: 3
+        polarity: positive
+        effect_hit_chance: 0.25
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: dew_shroud
+    name: Dew Shroud
+    description: "A blanket of cloying dew covers the party, making them much harder to strike. All affected allies gain +15 Evasion for 3 turns and have a 30% chance to become wet for 3 turns (refreshing any existing wet duration). Slightly reduces the party's accuracy by -3% to represent obscured sightlines."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - fog
+    targeting: allies_all
+    kind: control
+    costs:
+      mana: 22
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: dew_shroud_effect
+        status_effect: Dew Shroud
+        apply_to: allies_all
+        turns: 3
+        buff:
+          evasion: 15
+        debuff:
+          accuracy: 3
+        polarity: positive
+      - effect_id: dew_shroud_wet_effect
+        status_effect: Wet
+        apply_to: allies_all
+        turns: 3
+        polarity: positive
+        refresh_status: true
+        effect_hit_chance: 0.3
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: rain
+    name: Rain
+    description: "The caster creates a rain that removes one status from the target for 3 turns; For 3 turns, the rain will rmeove one status, every turn, good or bad, for the target. The bearer will become wet"
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - mist
+    targeting: any_one
+    kind: control
+    costs:
+      mana: 15
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: rain_effect
+        status_effect: Rain
+        apply_to: target
+        turns: 3
+        polarity: positive
+        cleanse_per_turn:
+          count: 1
+          polarity: any
+      - effect_id: rain_wet_effect
+        status_effect: Wet
+        apply_to: target
+        turns: 3
+        polarity: positive
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: clear_water
+    name: Clear Water
+    description: "Heal some of the targets wounds; Restore 10% of the target's random resource, HP, MN or SN."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - water
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 6
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: clear_water_effect
+        status_effect: Clear Water
+        apply_to: target
+        turns: 1
+        polarity: positive
+        random_resource_regen:
+          percent: 10
+  - id: dew
+    name: Dew
+    description: "A tiny bead of pristine water drips onto the ally, mending them. Restores 8% of their max HP. If the target is currently wet, restore an additional 5% HP."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - clear_water
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 4
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: dew_effect
+        status_effect: Dew
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 8
+        upgrade_vs_status:
+          status: Wet
+          extra_heal_percent_of_max: 5
+  - id: healing_mist
+    name: Healing Mist
+    description: "A mist surrounds the bearer, lowering the effectiveness of ignis attacks and healing them; The mist disappears once hit with a ignis skill, any ignis skill, by the bearer or by any other entity targeting the bearer, will lower the effectiveness of the ignis attack by half, ACC -5%, heals 5% of the bearers HP."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - mist
+        - clear_water
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 25
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: healing_mist_effect
+        status_effect: Mist
+        apply_to: target
+        polarity: positive
+        debuff:
+          accuracy: 5
+        regen_per_turn_percent:
+          hp: 5
+        element_modulation:
+          ignis: 0.5
+        expire_on_elements:
+          - ignis
+  - id: cleansing_rain
+    name: Cleansing Rain
+    description: "The caster creates rain that heals and removes one status from the target for 3 turns; For 3 turns, the rain will remove one status, every turn, good or bad, from the target & will restore 10% of the target's random resource, HP, MN or SN, the bearer will become wet."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - clear_water
+        - rain
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 20
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: cleansing_rain_effect
+        status_effect: Cleansing Rain
+        apply_to: target
+        turns: 3
+        polarity: positive
+        cleanse_per_turn:
+          count: 1
+          polarity: any
+        random_resource_regen_per_turn:
+          percent: 10
+      - effect_id: cleansing_rain_wet_effect
+        status_effect: Wet
+        apply_to: target
+        turns: 3
+        polarity: positive
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: water_spring
+    name: Water Spring
+    description: "A spring of water is absorbed by the target, replenishing their fatigue; Restore 20% of the target's MN."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - clear_water
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: water_spring_effect
+        status_effect: Water Spring
+        apply_to: target
+        turns: 1
+        polarity: positive
+        resource_regen_percent_of_max:
+          mana: 20
+  - id: tidal_pull
+    name: Tidal Pull
+    description: "The current wraps around the target and yanks them. If the target is in the backline, pull them to the frontline. For 2 turns, the target has -10 ACC. If the target is wet, this duration is extended to 3 turns."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - undertow
+    targeting: any_one
+    kind: control
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: tidal_pull_debuff_effect
+        status_effect: Tides
+        apply_to: target
+        turns: 2
+        debuff:
+          accuracy: 10
+        polarity: negative
+        upgrade_vs_status:
+          status: Wet
+          extra_turns: 1
+      - effect_id: tidal_pull_move_effect
+        apply_to: target
+        move:
+          who: target
+          to_line: front
+  - id: condensation
+    name: Condensation
+    description: "The mist around the ally condenses into a malleable barrier of water. Grants a shield equal to 12% of the ally's max HP for 3 turns. If the ally is already under a mist based effect, extend this shield's duration by +1 turn."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - mist
+    targeting: any_one
+    kind: control
+    costs:
+      mana: 14
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: condensation_effect
+        status_effect: Condensation
+        apply_to: target
+        turns: 3
+        polarity: positive
+        shield:
+          percent_of_max_hp: 12
+        upgrade_vs_status:
+          status: Mist
+          extra_turns: 1
+  - id: aquatic_renewal
+    name: Aquatic Renewal
+    description: "A slow, steady stream of water flows through the bearer's wounds. Apply a HoT for 3 turns, restoring 10% max HP at the start of each turn. If the target is wet, additionally restore more at the start of each turn."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - water_spring
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 16
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: aquatic_renewal_effect
+        status_effect: Aquatic Renewal
+        apply_to: target
+        turns: 3
+        polarity: positive
+        regen_per_turn_percent:
+          hp: 10
+        upgrade_vs_status:
+          status: Wet
+          extra_regen_per_turn_percent:
+            hp: 5
+  - id: deluge_of_purity
+    name: Deluge of Purity
+    description: "A massive downpour rains over the entire party, washing away corruption. For 3 turns, at the start of each turn, cleanse 1 debuff from every affected ally and restore 7% of their max HP. All affected allies become wet for 4 turns."
+    element_id: aqua
+    sfx: aqua_water
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - cleansing_rain
+    targeting: allies_all
+    kind: heal
+    costs:
+      mana: 30
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: deluge_of_purity_effect
+        status_effect: Deluge
+        apply_to: allies_all
+        turns: 3
+        polarity: positive
+        cleanse_per_turn:
+          count: 1
+          polarity: negative
+        regen_per_turn_percent:
+          hp: 7
+      - effect_id: deluge_of_purity_wet_effect
+        status_effect: Wet
+        apply_to: allies_all
+        turns: 4
+        polarity: positive
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements:
+          - ignis
+  - id: freeze
+    name: Freeze
+    description: "The caster freezes the target, creating some light wounds, and freezing the target; Will grant the target the freezing effect"
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids: []
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 4
+    accuracy: 50
+    hit_count: 1
+    bonus_vs_status:
+      status: Wet
+      multiplier: 1.05
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+  - id: snow
+    name: Snow
+    description: "The caster tosses a handful of snow at the target; Deals very light damage and has a small chance to apply a Freeze charge."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - freeze
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 2
+    accuracy: 90
+    hit_count: 1
+    bonus_vs_status:
+      status: Wet
+      multiplier: 1.05
+    costs:
+      mana: 2
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.2
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+  - id: snow_ball
+    name: Snow Ball
+    description: "The caster packs and throws a snowball; Deals light damage and has a chance to apply a Freeze charge. If the target is already Frozen, deals slightly more damage."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - snow
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 3
+    accuracy: 85
+    hit_count: 1
+    bonus_vs_status:
+      - status: Frozen
+        multiplier: 1.5
+      - status: Wet
+        multiplier: 1.05
+    costs:
+      mana: 2
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.25
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+  - id: ice_blades
+    name: Ice Blades
+    description: "The caster creates a pair of frost blades; Two separate attacks, each requiring its own hit roll. Each strike deals very light damage and has a chance to apply a Freeze charge. If both hits land, the target loses SPD for 1 turn."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - snow
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 4
+    accuracy: 85
+    hit_count: 2
+    bonus_vs_status:
+      - status: Wet
+        multiplier: 1.05
+    costs:
+      mana: 3
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.45
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+      - effect_id: ice_blades_numb_effect
+        status_effect: Numb
+        apply_to: target
+        turns: 1
+        polarity: negative
+        require_all_hits: true
+        debuff:
+          speed: 4
+  - id: ice_lance
+    name: Ice Lance
+    description: "The caster hurls a small, sharpened lance of ice; Deals light damage and has a chance to apply a Freeze charge. If the target is already Frozen, the lance shatters for small bonus damage."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - snow
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 5
+    accuracy: 85
+    hit_count: 1
+    bonus_vs_status:
+      - status: Frozen
+        multiplier: 1.5
+      - status: Wet
+        multiplier: 1.05
+    costs:
+      mana: 4
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.25
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+  - id: frost_blades
+    name: Frost Blades
+    description: "Refined frost blades; Each strike deals light damage and has a higher chance to apply a Freeze charge. If both hits land, the target loses SPD for 2 turns."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - ice_blades
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 5
+    accuracy: 85
+    hit_count: 2
+    bonus_vs_status:
+      - status: Wet
+        multiplier: 1.05
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.5
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+      - effect_id: frost_blades_numb_effect
+        status_effect: Numb
+        apply_to: target
+        turns: 2
+        polarity: negative
+        require_all_hits: true
+        debuff:
+          speed: 4
+  - id: glacial_blades
+    name: Glacial Blades
+    description: "Heavily tempered blades of hoarfrost. Each strike deals modest damage and has a solid chance to apply a Freeze charge. Ignores 15% of the target's MDEF. If both hits land, the target loses SPD for 2 turns."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - frost_blades
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 6
+    accuracy: 85
+    hit_count: 2
+    defense_pierce: 0.15
+    bonus_vs_status:
+      - status: Wet
+        multiplier: 1.05
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.65
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+      - effect_id: glacial_blades_numb_effect
+        status_effect: Numb
+        apply_to: target
+        turns: 2
+        polarity: negative
+        require_all_hits: true
+        debuff:
+          speed: 4
+  - id: hoarfrost_rain
+    name: Hoarfrost Rain
+    description: "Frost falls across the battlefield in a quick volley; Deals light multi-hit damage to all enemies (2 small hits), lowers their SPD by 6 for 2 turns and lowers their Evasion by 8 for 2 turns. Has a small chance to apply Freeze charges to targets hit."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - snow
+        - rain
+    targeting: enemies_all
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 4
+    accuracy: 90
+    hit_count: 2
+    bonus_vs_status:
+      - status: Wet
+        multiplier: 1.05
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.2
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+      - effect_id: hoarfrost_rain_debuff_effect
+        status_effect: Chilled
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 6
+          evasion: 8
+  - id: blizzard
+    name: Blizzard
+    description: "A howling blizzard scours the field with a rapid flurry; Deals modest multi-hit damage to all enemies (2 hits), lowers their SPD by 8 and Evasion by 10 for 3 turns. Has a chance to apply Freeze charges to targets hit."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - hoarfrost_rain
+    targeting: enemies_all
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 5
+    accuracy: 90
+    hit_count: 2
+    bonus_vs_status:
+      - status: Wet
+        multiplier: 1.05
+    costs:
+      mana: 14
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.25
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+      - effect_id: blizzard_debuff_effect
+        status_effect: Chilled
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff:
+          speed: 8
+          evasion: 10
+  - id: glacial_storm
+    name: Glacial Storm
+    description: "A storm of supercooled shards pelts the field; Deals modest multi-hit damage to all enemies (3 small hits), lowers their SPD by 10 for 3 turns and lowers their Evasion by 12 for 3 turns. Has a chance to apply Freeze charges to targets hit."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - hoarfrost_rain
+    targeting: enemies_all
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 5
+    accuracy: 90
+    hit_count: 3
+    bonus_vs_status:
+      - status: Wet
+        multiplier: 1.05
+    costs:
+      mana: 18
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.25
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+      - effect_id: glacial_storm_debuff_effect
+        status_effect: Chilled
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff:
+          speed: 10
+          evasion: 12
+  - id: thin_ice
+    name: Thin Ice
+    description: "Coats the ground in treacherous thin ice; Lasts for 3 turns, any entity that uses a physical attack on the front line of the caster team, has a chance to slip, taking minor damage."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - freeze
+    targeting: enemies_all
+    kind: control
+    costs:
+      mana: 18
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: thin_ice_effect
+        status_effect: On Thin Ice
+        apply_to: enemies_all
+        turns: 3
+        polarity: negative
+        trip_on_action:
+          actions:
+            - attack
+          damage_types:
+            - physical
+          chance: 0.5
+          damage: 8
+  - id: avalanche
+    name: Avalanche
+    description: "A smaller collapse of ice crashes down; Deals multi-hit damage to a lane of enemies (2 hits). If targets have Freeze charges, removes some charges to deal bonus damage. Lowers SPD by 10 for 2 turns."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 7
+    learning_requirements:
+      required_attack_ids:
+        - glacial_storm
+        - thin_ice
+    targeting: enemies_lane
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 9
+    accuracy: 85
+    hit_count: 2
+    bonus_per_charge:
+      status: Freezing
+      multiplier_per_charge: 0.5
+      consume: true
+    bonus_vs_status:
+      - status: Wet
+        multiplier: 1.05
+    costs:
+      mana: 20
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: avalanche_debuff_effect
+        status_effect: Chilled
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 10
+  - id: frozen_earth
+    name: Frozen Earth
+    description: "Freezes the entire battlefield floor; Lasts for 4 turns. Any entity that moves or uses a physical attack has a chance to slip, taking minor damage and losing SPD."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - thin_ice
+    targeting: both_teams
+    kind: control
+    costs:
+      mana: 15
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: frozen_earth_effect
+        status_effect: Frozen Earth
+        apply_to: both_teams
+        turns: 4
+        polarity: negative
+        trip_on_action:
+          actions:
+            - attack
+            - switch_line
+          chance: 0.5
+          damage: 6
+          spawn:
+            status_effect: Slipped
+            turns: 1
+            debuff:
+              speed: 3
+  - id: ice_shield
+    name: Ice Shield
+    description: "Coats the bearer in a layer of rime; The shield absorbs the first hit directed at the bearer before breaking (calculate the chance of hitting the shield, 60%, if it doesn't hit, then damage the bearer, if it does, damage the shield), can't use physical attacks until the wall breaks or disappears after 5 turns."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - freeze
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: ice_shield_effect
+        status_effect: Ice Wall
+        apply_to: target
+        turns: 5
+        polarity: positive
+        shield:
+          hit_chance: 0.6
+          max_hits: 1
+        prevent_damage_channels:
+          - physical
+  - id: glacial_wall
+    name: Glacial Wall
+    description: "Raises a towering wall of ice before the bearer; The wall absorbs the first 2 hits directed at the bearer before breaking (calculate the chance of hitting the wall, 80%, if it doesn't hit, then damage the bearer, if it does, damage the wall), can't use physical attacks until the wall breaks or disappears after 5 turns."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - ice_shield
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 18
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: glacial_wall_effect
+        status_effect: Glacial Wall
+        apply_to: target
+        turns: 5
+        polarity: positive
+        shield:
+          hit_chance: 0.8
+          max_hits: 2
+        prevent_damage_channels:
+          - physical
+  - id: frost_mirror
+    name: Frost Mirror
+    description: "Conjures a razor-thin sheet of reflective frost around the bearer; Has a chance to reflect the next incoming attack back to its source. The mirror breaks after reflecting 1 skill, or after 2 turns if no attack has been reflected. It doesn't reflect ignis attacks, and physical attacks are halved in damage."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - ice_shield
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 16
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: frost_mirror_effect
+        status_effect: Frost Mirror
+        apply_to: target
+        turns: 2
+        polarity: positive
+        counter_chance: 0.5
+        counter_except_elements:
+          - ignis
+        damage_channel_modulation:
+          physical: 0.5
+  - id: chill
+    name: Chill
+    description: "The bearer has his wounds chilled, improving his fatigue; Increase 5-15% MN for 2 turns."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - freeze
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: chill_effect
+        status_effect: Chill
+        apply_to: target
+        turns: 2
+        polarity: positive
+        resource_regen_percent_of_max:
+          mana: 10
+  - id: frost
+    name: Frost
+    description: "The bearer has his wounds chilled, improving his fatigue; Increase 10-20% MN for 3 turns +8 MDEF, +6 PDEF."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - chill
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: frost_effect
+        status_effect: Frost
+        apply_to: target
+        turns: 3
+        polarity: positive
+        resource_regen_percent_of_max:
+          mana: 15
+        buff:
+          magical_defense: 8
+          physical_defense: 6
+  - id: hoarfrost_aegis
+    name: Hoarfrost Aegis
+    description: "Thickens the rime into a resilient hoarfrost aegis. Grants +16 MDEF and +12 PDEF for 3 turns. Low chance of freezing the bearer. Low chance of reflecting the skill."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - frost
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 14
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: hoarfrost_aegis_effect
+        status_effect: Hoarfrost Aegis
+        apply_to: target
+        turns: 3
+        polarity: positive
+        counter_chance: 0.15
+        buff:
+          magical_defense: 16
+          physical_defense: 12
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.1
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+  - id: deep_freeze
+    name: Deep Freeze
+    description: "The target is frozen in place, lowering their mobility; Decrease SPD -8 for 3 turns, the target also has a chance of applying the freezing effect, and can't use physical attacks during deep_freeze."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - freeze
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: deep_freeze_effect
+        status_effect: Deep Freeze
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff:
+          speed: 8
+        prevent_damage_channels:
+          - physical
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.25
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+  - id: frostbite
+    name: Frostbite
+    description: "Plunges the target into deep cold; Decreases SPD by 12 and Evasion by 8 for 5 turns. The target cannot use physical attacks and has a high chance to gain additional Freeze charges."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - deep_freeze
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: frostbite_effect
+        status_effect: Frostbite
+        apply_to: target
+        turns: 5
+        polarity: negative
+        debuff:
+          speed: 12
+          evasion: 8
+        prevent_damage_channels:
+          - physical
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.6
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+  - id: permafrost
+    name: Permafrost
+    description: "The caster encases the target in unyielding permafrost; Applies a long-lasting Freeze effect and prevents the target from gaining SPD buffs for 3 turns."
+    element_id: aqua
+    sfx: aqua_ice
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - frostbite
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 6
+    accuracy: 80
+    hit_count: 1
+    bonus_vs_status:
+      - status: Wet
+        multiplier: 1.05
+    costs:
+      mana: 11
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: rime_bond_effect
+        status_effect: Rime Bond
+        apply_to: target
+        turns: 3
+        polarity: negative
+        block_stat_buffs:
+          - speed
+      - effect_id: freezing_effect
+        status_effect: Freezing
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff:
+          physical_attack: 3
+          speed: 4
+          evasion: 3
+        prevent_actions:
+          - switch_line
+        charges:
+          max: 3
+          initial: 2
+          release:
+            status_effect: Frozen
+            turns: 1
+            prevent_actions:
+              - attack
+              - defend
+              - rest
+              - inventory
+              - switch_line
+              - flee
+        also_remove_status:
+          - Wet
+        expire_on_elements:
+          - ignis
+

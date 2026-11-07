@@ -34,6 +34,9 @@ export function candidateTargets(
                 return alive.filter((unit) => unit.id === actor.id);
             case 'enemies_all':
                 return alive.filter((unit) => unit.side !== actor.side);
+            case 'enemies_lane':
+                // The aim still names one enemy; the lane expands at resolution.
+                return alive.filter((unit) => unit.side !== actor.side);
             case 'allies_all':
                 return alive.filter((unit) => unit.side === actor.side);
             case 'both_teams':
@@ -167,7 +170,7 @@ export function validateTargetRule(
         return { target: null, error: null };
     }
 
-    if (action.targeting === 'any_one') {
+    if (action.targeting === 'any_one' || action.targeting === 'enemies_lane') {
         const lockedId = liveTargetLockId(actor);
         if (lockedId !== null && targetId !== lockedId) {
             return {
@@ -207,7 +210,17 @@ export function validateTargetRule(
         }
 
         // Reach only limits what the action can cross towards the other side; a
-        // unit on the actor's own side is always an arm's length away.
+        // unit on the actor's own side is always an arm's length away. A
+        // lane-scoped aim must name an enemy: the lane belongs to the aim.
+        if (action.targeting === 'enemies_lane' && target.side === actor.side) {
+            return {
+                target: null,
+                error: createCombatError('target_invalid', 'This action aims at an enemy lane.', {
+                    actionId: action.id,
+                    targetId,
+                }),
+            };
+        }
         if (target.side !== actor.side && !rangeReachesLine(action.range, target.line)) {
             return {
                 target: null,

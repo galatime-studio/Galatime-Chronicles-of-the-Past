@@ -108,6 +108,8 @@ export interface AttackEffect {
     untargetable?: boolean;
     /** The holder cannot be healed by anybody else. */
     heal_block?: boolean;
+    /** Damage channels the holder, be it skills or weapons, may not act with. */
+    prevent_damage_channels?: Array<'physical' | 'magical'>;
     /** The holder reflects the next hit it takes. */
     counter?: boolean;
     /** How many turns the effect shifts the holder's place in the order. */
@@ -128,6 +130,82 @@ export interface AttackEffect {
     self_damage_per_target?: number;
     /** The older spelling of a `debuff` on the attacker's own accuracy. */
     lower_accuracy?: number;
+    /**
+     * Element effectiveness multipliers the status imposes on incoming
+     * actions and effects (`Wet` halves ignis, doubles aqua/chaos).
+     */
+    element_modulation?: Record<string, number>;
+    /** Elements whose attacks lift the status the moment they hit. */
+    expire_on_elements?: string[];
+    /** Damage shield the landing grants, as a percent of the holder's max HP or a hit-counted wall. */
+    shield?: { percent_of_max_hp?: number; hit_chance?: number; max_hits?: number };
+    /** Statuses the holder sheds each of the effect's own turns (`rain`). */
+    cleanse_per_turn?: { count: number; polarity?: 'negative' | 'positive' | 'any' };
+    /** Pool maxima the status regenerates each turn, as percents of the holder's own max. */
+    regen_per_turn_percent?: AttackResourceAmounts;
+    /** One-shot heal as a percent of the holder's max HP (`dew`). */
+    heal_percent_of_max?: number;
+    /** One-shot random resource restore as a percent of that pool's max (`clear_water`). */
+    random_resource_regen?: { percent: number };
+    /** Per-turn random resource restore as a percent of that pool's max (`cleansing_rain`). */
+    random_resource_regen_per_turn?: { percent: number };
+    /** One-shot pool restore as percents of the holder's own maxima (`water_spring`). */
+    resource_regen_percent_of_max?: AttackResourceAmounts;
+    /** Falls on the holder when it spends mana/stamina, healing the caster (`hangover`). */
+    spend_trigger?: { damage: number; heal_to_source: number };
+    /**
+     * A landing upgrade that only applies when the target already carries a
+     * matching status (`condensation` lasts one turn longer under `mist`).
+     */
+    upgrade_vs_status?: {
+        status: string;
+        extra_turns?: number;
+        /** Chance the extra turn applies (`whirlpool` roots +1 turn 50% of the time). */
+        extra_turns_chance?: number;
+        extra_heal_percent_of_max?: number;
+        extra_regen_per_turn_percent?: AttackResourceAmounts;
+    };
+    /** Landing replaces (refreshes) any other status carrying the same label. */
+    refresh_status?: boolean;
+    /**
+     * Charge stacking: each landing charge raises the shared status's charge
+     * count; reaching `max` spends it and lands the `release` status (`Freeze`
+     * charges build to a `Frozen` miss).
+     */
+    charges?: {
+        max: number;
+        /** Charges granted by this landing alone (defaults to 1). */
+        initial?: number;
+        release?: {
+            status_effect?: string;
+            turns?: number;
+            prevent_actions?: string[];
+            debuff?: Record<string, number>;
+        };
+    };
+    /** Statuses this landing strips from the target first (Freezing washes Wet off). */
+    also_remove_status?: string[];
+    /** The landing only applies when every hit of the action landed (`ice_blades`). */
+    require_all_hits?: boolean;
+    /** Fits the holder when it acts in one of the named kinds (`thin_ice` slips). */
+    trip_on_action?: {
+        actions: string[];
+        /** Damage channels that may trip it; empty means any. */
+        damage_types?: string[];
+        chance: number;
+        /** Health the tripping holder pays. */
+        damage?: number;
+        /** Punishment status added on the trip (a `Slipped` SPD loss). */
+        spawn?: { status_effect?: string; turns?: number; debuff?: Record<string, number> };
+    };
+    /** Stat fields the holder cannot gain buffs to while the status lives. */
+    block_stat_buffs?: string[];
+    /** Incoming damage multipliers per channel (`frost_mirror` halves physical). */
+    damage_channel_modulation?: Record<string, number>;
+    /** Chance the status reflects the next hit instead of the flat `counter`. */
+    counter_chance?: number;
+    /** Elements the counter refuses to reflect, letting the hit through. */
+    counter_except_elements?: string[];
     [key: string]: unknown;
 }
 
@@ -171,12 +249,34 @@ export interface AttackSkill {
     defense_pierce?: number;
     /** Extra multipliers per element of the defender. */
     bonus_vs_elements?: Record<string, number>;
+    /** Extra numbers against a target carrying a named status (`hydro_lance` vs Wet). */
+    bonus_vs_status?: {
+        status: string;
+        /** Damage multiplier against that bearer (`1` = unchanged). */
+        multiplier?: number;
+        /** Extra defence the hit ignores against that bearer (0 … 1). */
+        defense_pierce?: number;
+    } | Array<{
+        status: string;
+        multiplier?: number;
+        defense_pierce?: number;
+    }>;
     /** Extra multiplier against a target below a fraction of its health. */
     bonus_vs_hp_below?: { threshold: number; multiplier: number };
     /** Health fraction below which the target panics and flees the fight. */
     flee_below_hp?: number;
     /** The status that guarantees a critical hit against its bearer. */
     guaranteed_crit_vs_status?: string;
+    /**
+     * Bonus damage per charge a bearing target holds of a stacking status,
+     * spent on the hit (`avalanche` burns Freeze charges).
+     */
+    bonus_per_charge?: {
+        status: string;
+        multiplier_per_charge: number;
+        /** The consumed charges are stripped from the target on a hit. */
+        consume?: boolean;
+    };
     /** The kind of skill, for the catalogue's own bookkeeping. */
     kind?: string;
     /** The reach of the skill (`short`, `medium`, `long`). */
@@ -225,6 +325,8 @@ export type PublicAttack = Pick<AttackSkill,
     | 'ignore_accuracy'
     | 'defense_pierce'
     | 'bonus_vs_elements'
+    | 'bonus_vs_status'
+    | 'bonus_per_charge'
     | 'bonus_vs_hp_below'
     | 'flee_below_hp'
     | 'guaranteed_crit_vs_status'

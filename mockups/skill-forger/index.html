@@ -91,6 +91,7 @@
                             <label class="field target-field"><span>Alvo principal<span class="info-tip" tabindex="0" role="note" data-tip="A seleção principal da skill. Os efeitos podem ir além dela: nas secções 4 e 5 escolhes a quem mais é afetado, sem repetir a pergunta.">i</span></span><select class="control" name="targeting">
                                 <option value="any_one">Qualquer personagem</option>
                                 <option value="enemies_all">Todos os inimigos</option>
+                                <option value="enemies_lane">Lane do inimigo alvo</option>
                                 <option value="allies_all">Todos os aliados</option>
                                 <option value="self">O próprio atacante</option>
                                 <option value="both_teams">Ambas as equipas</option>
@@ -187,6 +188,24 @@
                                 <label class="field"><span>Alvo foge abaixo de X% de vida<span class="info-tip" tabindex="0" role="note" data-tip="Fração de vida abaixo da qual o alvo deixa a batalha em pânico (não é derrotado — foge).">i</span></span><div class="input-suffix"><input class="control" name="flee_below_hp" type="number" min="0" max="1" step="0.05" placeholder="0.4"><span>fração</span></div></label>
                             </div>
                         </div>
+
+                        <div class="trait-block">
+                            <span class="trait-head-label">BÓNUS CONTRA ESTADO<span class="info-tip" tabindex="0" role="note" data-tip="Multiplicador defesa-pierce extra quando o alvo carrega um estado. Ex.: hydro_lance com { status: Wet, defense_pierce: 0.05 } perfura 5% a mais de defesa num alvo molhado. Aceita object ou array.">i</span></span>
+                            <div class="form-grid trait-grid">
+                                <label class="field"><span>Estado</span><input class="control" name="bonus_vs_status_status" placeholder="Wet"></label>
+                                <label class="field"><span>Multiplicador<span class="info-tip" tabindex="0" role="note" data-tip="Multiplicador de dano contra quem tem o estado (1 = nenhum).">i</span></span><input class="control" name="bonus_vs_status_multiplier" type="number" min="1" step="0.05" placeholder="1"></label>
+                                <label class="field"><span>Pierce extra<span class="info-tip" tabindex="0" role="note" data-tip="Fração extra de defesa ignorada contra quem tem o estado (0.05 = 5%).">i</span></span><div class="input-suffix"><input class="control" name="bonus_vs_status_pierce" type="number" min="0" max="1" step="0.05" placeholder="0"><span>fração</span></div></label>
+                            </div>
+                        </div>
+
+                        <div class="trait-block">
+                            <span class="trait-head-label">BÓNUS POR CARGA<span class="info-tip" tabindex="0" role="note" data-tip="Multiplicador por carga de um estado acumulável (Ex.: avalanche com { status: Freezing, multiplier_per_charge: 0.5, consume: true } soma 50% por carga de gelo do alvo e consome-as).">i</span></span>
+                            <div class="form-grid trait-grid">
+                                <label class="field"><span>Estado de carga</span><input class="control" name="bonus_per_charge_status" placeholder="Freezing"></label>
+                                <label class="field"><span>Multiplicador por carga</span><input class="control" name="bonus_per_charge_multiplier" type="number" min="0" step="0.05" placeholder="0.5"></label>
+                                <label class="toggle-row trait-toggle"><input type="checkbox" name="bonus_per_charge_consume"><span class="toggle-track"></span><span>Consome as cargas ao acertar</span></label>
+                            </div>
+                        </div>
                     </section>
 
                     <div id="editor-message" class="editor-message" role="status"></div>
@@ -247,6 +266,7 @@
                         <label class="field"><span>Esquiva<span class="info-tip" tabindex="0" role="note" data-tip="Stat do defensor: tira pontos à chance de acerto do atacante. É o inverso da precisão.">i</span></span><input class="control" id="sim-defender-evasion" type="number" step="1" value="0"></label>
                         <label class="field"><span>Vida restante<span class="info-tip" tabindex="0" role="note" data-tip="Percentagem de vida que o defensor ainda tem. Serve para os bónus que só valem contra alvos enfraquecidos.">i</span></span><div class="input-suffix"><input class="control" id="sim-target-hp" type="number" min="0" max="100" step="5" value="100"><span>%</span></div></label>
                         <label class="field"><span>Linha</span><select class="control" id="sim-defender-line"><option value="front">Frente</option><option value="rear">Trás</option></select></label>
+                        <label class="field"><span>Estados do alvo<span class="info-tip" tabindex="0" role="note" data-tip="Rótulos separados por vírgulas (Ex.: Wet, Freezing, Freezing). Wet reduz ignis a 25% e dobra aqua/chaos; cargas repetidas somam um multiplicador por carga.">i</span></span><input class="control" id="sim-defender-statuses" placeholder="Wet"></label>
                     </div>
                     <label class="toggle-row sim-toggle"><input type="checkbox" id="sim-defending"><span class="toggle-track"></span><span>A defender (dano a halved)</span></label>
                     <div class="field sim-elements-field"><span class="field-label">ELEMENTOS DO DEFENSOR<span class="info-tip" tabindex="0" role="note" data-tip="As pontuações dos vários elementos somam-se antes de virar multiplicador. Ex.: Lux fraco contra Aqua (+1) e immune a Caeli (−3) dão −2 no total → ×0.25.">i</span></span>

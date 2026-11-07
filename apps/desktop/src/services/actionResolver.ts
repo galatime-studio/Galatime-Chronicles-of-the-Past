@@ -17,6 +17,7 @@
 import { COUNTER_REFLECT_FRACTION } from '../constants/CombatConstants';
 import type { AttackEffect } from '../types/AttackDataType';
 import type {
+    CombatEffectInstance,
     AttackResolution,
     CombatAction,
     CombatElementIndex,
@@ -34,6 +35,7 @@ import { phaseEffectMultiplier, resolveDamage } from './combat/damageCalculator'
 import { reapDefeated, promoteRearLines } from './combat/defeatResolver';
 import { idleRegenAmount } from './combat/resourceRegen';
 import {
+    absorbShieldDamage,
     applyEffectResources,
     applyEffectToUnit,
     bonusVsHpBelowFromEffects,
@@ -41,7 +43,7 @@ import {
     claimTargetLock,
     confusionChance,
     effectiveStats,
-    hasCounter,
+    expireStatusesOnElementHit,
     isHealBlocked,
     invertBuffsOn,
     liftLuxCurses,
@@ -91,6 +93,15 @@ function resolveActionTargets(context: ActionResolutionContext): CombatUnit[] {
         return scatterCandidates(state.units, actor, action);
     }
     if (action.targeting === 'any_one' && target) return [target];
+    // A lane-scoped action (`avalanche`) crashes over the aim's whole lane:
+    // every living member of the aim's side standing in its line.
+    if (action.targeting === 'enemies_lane' && target) {
+        return state.units.filter((unit) => (
+            unit.status === 'alive'
+            && unit.side === target.side
+            && unit.line === target.line
+        ));
+    }
     return reachableTargets(state.units, actor, action);
 }
 
@@ -277,9 +288,10 @@ function resolveFlee(context: ActionResolutionContext, events: CombatEvent[]): C
 function buildResolution(
     context: ActionResolutionContext,
     target: CombatUnit,
-    options: { attempts?: number } = {},
+    options: { attempts?: number; action?: CombatAction } = {},
 ): AttackResolution {
-    const { actor, action, elementIndex, random, state } = context;
+    const { actor, elementIndex, random, state } = context;
+    const action = options.action ?? context.action;
 
     const result = resolveDamage({
         action,
@@ -311,8 +323,13 @@ function buildResolution(
     });
 
     const targetHpBefore = target.currentHp;
-    if (result.finalDamage > 0) {
-        target.currentHp = Math.max(0, target.currentHp - result.finalDamage);
+    // A live status shield (Condensation, and later the ice walls) soaks the
+    // hit before the holder's health pays: shields absorb first, health next.
+    const damageDealt = Math.max(0, result.finalDamage);
+    const shield = absorbShieldDamage(target, damageDealt, random);
+    const healthDamage = shield.leftover;
+    if (healthDamage > 0) {
+        target.currentHp = Math.max(0, target.currentHp - healthDamage);
     }
 
     return {
@@ -320,6 +337,8 @@ function buildResolution(
         targetId: target.id,
         actionId: action.id,
         ...result,
+        finalDamage: healthDamage,
+        shielded: damageDealt - healthDamage,
         targetHpBefore,
         targetHpAfter: target.currentHp,
         appliedEffectIds: [],
@@ -372,8 +391,95 @@ function mergeResolution(into: AttackResolution, ray: AttackResolution): AttackR
         hits: into.hits + ray.hits,
         isCrit: into.isCrit || ray.isCrit,
         finalDamage: into.finalDamage + ray.finalDamage,
+        shielded: into.shielded + ray.shielded,
         targetHpAfter: ray.targetHpAfter,
     };
+}
+
+/**
+ * Throws a `collateral` splash at the aimed targets' neighbours.
+ *
+ * Every living unit sharing the main target's side and line — which was not
+ * already aimed or splashed — takes a reduced copy of the hit (`riptide`
+ * drenches the line next to the pulled victim). Returns how much damage each
+ * main target's splash dealt, so the caster's `drain_percent_of_damage` can
+ * heal off the whole tide, not just its first wave; a shared neighbour is
+ * rolled once and only attributed to its first puller.
+ */
+function resolveCollateralDamage(
+    context: ActionResolutionContext,
+    actionTargets: readonly CombatUnit[],
+    resolutions: Map<string, AttackResolution>,
+): Map<string, number> {
+    const { state, actor, random } = context;
+    const action = context.action;
+    const collateral = action.collateral;
+    const extra = new Map<string, number>();
+    if (!collateral || !action.dealsDamage) return extra;
+
+    // A chance autorizada decide (uma vez por feitiço) se o splash sai.
+    if ((collateral.chance ?? 1) < 1 && random() >= (collateral.chance ?? 1)) return extra;
+
+    const splashPower = Math.round(action.power * collateral.damageMultiplier * 10) / 10;
+    if (splashPower <= 0) return extra;
+    const splashAction: CombatAction = { ...action, power: splashPower };
+
+    for (const primary of actionTargets) {
+        const main = resolutions.get(primary.id);
+        if (!main || !main.isHit) continue;
+
+        const candidates = state.units.filter((unit) => (
+            unit.status === 'alive'
+            && unit.id !== primary.id
+            && !resolutions.has(unit.id)
+            && unit.side === primary.side
+            && unit.line === primary.line
+        ));
+        const pool = collateral.includeCaster && actor.status === 'alive' && !resolutions.has(actor.id)
+            ? [...candidates, actor]
+            : candidates;
+
+        for (const adjacent of pool) {
+            const resolution = buildResolution(context, adjacent, { attempts: 1, action: splashAction });
+            const existing = resolutions.get(adjacent.id);
+            resolutions.set(adjacent.id, existing ? mergeResolution(existing, resolution) : resolution);
+            if (!resolution.isHit) continue;
+
+            // Splash damage is double-keyed: under the neighbour for its own
+            // `attack_resolved`, under the puller for a drain that reads it.
+            const attributed = extra.get(primary.id) ?? 0;
+            extra.set(primary.id, attributed + resolution.finalDamage);
+        }
+    }
+
+    return extra;
+}
+
+/**
+ * Spends a `bonus_per_charge` trait's charges: the consuming hit strips the
+ * whole stacking status from every target it hit (`avalanche` burns Freeze).
+ */
+function consumeCharges(
+    target: CombatUnit,
+    spec: { status: string; multiplierPerCharge: number; consume: boolean } | null | undefined,
+): CombatEvent[] {
+    if (!spec || !spec.consume) return [];
+
+    const wanted = spec.status.trim().toLowerCase();
+    const consumed = target.effects.filter((effect) => (
+        effect.chargeMax
+        && (effect.statusEffect ?? '').trim().toLowerCase() === wanted
+    ));
+    if (consumed.length === 0) return [];
+
+    const consumedIds = new Set(consumed.map((effect) => effect.effectId));
+    target.effects = target.effects.filter((effect) => !consumedIds.has(effect.effectId));
+
+    return consumed.map((effect) => ({
+        type: 'effect_expired' as const,
+        unitId: target.id,
+        effectId: effect.effectId,
+    }));
 }
 
 /**
@@ -474,6 +580,17 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
         }
     }
 
+    // A `collateral` splash (riptide) throws a reduced copy of the hit onto
+    // the aimed target's adjacent compatriots; the splash's damage is keyed
+    // by the main target so a caster-facing drain can read the tide in full.
+    const splashDamage = resolveCollateralDamage(context, actionTargets, resolutions);
+    const resolvedUnits: CombatUnit[] = [...actionTargets];
+    for (const id of resolutions.keys()) {
+        if (resolvedUnits.some((unit) => unit.id === id)) continue;
+        const unit = state.units.find((candidate) => candidate.id === id);
+        if (unit) resolvedUnits.push(unit);
+    }
+
     // The `target` scope of a scatter action follows the rays: only the units a
     // ray actually hit receive the effect. The team scopes keep their literal
     // meaning and are resolved once for the whole battlefield.
@@ -513,6 +630,20 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
         for (const scopeTarget of effectTargets) {
             if (scopeTarget.status !== 'alive') continue;
 
+            // A charge-bearing landing only marks a hit: a target the ice
+            // skill missed stays dry of charges.
+            const landedResolution = resolutions.get(scopeTarget.id);
+            if (asRecord(effect)?.charges && action.dealsDamage && (!landedResolution || !landedResolution.isHit)) {
+                continue;
+            }
+            // `require_all_hits`: a two-strike combo only pays its tail when
+            // the whole flurry landed (`ice_blades`).
+            if (readBoolean(asRecord(effect)?.require_all_hits, false)
+                && action.dealsDamage
+                && (landedResolution?.hits ?? 0) < action.hitCount) {
+                continue;
+            }
+
             const applied = applyEffectToUnit(scopeTarget, effect, action.id, action.elementId, random, effectPowerMultiplier(actor), phaseMultiplier);
             if (applied) {
                 events.push(applied);
@@ -542,7 +673,15 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
                 effect,
                 random,
                 effectPowerMultiplier(actor),
-                { healBlocked, drainRecipient: actor, phaseMultiplier, damageDealt: resolutions.get(scopeTarget.id)?.finalDamage ?? 0 },
+                {
+                    healBlocked,
+                    drainRecipient: actor,
+                    phaseMultiplier,
+                    sourceElementId: action.elementId,
+                    damageDealt:
+                        (resolutions.get(scopeTarget.id)?.finalDamage ?? 0)
+                        + (splashDamage.get(scopeTarget.id) ?? 0),
+                },
             ));
 
             // The effects that change the battlefield rather than a number.
@@ -568,17 +707,28 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
         }
     }
 
-    for (const target of actionTargets) {
+    for (const target of resolvedUnits) {
         const resolution = resolutions.get(target.id);
         if (!resolution) continue;
         resolution.appliedEffectIds = appliedByUnit.get(target.id) ?? [];
         events.push({ type: 'attack_resolved', resolution });
     }
 
+    // A hit of an element statuses name as their undo (Wet vs ignis) lifts
+    // them the moment it lands, before the victim reacts to the hit.
+    if (action.dealsDamage) {
+        for (const target of resolvedUnits) {
+            const resolution = resolutions.get(target.id);
+            if (!resolution || !resolution.isHit) continue;
+            events.push(...expireStatusesOnElementHit(target, action.elementId));
+            events.push(...consumeCharges(target, action.bonusPerCharge));
+        }
+    }
+
     // A landed hit can wake the target's reactive abilities (a reflection, a
     // first-hit immunity). Only survivors react: a corpse's abilities belong to
     // `on_death`, which the reap below fires.
-    for (const target of actionTargets) {
+    for (const target of resolvedUnits) {
         const resolution = resolutions.get(target.id);
         if (!resolution || !resolution.isHit || target.status !== 'alive') continue;
 
@@ -592,10 +742,16 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
             random,
         }));
 
-        // A `counter` status throws the next hit back at the attacker. The
-        // status survives the throw — it simply has nothing left to reflect.
-        if (hasCounter(target) && resolution.finalDamage > 0) {
-            events.push(...reflectCounter(actor, target, resolution.finalDamage));
+        // A `counter` status throws the next hit back at the attacker (on a
+        // chance, when authored one — `frost_mirror`); the status survives a
+        // failed roll and is spent by the throw itself.
+        const counter = readyCounter(target, action.elementId);
+        if (counter && resolution.finalDamage > 0) {
+            const chance = counter.counterChance ?? 1;
+            if (chance >= 1 || random() < chance) {
+                events.push(...reflectCounter(actor, target, resolution.finalDamage, counter));
+            }
+            // A missed roll costs nothing: the mirror stays live until its turns end.
         }
     }
 
@@ -636,17 +792,18 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
 /**
  * Throws part of a landed hit back at the attacker.
  *
- * The counter is spent by the throw: the status stays on the unit, but it no
- * longer reflects anything.
+ * The counter is spent by the throw: a chance-based counter (a `frost_mirror`)
+ * cannot reflect again, a flat `counter` keeps standing but has nothing left.
  */
 function reflectCounter(
     attacker: CombatUnit,
     reflector: CombatUnit,
     damage: number,
+    counter: CombatEffectInstance,
 ): CombatEvent[] {
     const amount = Math.max(1, Math.round(damage * COUNTER_REFLECT_FRACTION));
-    const counter = reflector.effects.find((effect) => effect.counter);
-    if (counter) counter.counter = false;
+    if (counter.counterChance !== undefined) counter.counterChance = 0;
+    else counter.counter = false;
 
     attacker.currentHp = Math.max(0, attacker.currentHp - amount);
 
@@ -654,10 +811,34 @@ function reflectCounter(
         type: 'damage_reflected',
         sourceId: reflector.id,
         targetId: attacker.id,
-        abilityId: counter?.effectId ?? `${reflector.id}_counter`,
-        abilityName: counter?.statusEffect ?? 'Counter',
+        abilityId: counter.effectId,
+        abilityName: counter.statusEffect ?? 'Counter',
         isHit: true,
         amount,
         targetHpAfter: attacker.currentHp,
     }];
+}
+
+/**
+ * The live counter of a unit that may answer this element.
+ *
+ * A counter that refuses the hit's element (`frost_mirror` will not bounce
+ * ignis) reads as if it was not there. The first live counter wins.
+ */
+function readyCounter(
+    target: CombatUnit,
+    elementId: string | null,
+): CombatEffectInstance | null {
+    for (const effect of target.effects) {
+        const chanceReady = (effect.counter ?? false) || (effect.counterChance ?? 0) > 0;
+        if (!chanceReady) continue;
+
+        const refuses = effect.counterExceptElements?.some(
+            (entry) => elementId && entry.trim().toLowerCase() === elementId.trim().toLowerCase(),
+        ) ?? false;
+        if (refuses) continue;
+
+        return effect;
+    }
+    return null;
 }

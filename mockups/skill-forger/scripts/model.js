@@ -176,6 +176,17 @@
     var PATTERN_STATUS_NAMES = {
         regen: 'Regeneração',
         regen_turn: 'Regeneração contínua',
+        regen_max: 'Regeneração %',
+        regen_max_once: 'Fonte de recurso',
+        random_regen: 'Água clara',
+        heal_max: 'Réstia',
+        spend_trigger: 'Sobriedade',
+        modulate: 'Wet',
+        shield_effect: 'Escudo',
+        charges: 'Carga de gelo',
+        upgrade_status: 'Reforço',
+        trip: 'Armadilha',
+        cleanse_turn: 'Chuva',
         buff: 'Aumento de atributos',
         debuff: 'Redução de atributos',
         damage: 'Dano contínuo',
@@ -528,6 +539,95 @@
             });
             fragments.push('O portador está imune a dano ' + channels.join(' e ') + '.');
         }
+        // Mecânicas de água e gelo.
+        if (Array.isArray(effect.expire_on_elements) && effect.expire_on_elements.length) {
+            fragments.push('O estado termina quando um ataque de ' + effect.expire_on_elements.join(' ou ') + ' acerta o portador.');
+        }
+        if (effect.element_modulation && typeof effect.element_modulation === 'object') {
+            var modulationParts = Object.keys(effect.element_modulation).map(function (element) {
+                return element + ' ×' + effect.element_modulation[element];
+            });
+            fragments.push('Efeitos de ' + modulationParts.join(', ') + ' valem ' + where + '.');
+        }
+        if (effect.shield && typeof effect.shield === 'object') {
+            var shieldText = 'Absorve dano com um escudo de ' + effect.shield.percent_of_max_hp + '% da vida máxima';
+            if (effect.shield.hit_chance !== undefined && effect.shield.hit_chance < 1) {
+                shieldText += ' (golpes com ' + Math.round(Number(effect.shield.hit_chance) * 100) + '% de chance de acertar o escudo)';
+            }
+            if (effect.shield.max_hits) shieldText += ', até ' + effect.shield.max_hits + ' golpe(s)';
+            fragments.push(shieldText + '.');
+        }
+        if (effect.cleanse_per_turn && typeof effect.cleanse_per_turn === 'object') {
+            var polarityText = effect.cleanse_per_turn.polarity === 'any' ? 'qualquer estado'
+                : effect.cleanse_per_turn.polarity === 'positive' ? 'estados positivos' : 'estados negativos';
+            fragments.push('Remove ' + effect.cleanse_per_turn.count + ' ' + polarityText + ' por turno' + turns + ' ' + where + '.');
+        }
+        if (effect.regen_per_turn_percent && typeof effect.regen_per_turn_percent === 'object') {
+            Object.keys(effect.regen_per_turn_percent).forEach(function (resource) {
+                fragments.push('Regenera ' + effect.regen_per_turn_percent[resource] + '% do ' + (RESOURCE_NAMES[resource] || resource) + ' máximo por turno' + turns + ' ' + where + '.');
+            });
+        }
+        if (effect.heal_percent_of_max) fragments.push('Cura ' + effect.heal_percent_of_max + '% da vida máxima ' + where + '.');
+        if (effect.resource_regen_percent_of_max && typeof effect.resource_regen_percent_of_max === 'object') {
+            Object.keys(effect.resource_regen_percent_of_max).forEach(function (resource) {
+                fragments.push('Restaura ' + effect.resource_regen_percent_of_max[resource] + '% do ' + (RESOURCE_NAMES[resource] || resource) + ' máximo ' + where + '.');
+            });
+        }
+        if (effect.random_resource_regen && typeof effect.random_resource_regen === 'object') {
+            fragments.push('Restaura ' + effect.random_resource_regen.percent + '% do máximo de um recurso ao acaso ' + where + '.');
+        }
+        if (effect.random_resource_regen_per_turn && typeof effect.random_resource_regen_per_turn === 'object') {
+            fragments.push('Restaura ' + effect.random_resource_regen_per_turn.percent + '% do máximo de um recurso ao acaso por turno' + turns + ' ' + where + '.');
+        }
+        if (effect.spend_trigger && typeof effect.spend_trigger === 'object') {
+            var spendText = 'Gasta mana ou stamina custa ' + effect.spend_trigger.damage + ' de vida ao portador';
+            if (effect.spend_trigger.heal_to_source) {
+                spendText += ' e cura ' + effect.spend_trigger.heal_to_source + ' a quem aplicou o estado';
+            }
+            fragments.push(spendText + '.');
+        }
+        if (effect.upgrade_vs_status && typeof effect.upgrade_vs_status === 'object' && effect.upgrade_vs_status.status) {
+            var upgradeParts = [];
+            if (effect.upgrade_vs_status.extra_turns) upgradeParts.push('+' + effect.upgrade_vs_status.extra_turns + ' turno(s)');
+            if (effect.upgrade_vs_status.extra_heal_percent_of_max) upgradeParts.push('+' + effect.upgrade_vs_status.extra_heal_percent_of_max + '% de cura');
+            fragments.push((upgradeParts.join(' e ') || 'Reforço') + ', só se o alvo já carregar “' + effect.upgrade_vs_status.status + '”.');
+        }
+        if (Array.isArray(effect.also_remove_status) && effect.also_remove_status.length) {
+            fragments.push('Lava os estados ' + effect.also_remove_status.join(', ') + ' ao aterrissar.');
+        }
+        if (effect.refresh_status) fragments.push('Substitui estados anteriores com o mesmo rótulo.');
+        if (Array.isArray(effect.block_stat_buffs) && effect.block_stat_buffs.length) {
+            fragments.push('O portador não recebe buffs de ' + effect.block_stat_buffs.join(', ') + '.');
+        }
+        if (effect.damage_channel_modulation && typeof effect.damage_channel_modulation === 'object') {
+            var channelParts = Object.keys(effect.damage_channel_modulation).map(function (channel) {
+                return channel + ' ×' + effect.damage_channel_modulation[channel];
+            });
+            fragments.push('Dano ' + channelParts.join(', ') + ' contra o portador.');
+        }
+        if (Array.isArray(effect.prevent_damage_channels) && effect.prevent_damage_channels.length) {
+            fragments.push('O portador não pode usar ataques ' + effect.prevent_damage_channels.map(function (channel) {
+                return channel === 'physical' ? 'físicos' : channel === 'magical' ? 'mágicos' : channel;
+            }).join(' ou ') + '.');
+        }
+        if (effect.counter_chance !== undefined && effect.counter_chance !== null) {
+            fragments.push('Reflete golpes com ' + Math.round(Number(effect.counter_chance) * 100) + '% de chance.');
+        }
+        if (Array.isArray(effect.counter_except_elements) && effect.counter_except_elements.length) {
+            fragments.push('Reflexão não vinga contra ' + effect.counter_except_elements.join(', ') + '.');
+        }
+        if (effect.charges && typeof effect.charges === 'object') {
+            var release = effect.charges.release || {};
+            fragments.push('Acumula até ' + (effect.charges.max ?? 3) + ' carga(s): os atributos escalam por carga'
+                + (release.status_effect ? ', e ao esgotar sofre “' + release.status_effect + '” por ' + (release.turns ?? 1) + ' turno(s)' : '') + '.');
+        }
+        if (effect.trip_on_action && typeof effect.trip_on_action === 'object') {
+            var tripActions = Array.isArray(effect.trip_on_action.actions) ? effect.trip_on_action.actions.join(', ') : '';
+            fragments.push('Armadilha: quem usa ' + (tripActions || 'uma ação') + ' desliza com '
+                + Math.round(Number(effect.trip_on_action.chance ?? 0.5) * 100) + '% de chance, tomando '
+                + (effect.trip_on_action.damage ?? 0) + ' de dano.');
+        }
+        if (effect.require_all_hits) fragments.push('Só aplica quando todos os golpes da skill acertam.');
         return fragments.join(' ');
     }
 
@@ -573,6 +673,15 @@
             'removable_by_lux', 'random_debuff', 'heal_on_kill', 'heal_on_kill_percent',
             'random_targets', 'locks_target', 'invert_buffs', 'damage_immunities',
             'random_buff',
+            // Água: modulação elemental, escudo, renovações e gatilhos.
+            'element_modulation', 'expire_on_elements', 'shield', 'cleanse_per_turn',
+            'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn',
+            'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger',
+            'upgrade_vs_status', 'refresh_status', 'also_remove_status',
+            // Gelo: cargas, armadilhas, bloqueios e reflexos parciais.
+            'charges', 'trip_on_action', 'block_stat_buffs', 'damage_channel_modulation',
+            'counter_chance', 'counter_except_elements', 'prevent_damage_channels',
+            'require_all_hits',
         ];
         var cleaned = {};
         allowed.forEach(function (key) {
@@ -593,6 +702,12 @@
         if (cleaned.random_targets && typeof cleaned.random_targets === 'object' && !Object.keys(cleaned.random_targets).length) {
             delete cleaned.random_targets;
         }
+        // Casca vazia das novas mecânicas: some.
+        ['shield', 'cleanse_per_turn', 'spend_trigger', 'upgrade_vs_status', 'charges', 'trip_on_action', 'element_modulation'].forEach(function (key) {
+            if (cleaned[key] && typeof cleaned[key] === 'object' && !Object.keys(cleaned[key]).length) {
+                delete cleaned[key];
+            }
+        });
         return cleaned;
     }
 
@@ -884,6 +999,54 @@
                 }
                 if (effect.damage_per_turn !== undefined && Number(effect.damage_per_turn) < 0) {
                     errors.push({ path: effectPath + '.damage_per_turn', message: 'O dano por turno não pode ser negativo.' });
+                }
+                // Mecânicas de água e gelo: saneamento básico.
+                var percentBands = [
+                    ['shield.percent_of_max_hp', 0, 100],
+                    ['shield.hit_chance', 0, 1],
+                    ['cleanse_per_turn.count', 1, 99],
+                    ['heal_percent_of_max', 0, 100],
+                    ['random_resource_regen.percent', 0, 100],
+                    ['random_resource_regen_per_turn.percent', 0, 100],
+                    ['spend_trigger.damage', 0, 999],
+                    ['spend_trigger.heal_to_source', 0, 999],
+                    ['charges.max', 1, 9],
+                    ['charges.initial', 1, 9],
+                    ['trip_on_action.chance', 0, 1],
+                    ['upgrade_vs_status.extra_turns', 0, 9],
+                    ['upgrade_vs_status.extra_turns_chance', 0, 1],
+                    ['upgrade_vs_status.extra_heal_percent_of_max', 0, 100],
+                    ['counter_chance', 0, 1],
+                ];
+                percentBands.forEach(function (band) {
+                    var value = band[0].split('.').reduce(function (node, part) {
+                        return node && typeof node === 'object' ? node[part] : undefined;
+                    }, effect);
+                    if (value === undefined || value === null || value === '') return;
+                    var parsed = Number(value);
+                    if (!Number.isFinite(parsed) || parsed < band[1] || parsed > band[2]) {
+                        errors.push({ path: effectPath + '.' + band[0], message: 'O valor tem de estar entre ' + band[1] + ' e ' + band[2] + '.' });
+                    }
+                });
+                if (effect.element_modulation && typeof effect.element_modulation === 'object') {
+                    Object.keys(effect.element_modulation).forEach(function (element) {
+                        if (!ELEMENTS.some(function (id) { return id.toLowerCase() === String(element).toLowerCase(); })) {
+                            errors.push({ path: effectPath + '.element_modulation.' + element, message: 'Elemento desconhecido: ' + element });
+                        }
+                        if (!Number.isFinite(Number(effect.element_modulation[element]))) {
+                            errors.push({ path: effectPath + '.element_modulation.' + element, message: 'O multiplicador tem de ser um número.' });
+                        }
+                    });
+                }
+                if (effect.trip_on_action && typeof effect.trip_on_action === 'object') {
+                    ((effect.trip_on_action.actions) || []).forEach(function (kind) {
+                        if (PREVENT_ACTIONS.indexOf(kind) === -1) {
+                            errors.push({ path: effectPath + '.trip_on_action.actions', message: 'Ação desconhecida: ' + kind });
+                        }
+                    });
+                }
+                if (effect.charges && Number(effect.charges.max) < Number(effect.charges.initial || 1)) {
+                    errors.push({ path: effectPath + '.charges.max', message: 'As cargas máximas têm de ser pelo menos as iniciais.' });
                 }
                 if (effect.status_immunities !== undefined) {
                     if (!Array.isArray(effect.status_immunities) || !effect.status_immunities.length) {

@@ -65,7 +65,7 @@ import type {
 import type { ElementData } from '../../types/ElementDataType';
 import { clamp } from '../../utils/combatUtils';
 import { elementDefenseScore, scoreToMultiplier } from '../../utils/elementUtils';
-import { isImmuneToDamageType } from './effectResolver';
+import { elementModulationFor, isImmuneToDamageType } from './effectResolver';
 import { positionDamageModifier } from './positionRules';
 
 /**
@@ -412,6 +412,13 @@ export interface DamageResult {
     immune: boolean;
     /** Element efficacy (`x0` … `x1.6`; see `ELEMENT_DAMAGE_MULTIPLIERS`). */
     elementMultiplier: number;
+    /**
+     * Modulation the defender's own statuses imposed (`Wet` quarters ignis);
+     * `1` when none applies.
+     */
+    statusModulation: number;
+    /** `bonus_vs_status` trait multiplier against the defender (`1` = none). */
+    statusMultiplier: number;
     /** Variance multiplier applied (`1` when not rolling). */
     variance: number;
     /** Lane modifier (`1`, `0.85` or `0.8`). */
@@ -444,9 +451,14 @@ export function resolveDamage(request: DamageRequest): DamageResult {
     const rawDefense = defenseStat(request.defenderStats, action.damageType);
     // A pierce takes its share of the defence before the division, so the hit
     // faces a smaller number from the start. The reported defence stays the
-    // target's own, so the log does not claim it was weaker than it is.
-    const pierced = piercedDefense(rawDefense, action.defensePierce ?? 0);
-    const effect = elementMultiplier(elementIndex, action.elementId, request.defenderElementIds);
+    // target's own, so the log does not claim it was weaker than it is. A
+    // `bonus_vs_status` trait (hydro_lance versus Wet) deepens it further.
+    const statusBonus = bonusVsStatusFor(action, request.defender);
+    const pierced = piercedDefense(rawDefense, (action.defensePierce ?? 0) + statusBonus.defensePierce);
+    // A modulation the defender carries (Wet versus ignis) compounds into the
+    // element chain, so attacks, previews and every derived reader agree.
+    const statusModulation = elementModulationFor(request.defender, action.elementId);
+    const effect = elementMultiplier(elementIndex, action.elementId, request.defenderElementIds) * statusModulation;
     const positionModifier = action.ignorePositionPenalty
         ? 1
         : positionDamageModifier(
@@ -480,11 +492,17 @@ export function resolveDamage(request: DamageRequest): DamageResult {
     const [powerMin, powerMax] = RANDOMIZE_POWER_RANGE;
 
     // The skill's traits, folded once so every hit of the same action reads
-    // the same numbers.
+    // the same numbers. A `bonus_per_charge` trait (`avalanche`) trades each
+    // bearing charge of the target for extra damage, then spends them.
+    const chargeCount = chargesHeld(request.defender, action.bonusPerCharge?.status);
     const traitMultiplier = phaseDamageMultiplier(action, request.timePhase)
         * bonusVsElementsMultiplier(action, request.defenderElementIds)
         * bonusVsHpBelowMultiplier(action, request.defenderHpFraction ?? 1)
-        * (request.attackerTraits ?? 1);
+        * statusBonus.multiplier
+        * (request.attackerTraits ?? 1)
+        * (1 + (chargeCount > 0 && action.bonusPerCharge
+            ? action.bonusPerCharge.multiplierPerCharge * chargeCount
+            : 0));
 
     const attempts = rolling ? Math.max(1, request.attempts ?? action.hitCount) : 1;
     let baseDamage = 0;
@@ -531,6 +549,8 @@ export function resolveDamage(request: DamageRequest): DamageResult {
         power: action.power,
         damageType: action.damageType,
         elementMultiplier: effect,
+        statusModulation,
+        statusMultiplier: statusBonus.multiplier,
         variance,
         positionModifier,
         defenseReduction,
@@ -542,6 +562,60 @@ export function resolveDamage(request: DamageRequest): DamageResult {
         isCrit,
         hitChance: accuracy,
     };
+}
+
+/**
+ * The extra numbers a `bonus_vs_status` trait carries against the target.
+ *
+ * Only damage-dealing reads: the strongest matching trait wins, and a target
+ * carrying the named status (by id or label) unlocks the trait's bonus.
+ */
+function bonusVsStatusFor(action: CombatAction, defender: CombatUnit | null | undefined): {
+    multiplier: number;
+    defensePierce: number;
+} {
+    const specs = action.bonusVsStatus;
+    if (!specs?.length || !defender) return { multiplier: 1, defensePierce: 0 };
+
+    let multiplier = 1;
+    let defensePierce = 0;
+    let matched = false;
+
+    for (const spec of specs) {
+        const wanted = spec.status.trim().toLowerCase();
+        const carries = defender.effects.some((effect) => (
+            (effect.statusEffect ?? '').trim().toLowerCase() === wanted
+            || effect.effectId.trim().toLowerCase() === wanted
+        ));
+        if (!carries) continue;
+
+        matched = true;
+        multiplier *= spec.multiplier > 1 ? spec.multiplier : 1;
+        defensePierce += Math.max(0, spec.defensePierce);
+    }
+
+    return matched ? { multiplier, defensePierce } : { multiplier: 1, defensePierce: 0 };
+}
+
+/**
+ * How many charges the target holds of a stacking status (`Freezing`), for a
+ * `bonus_per_charge` trait. Requires the charges the holder actually bears.
+ */
+export function chargesHeld(
+    defender: CombatUnit | null | undefined,
+    status: string | null | undefined,
+): number {
+    if (!defender || !status) return 0;
+    const wanted = status.trim().toLowerCase();
+
+    for (const effect of defender.effects) {
+        if (!effect.chargeMax) continue;
+        if ((effect.statusEffect ?? '').trim().toLowerCase() === wanted) {
+            return Math.max(1, effect.stacks);
+        }
+    }
+
+    return 0;
 }
 
 /** Normalises an authored accuracy to a `0 … 100` percentage. */

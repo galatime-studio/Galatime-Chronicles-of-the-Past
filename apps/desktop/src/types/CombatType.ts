@@ -211,6 +211,79 @@ export interface CombatEffectInstance {
     locksTarget?: boolean;
     /** Damage channels the holder is immune to while the effect lives. */
     damageImmunities?: DamageType[] | null;
+    /**
+     * Element effectiveness multipliers the status imposes on incoming
+     * actions and effects, keyed by element id (`Wet` reads `ignis: 0.25`,
+     * `aqua: 2` — ignis skills on the bearer quarter in strength, aqua and
+     * chaos skills double, be they attacks, buffs, debuffs or heals).
+     *
+     * Compounds multiplicatively when several modulation statuses overlap.
+     */
+    elementModulation?: Record<string, number> | null;
+    /** Elements whose attacks lift this status the moment they hit (`Wet` vs ignis). */
+    expireOnElements?: string[] | null;
+    /**
+     * Max-HP fraction the status grants as a damage shield, as a percent
+     * (`12` = 12% of the holder's max HP). `0`/absent when it carries none.
+     */
+    shieldPercentOfMaxHp?: number;
+    /** Health the status currently shields; replenished only on (re)application. */
+    shieldRemaining?: number;
+    /** Statuses the holder sheds on each of the effect's own turns (`Rain`). */
+    cleansePerTurn?: { count: number; polarity: CombatEffectPolarity | 'any' } | null;
+    /** Pool maxima the status regenerates each turn, as percents (`hp: 10` = 10%/turn). */
+    regenPerTurnPercent?: CombatStatDelta | null;
+    /**
+     * Percent of one random pool maximum the holder regains each of the
+     * effect's turns (`Cleansing Rain`); absent/`0` when it carries none.
+     */
+    randomRegenPerTurnPercent?: number;
+    /**
+     * One-shot heal as a percent of the holder's max HP (`Dew` restores 8%);
+     * absent/`0` when the status carries none.
+     */
+    healPercentOfMax?: number;
+    /**
+     * Falls on its bearer when it spends mana or stamina, healing the status's
+     * source (`Hangover` charges the spender and pays the caster).
+     */
+    spendTrigger?: { damage: number; healToSource: number } | null;
+    /**
+     * Charge stacking (`Freezing`): each landing charge raises `stacks` on the
+     * shared status and refreshes its turns; when the count reaches
+     * {@link chargeMax}, the status is spent and its `chargeRelease` status
+     * (a `Frozen` miss) lands instead.
+     */
+    chargeMax?: number;
+    chargeRelease?: { statusEffect: string; turns: number; effectId: string; preventActions: string[] | null; debuff: CombatStatDelta | null } | null;
+    /**
+     * Hit chance the shield rolls against each incoming hit (`ice_shield`
+     * rolls 60%); `1`/absent always absorbs. A missed roll passes the hit
+     * straight through to the bearer.
+     */
+    shieldHitChance?: number;
+    /** Total hits the shield soaks before breaking (`glacial_wall` absorbs 2). */
+    shieldMaxHits?: number;
+    /** Hits the shield has left before it breaks. */
+    shieldHitsRemaining?: number;
+    /** Chance the status reflects the next hit (`frost_mirror` rolls 50%). */
+    counterChance?: number;
+    /** Elements the counter refuses to reflect; the hit just passes through. */
+    counterExceptElements?: string[] | null;
+    /** Incoming damage multipliers per channel (`frost_mirror` halves physical). */
+    damageChannelModulation?: Record<string, number> | null;
+    /** Stat fields the holder cannot gain buffs to (`permafrost` blocks speed). */
+    blockStatBuffs?: string[] | null;
+    /** Damage channels the holder may not use while the status lives (`ice_shield`). */
+    preventDamageChannels?: DamageType[] | null;
+    /** Fields the hold has: kinds that may trip the holder (`thin_ice`). */
+    tripOnAction?: {
+        actions: string[];
+        damageTypes?: string[] | null;
+        chance: number;
+        damage: number;
+        spawn: { statusEffect: string; effectId: string; turns: number; debuff: CombatStatDelta | null } | null;
+    } | null;
     /** How many copies are stacked; `1` when the effect does not stack. */
     stacks: number;
     canStack: boolean;
@@ -331,7 +404,12 @@ export type CombatTargetRule =
     | 'enemies_all'
     | 'allies_all'
     | 'self'
-    | 'both_teams';
+    | 'both_teams'
+    /**
+     * Aimed at one enemy; the hit addresses the whole lane: every living unit
+     * of the aim's side standing in the aim's line (`avalanche`).
+     */
+    | 'enemies_lane';
 
 export type CombatActionKind =
     | 'skill'
@@ -423,6 +501,29 @@ export interface CombatAction {
     fleeBelowHp: number | null;
     /** The status that guarantees a critical hit against its bearer. */
     guaranteedCritVsStatus: string | null;
+    /**
+     * Extra numbers against a target carrying a named status by id or label
+     * (`hydro_lance` pierces 5% deeper into a wet target, snow_ball hits a
+     * Frozen target harder). Every matching entry folds in.
+     */
+    bonusVsStatus?: Array<{ status: string; multiplier: number; defensePierce: number }> | null;
+    /**
+     * Splash the action throws onto the target's adjacent living compatriots:
+     * every adjacent unit in the main target's line (excluding the aimed
+     * targets) takes a reduced copy of the hit (`riptide`).
+     */
+    collateral?: {
+        damageMultiplier: number;
+        /** Chance the splash goes off at all (`1`/absent = always). */
+        chance: number;
+        includePrimaryTargets: boolean;
+        includeCaster: boolean;
+    } | null;
+    /**
+     * Bonus per charge a bearing target holds of a stacking status, consumed
+     * when the hit resolves (`avalanche` spends Freeze charges for damage).
+     */
+    bonusPerCharge?: { status: string; multiplierPerCharge: number; consume: boolean } | null;
 }
 
 /**Damage-channel modifiers folded from a defender's passive abilities.
@@ -526,6 +627,8 @@ export interface AttackResolution {
     baseDamage: number;
     /** Final damage applied across every hit. */
     finalDamage: number;
+    /** Damage the target's shields absorbed (`0` for unshielded targets). */
+    shielded: number;
     /** Chance of a critical hit, in percent. */
     critChance: number;
     /** `true` when at least one of the hits was critical. */
@@ -633,6 +736,16 @@ export type CombatEvent =
         amount: number;
         targetHpAfter: number;
     }
+    /** A status shield absorbed part of a hit; `remaining` is what is left. */
+    | {
+        type: 'shield_absorbed';
+        unitId: string;
+        effectId: string;
+        amount: number;
+        remaining: number;
+    }
+    /** A unit whose every action was unavailable passed its turn untouched. */
+    | { type: 'turn_skipped'; unitId: string }
     | { type: 'turn_ended'; unitId: string }
     /** A weapon on `unitId` lost durability (wear) or was repaired. */
     | {

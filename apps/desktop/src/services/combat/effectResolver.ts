@@ -7,7 +7,7 @@
  * caller never has to remember which effects are active.
  */
 
-import type { AttackEffect } from '../../types/AttackDataType';
+import type { AttackEffect, AttackResourceAmounts } from '../../types/AttackDataType';
 import type {
     CombatAction,
     CombatEffectInstance,
@@ -141,6 +141,45 @@ export function hasStatusEffect(unit: CombatUnit, statusId: string): boolean {
     );
 }
 
+/** Whether the unit carries a status matching `wanted` by id or label (case-insensitive). */
+export function carriesStatusNamed(unit: CombatUnit, wanted: string): boolean {
+    const wantedKey = normalizeStatusKey(wanted);
+    if (!wantedKey) return false;
+    return unit.effects.some((effect) => (
+        normalizeStatusKey(effect.statusEffect ?? '') === wantedKey
+        || normalizeStatusKey(effect.effectId) === wantedKey
+    ));
+}
+
+/** Normalises a status name for label matching (case-insensitive, trimmed). */
+function normalizeStatusKey(value: string): string {
+    return value.trim().toLowerCase();
+}
+
+/**
+ * The effectiveness multiplier a unit's statuses impose on incoming content
+ * of `elementId` (`Wet` quarters ignis and doubles aqua/chaos on its bearer).
+ *
+ * Modulations compound multiplicatively when several overlap, and `null`/
+ * unknown content reads as full strength.
+ */
+export function elementModulationFor(
+    unit: CombatUnit | null | undefined,
+    elementId: string | null | undefined,
+): number {
+    if (!unit || !elementId) return 1;
+    const wanted = elementId.trim().toLowerCase();
+    let modulation = 1;
+
+    for (const effect of unit.effects) {
+        if (!effect.elementModulation) continue;
+        const factor = effect.elementModulation[wanted];
+        if (typeof factor === 'number' && Number.isFinite(factor)) modulation *= factor;
+    }
+
+    return modulation;
+}
+
 /** Action kinds every live status currently forbids (`silenced` blocks attacks). */
 export function preventedActionKinds(unit: CombatUnit): string[] {
     const kinds: string[] = [];
@@ -148,6 +187,15 @@ export function preventedActionKinds(unit: CombatUnit): string[] {
         if (effect.preventActions) kinds.push(...effect.preventActions);
     }
     return kinds;
+}
+
+/** Damage channels every live status forbids the holder to use. */
+export function preventedDamageChannels(unit: CombatUnit): DamageType[] {
+    const channels: DamageType[] = [];
+    for (const effect of unit.effects) {
+        if (effect.preventDamageChannels) channels.push(...effect.preventDamageChannels);
+    }
+    return channels;
 }
 
 /**
@@ -168,15 +216,53 @@ export function isActionPrevented(action: CombatAction, prevented: readonly stri
 /** A unit's stats with its live buffs and debuffs folded in. */
 export function effectiveStats(unit: CombatUnit): CombatStats {
     const stats: CombatStats = { ...unit.stats };
+    // A `block_stat_buffs` status (permafrost) makes the holder immune to
+    // gaining the named stats while it lives.
+    const bannedBuffFields = new Set<keyof CombatStats>();
     for (const effect of unit.effects) {
-        applyStatDelta(stats, effect.buff, 1);
-        applyStatDelta(stats, effect.debuff, -1);
+        if (!effect.blockStatBuffs) continue;
+        for (const name of effect.blockStatBuffs) {
+            for (const field of STAT_FIELDS[name] ?? []) bannedBuffFields.add(field);
+        }
+    }
+
+    for (const effect of unit.effects) {
+        // Charge-stacked statuses scale their stat deltas by the charge count,
+        // so three Freeze charges bite three times as deep. The sign is baked
+        // into the delta: buffs add, debuffs subtract, both scaled × charges.
+        const scale = Math.max(1, effect.stacks);
+        for (const [key, amount] of signedStatEntries(effect.buff, 1)) {
+            for (const field of STAT_FIELDS[key] ?? []) {
+                if (bannedBuffFields.has(field)) continue;
+                stats[field] = Math.max(0, stats[field] + amount * scale);
+            }
+        }
+        for (const [key, amount] of signedStatEntries(effect.debuff, -1)) {
+            for (const field of STAT_FIELDS[key] ?? []) {
+                stats[field] = Math.max(0, stats[field] + amount * scale);
+            }
+        }
         applyStatMultipliers(stats, effect.statMultipliers);
     }
     // Bracing is a stance, not a status: fold its evasion here so previews and
     // real hits both see the same number.
     if (unit.defending) stats.evasion += DEFEND_EVASION_BONUS;
     return stats;
+}
+
+/** Iterates a stat delta as `[name, amount]` pairs with the sign pre-applied. */
+function signedStatEntries(
+    delta: CombatStatDelta | null,
+    sign: number,
+): Array<[string, number]> {
+    if (!delta) return [];
+    const entries: Array<[string, number]> = [];
+    for (const [key, amount] of Object.entries(delta as Record<string, number>)) {
+        if (typeof amount === 'number' && Number.isFinite(amount) && amount !== 0) {
+            entries.push([key, sign * amount]);
+        }
+    }
+    return entries;
 }
 
 /** Resolves an authored turn count; a `[min, max]` pair takes the longer side. */
@@ -378,6 +464,163 @@ function readDamageImmunities(source: Record<string, unknown>): DamageType[] | n
     return channels.length > 0 ? channels : null;
 }
 
+/** Reads the damage channels a status forbids its holder to use. */
+function readDamageChannels(source: unknown): DamageType[] | null {
+    if (!Array.isArray(source)) return null;
+    const channels = source.filter((entry): entry is DamageType => entry === 'physical' || entry === 'magical');
+    return channels.length > 0 ? channels : null;
+}
+
+/** Reads a flat `element_id → multiplier` record (`element_modulation`). */
+function readNumberRecord(source: unknown): Record<string, number> | null {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const result: Record<string, number> = {};
+    for (const [key, value] of Object.entries(record)) {
+        const amount = readNumber(value, Number.NaN);
+        if (Number.isFinite(amount) && amount !== 0) result[key.trim()] = amount;
+    }
+    return Object.keys(result).length > 0 ? result : null;
+}
+
+/** Reads a trimmed string list; empty lists collapse to `null`. */
+function readTrimmedStringList(source: unknown): string[] | null {
+    if (!Array.isArray(source)) return null;
+    const values = source
+        .filter((entry): entry is string => typeof entry === 'string')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry !== '');
+    return values.length > 0 ? values : null;
+}
+
+/** Reads a status landing `shield` spec (`condensation` pools, `ice_shield` guards). */
+function readShieldSpec(source: unknown): {
+    percentOfMaxHp: number;
+    hitChance: number;
+    maxHits: number;
+    guarded: boolean;
+} {
+    const record = asRecord(source);
+    if (!record) return { percentOfMaxHp: 0, hitChance: 1, maxHits: 1, guarded: false };
+
+    const guarded = record.hit_chance !== undefined || record.max_hits !== undefined;
+
+    return {
+        percentOfMaxHp: Math.min(100, Math.max(0, readNumber(record.percent_of_max_hp, 0))),
+        // Omitted or 0-authored both read as an always-soaking barrier.
+        hitChance: clamp(readNumber(record.hit_chance, 1), 0, 1),
+        maxHits: Math.max(1, Math.round(readNumber(record.max_hits, 1))),
+        guarded,
+    };
+}
+
+/** Reads a `charges` spec: the stacking threshold and what a full stack releases. */
+function readChargesSpec(source: unknown): {
+    max: number;
+    initial: number;
+    release: CombatEffectInstance['chargeRelease'];
+} | null {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const max = Math.max(1, Math.round(readNumber(record.max, 3)));
+    const releaseRecord = asRecord(record.release);
+    const release = releaseRecord ? {
+        statusEffect: readString(releaseRecord.status_effect, 'Frozen'),
+        turns: Math.max(1, Math.round(readNumber(releaseRecord.turns, 1))),
+        effectId: `${readString(releaseRecord.status_effect, 'frozen').trim().toLowerCase()}_frozen_release`,
+        preventActions: readTrimmedStringList(releaseRecord.prevent_actions),
+        debuff: (readStatDelta(releaseRecord.debuff) ?? null) as CombatStatDelta | null,
+    } : null;
+
+    return {
+        max,
+        initial: clamp(readNumber(record.initial, 1), 1, max),
+        release,
+    };
+}
+
+/** Reads a `trip_on_action` field-trap spec (`thin_ice`). */
+function readTripOnAction(
+    source: unknown,
+): CombatEffectInstance['tripOnAction'] {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const actions = readTrimmedStringList(record.actions);
+    if (!actions) return null;
+
+    const spawnRecord = asRecord(record.spawn);
+    const spawn = spawnRecord ? {
+        statusEffect: readString(spawnRecord.status_effect, 'Slipped'),
+        effectId: `${readString(spawnRecord.status_effect, 'slipped').trim().toLowerCase()}_slip`,
+        turns: Math.max(1, Math.round(readNumber(spawnRecord.turns, 1))),
+        debuff: (readStatDelta(spawnRecord.debuff) ?? null) as CombatStatDelta | null,
+    } : null;
+
+    return {
+        actions,
+        damageTypes: readTrimmedStringList(record.damage_types),
+        chance: clamp(readNumber(record.chance, 0.5), 0, 1),
+        damage: Math.max(0, readNumber(record.damage, 0)),
+        spawn,
+    };
+}
+
+/** Reads a `cleanse_per_turn` spec (`rain`); `polarity` defaults to negatives. */
+function readCleansePerTurn(
+    source: unknown,
+): { count: number; polarity: CombatEffectPolarity | 'any' } | null {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const count = Math.max(1, Math.round(readNumber(record.count, 1)));
+    const polarity = readString(record.polarity, 'negative');
+    const normalized = polarity === 'positive' || polarity === 'any' ? polarity : 'negative';
+    return { count, polarity: normalized as CombatEffectPolarity | 'any' };
+}
+
+/** Reads a `spend_trigger` spec (`hangover` pays the spender, feeds the caster). */
+function readSpendTrigger(source: unknown): CombatEffectInstance['spendTrigger'] {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const damage = Math.max(0, Math.round(readNumber(record.damage, 0)));
+    const healToSource = Math.max(0, Math.round(readNumber(record.heal_to_source, 0)));
+    return damage > 0 || healToSource > 0 ? { damage, healToSource } : null;
+}
+
+/**
+ * Reads a `upgrade_vs_status` landing upgrade: numbers that only apply when the
+ * target already carries a matching status (`condensation` under `mist`).
+ */
+function readUpgradeVsStatus(
+    source: unknown,
+): {
+    status: string;
+    extraTurns: number;
+    extraTurnsChance: number;
+    extraHealPercentOfMax: number;
+    extraRegenPercent: AttackResourceAmounts | null;
+} | null {
+    const record = asRecord(source);
+    const status = readString(record?.status, '').trim();
+    if (!status) return null;
+
+    const extraRegenPercent = asRecord(record?.extra_regen_per_turn_percent)
+        ? readNumberRecord(record?.extra_regen_per_turn_percent)
+        : null;
+
+    return {
+        status,
+        extraTurns: Math.max(0, Math.round(readNumber(record?.extra_turns, 0))),
+        extraTurnsChance: clamp(readNumber(record?.extra_turns_chance, 1), 0, 1),
+        extraHealPercentOfMax: Math.max(0, readNumber(record?.extra_heal_percent_of_max, 0)),
+        extraRegenPercent,
+    };
+}
+
 /**
  * Builds the runtime instance of an authored effect.
  *
@@ -462,12 +705,66 @@ export function createEffectInstance(
         bonusVsHpBelow: readBonusVsHpBelow(record.bonus_vs_hp_below),
         removableByLux: readBoolean(record.removable_by_lux, false),
         damageImmunities: readDamageImmunities(record),
+        elementModulation: readNumberRecord(record.element_modulation),
+        expireOnElements: readTrimmedStringList(record.expire_on_elements),
+        shieldPercentOfMaxHp: readShieldSpec(record.shield).percentOfMaxHp,
+        shieldHitChance: readShieldSpec(record.shield).hitChance,
+        shieldMaxHits: readShieldSpec(record.shield).maxHits,
+        shieldHitsRemaining: readShieldSpec(record.shield).guarded
+            ? readShieldSpec(record.shield).maxHits
+            : undefined,
+        counterChance: readBoolean(record.counter, false)
+            ? 1
+            : clamp(readNumber(record.counter_chance, 0), 0, 1),
+        counterExceptElements: readTrimmedStringList(record.counter_except_elements),
+        damageChannelModulation: readNumberRecord(record.damage_channel_modulation),
+        blockStatBuffs: readTrimmedStringList(record.block_stat_buffs),
+        preventDamageChannels: readDamageChannels(record.prevent_damage_channels),
+        tripOnAction: readTripOnAction(record.trip_on_action),
+        chargeMax: readChargesSpec(record.charges)?.max,
+        chargeRelease: readChargesSpec(record.charges)?.release ?? null,
+        cleansePerTurn: readCleansePerTurn(record.cleanse_per_turn),
+        regenPerTurnPercent: readStatDelta(record.regen_per_turn_percent) as CombatStatDelta | null,
+        randomRegenPerTurnPercent: Math.max(0, ((): number => {
+            const spec = asRecord(record.random_resource_regen_per_turn);
+            return spec ? readNumber(spec.percent, 0) : 0;
+        })()),
+        healPercentOfMax: Math.max(0, readNumber(record.heal_percent_of_max, 0)),
+        spendTrigger: readSpendTrigger(record.spend_trigger),
         stacks: 1,
         canStack: readBoolean(effect.can_stack, false),
     };
 
     instance.polarity = readPolarity(effect, instance);
     return instance;
+}
+
+/**
+ * Builds the release status of a full charge gauge (`Frozen` when the
+ * `Freezing` charges fill), as one fresh effect instance.
+ */
+function buildReleaseInstance(charging: CombatEffectInstance): CombatEffectInstance | null {
+    const release = charging.chargeRelease;
+    if (!release) return null;
+
+    const synthetic: AttackEffect = {
+        effect_id: release.effectId,
+        status_effect: release.statusEffect ?? '',
+        turns: release.turns,
+        polarity: 'negative',
+        ...(release.preventActions ? { prevent_actions: release.preventActions } : {}),
+        ...(release.debuff ? { debuff: release.debuff as unknown as Record<string, number> } : {}),
+    };
+
+    return createEffectInstance(
+        synthetic,
+        charging.sourceId,
+        charging.elementId,
+        1,
+        1,
+        // The release carries no randomness; its numbers are the authored ones.
+        Math.random,
+    );
 }
 
 /**
@@ -530,7 +827,49 @@ export function applyEffectToUnit(
     const chance = effectChance(effect);
     if (chance < 1 && random() >= chance) return null;
 
-    const instance = createEffectInstance(effect, sourceId, elementId, outputMultiplier, phaseMultiplier, random);
+    // A modulation the target already carries (Wet vs ignis) scales the whole
+    // landing — buffs, debuffs, heals and the like lose or gain strength here.
+    const modulation = elementModulationFor(unit, elementId);
+    const instance = createEffectInstance(
+        effect, sourceId, elementId, outputMultiplier * modulation, phaseMultiplier, random,
+    );
+
+    // A landing upgrade (`condensation` under `mist`) applies when the target
+    // already carries a matching status; it folds its numbers into the instance.
+    const upgrade = readUpgradeVsStatus((asRecord(effect) ?? {}).upgrade_vs_status);
+    if (upgrade && carriesStatusNamed(unit, upgrade.status)) {
+        if (upgrade.extraTurns > 0
+            && upgrade.extraTurnsChance > 0
+            && random() < upgrade.extraTurnsChance) {
+            instance.turns = instance.turns === null
+                ? null
+                : instance.turns + upgrade.extraTurns;
+        }
+        if (upgrade.extraHealPercentOfMax > 0) {
+            instance.healPercentOfMax = (instance.healPercentOfMax ?? 0) + upgrade.extraHealPercentOfMax;
+        }
+        if (upgrade.extraRegenPercent) {
+            const merged: Record<string, number> = {
+                ...(instance.regenPerTurnPercent as Record<string, number> ?? {}),
+            };
+            for (const [resource, percent] of Object.entries(upgrade.extraRegenPercent)) {
+                merged[resource] = (merged[resource] ?? 0) + readNumber(percent, 0);
+            }
+            instance.regenPerTurnPercent = merged as CombatStatDelta;
+        }
+    }
+
+    // A landing that strips statuses first (Freezing washes Wet off a soaked
+    // target) removes every match by label or effect id before applying.
+    const strip = readTrimmedStringList((asRecord(effect) ?? {}).also_remove_status);
+    if (strip) {
+        const wanted = strip.map((entry) => normalizeStatusKey(entry));
+        unit.effects = unit.effects.filter((active) => (
+            !wanted.includes(normalizeStatusKey(active.statusEffect ?? ''))
+            && !wanted.includes(normalizeStatusKey(active.effectId))
+        ));
+    }
+
 
     // The immunity bites on the status the effect carries, by id or by label.
     const statusKey = instance.statusEffect ?? instance.effectId;
@@ -551,6 +890,69 @@ export function applyEffectToUnit(
             effectId: instance.effectId,
             statusEffect: instance.statusEffect,
         };
+    }
+
+    // A charge-bearing landing builds onto the shared status instead of
+    // stacking alongside it: each charge raises the count, refreshes the
+    // duration and deepens the carried debuff. A full gauge spends itself on
+    // the release status (`Freeze` charges end in a `Frozen` miss).
+    const charges = readChargesSpec((asRecord(effect) ?? {}).charges);
+    if (charges) {
+        const granted = Math.max(1, Math.round(charges.initial));
+        const holder = unit.effects.find((active) => (
+            active.chargeMax
+            && (active.statusEffect && active.statusEffect.toLowerCase() === (instance.statusEffect ?? '').toLowerCase())
+        ));
+
+        if (holder) {
+            holder.stacks = Math.max(1, holder.stacks) + granted;
+            if (instance.turns !== null && (holder.turns === null || instance.turns > holder.turns)) {
+                holder.turns = instance.turns;
+            }
+
+            if (holder.stacks >= (holder.chargeMax ?? Number.POSITIVE_INFINITY) && holder.chargeRelease) {
+                const release = buildReleaseInstance(holder);
+                if (release && !isImmuneToStatus(unit, release.statusEffect ?? release.effectId)) {
+                    unit.effects = unit.effects.filter((active) => active !== holder);
+                    unit.effects.push(release);
+                    return {
+                        type: 'effect_applied',
+                        unitId: unit.id,
+                        effectId: release.effectId,
+                        statusEffect: release.statusEffect,
+                        turns: release.turns,
+                    };
+                }
+                // A full gauge with no release simply loses its charge status.
+                unit.effects = unit.effects.filter((active) => active !== holder);
+            }
+
+            return {
+                type: 'effect_applied',
+                unitId: unit.id,
+                effectId: holder.effectId,
+                statusEffect: holder.statusEffect,
+                turns: holder.turns,
+            };
+        }
+
+        instance.chargeMax = charges.max;
+        instance.stacks = granted;
+    }
+
+    // A `refresh_status` landing replaces any other status carrying the same
+    // label, so a new Wet refreshes an older Wet from a different skill.
+    if (readBoolean((asRecord(effect) ?? {}).refresh_status, false) && instance.statusEffect) {
+        const label = normalizeStatusKey(instance.statusEffect);
+        unit.effects = unit.effects.filter((active) => (
+            !active.statusEffect || normalizeStatusKey(active.statusEffect) !== label
+        ));
+    }
+    // A shielded landing tops up to its own value: shields are not additive,
+    // the newest shield is the whole barrier while it stands.
+    if ((instance.shieldPercentOfMaxHp ?? 0) > 0) {
+        const maxHp = effectiveStats(unit).maxHp;
+        instance.shieldRemaining = Math.round(maxHp * (instance.shieldPercentOfMaxHp ?? 0) / 100);
     }
 
     const existingIndex = unit.effects.findIndex((active) => active.effectId === instance.effectId);
@@ -586,6 +988,9 @@ export function tickUnitEffects(
 ): CombatEvent[] {
     const events: CombatEvent[] = [];
     const remaining: CombatEffectInstance[] = [];
+    // A tick-shed status (`rain`) may remove a sibling mid-sweep; those ids
+    // are barred from the rebuilt status list, or the cleansing would undo itself.
+    const shedThisTick = new Set<string>();
 
     for (const effect of unit.effects) {
         if (effect.damagePerTurn > 0) {
@@ -605,6 +1010,27 @@ export function tickUnitEffects(
             events.push(...payResourceDelta(unit, effect.regenPerTurn, 1));
         }
 
+        // A HoT authored as a percent of the holder's own maxima (`rain`-family
+        // regen) pays against the *current* max, so buffs scale it along.
+        if (effect.regenPerTurnPercent) {
+            events.push(...payPercentOfMaxDelta(unit, effect.regenPerTurnPercent, isHealBlocked(unit)));
+        }
+
+        // `cleansing_rain` picks one of the holder's pools at random and pays a
+        // percent of its maximum into it.
+        if ((effect.randomRegenPerTurnPercent ?? 0) > 0) {
+            events.push(...payRandomResourcePercent(unit, effect.randomRegenPerTurnPercent ?? 0, random, isHealBlocked(unit)));
+        }
+
+        // `rain` sheds one named-polarity status per turn from its holder.
+        if (effect.cleansePerTurn) {
+            const shed = tickCleansePerTurn(unit, effect.cleansePerTurn);
+            events.push(...shed);
+            for (const event of shed) {
+                if (event.type === 'effect_expired') shedThisTick.add(event.effectId);
+            }
+        }
+
         if (effect.selfUpkeep) {
             events.push(...payResourceDelta(unit, effect.selfUpkeep, -1));
         }
@@ -620,6 +1046,7 @@ export function tickUnitEffects(
 
     const expiring: CombatEffectInstance[] = [];
     for (const effect of remaining) {
+        if (shedThisTick.has(effect.effectId)) continue;
         const expires = effect.turns !== null && effect.turns - 1 <= 0;
         if (!expires) {
             expiring.push(
@@ -641,6 +1068,163 @@ export function tickUnitEffects(
     return events;
 }
 
+/** Health the shield of one live status still holds, summed across statuses. */
+export function unitShieldRemaining(unit: CombatUnit): number {
+    return unit.effects.reduce((total, effect) => total + Math.max(0, effect.shieldRemaining ?? 0), 0);
+}
+
+/**
+ * Absorbs part of a hit with the target's live status shields, oldest first.
+ *
+ * Two shield shapes share the wall:
+ * - a *pooled* shield (`condensation`) holds a body of HP; hits drain it and
+ *   an empty pool drops the status;
+ * - a *guarded* shield (`ice_shield`) rolls its `hit_chance` against each hit
+ *   — a miss passes the rest of the hit through to the bearer —, soaks the
+ *   whole hit, and falls when its `max_hits` are spent (the status goes down
+ *   with the wall).
+ *
+ * Returns the events (`shield_absorbed`, plus `effect_expired` for walls that
+ * fell) and the damage left for the holder's health.
+ */
+export function absorbShieldDamage(
+    unit: CombatUnit,
+    damage: number,
+    random: CombatRandom = Math.random,
+): { events: CombatEvent[]; leftover: number } {
+    if (damage <= 0) return { events: [], leftover: damage };
+
+    const events: CombatEvent[] = [];
+    const fallen: CombatEffectInstance[] = [];
+    let leftover = damage;
+
+    for (const effect of unit.effects) {
+        if (leftover <= 0) break;
+        if (fallen.includes(effect)) continue;
+        if (effect.shieldHitsRemaining !== undefined && effect.shieldHitsRemaining <= 0) continue;
+        // Not a shield at all: a Counter carries no wall and lets hits pass.
+        if (!((effect.shieldPercentOfMaxHp ?? 0) > 0) && effect.shieldHitsRemaining === undefined) continue;
+
+        // A guarded shield guards on the roll; a miss sends the hit through.
+        if ((effect.shieldHitChance ?? 1) < 1 && random() >= (effect.shieldHitChance ?? 1)) break;
+
+        let amount: number;
+        if ((effect.shieldPercentOfMaxHp ?? 0) > 0) {
+            const soaked = effect.shieldRemaining ?? 0;
+            amount = Math.min(soaked, leftover);
+            effect.shieldRemaining = soaked - amount;
+            if (effect.shieldRemaining <= 0) fallen.push(effect);
+        } else {
+            // An unguarded, unpooled wall soaks the whole hit.
+            amount = leftover;
+            effect.shieldRemaining = 0;
+        }
+
+        if (effect.shieldHitsRemaining !== undefined) {
+            effect.shieldHitsRemaining = Math.max(0, effect.shieldHitsRemaining - 1);
+            if (effect.shieldHitsRemaining <= 0) fallen.push(effect);
+        }
+
+        leftover -= amount;
+        events.push({
+            type: 'shield_absorbed',
+            unitId: unit.id,
+            effectId: effect.effectId,
+            amount,
+            remaining: effect.shieldRemaining ?? 0,
+        });
+    }
+
+    if (fallen.length > 0) {
+        unit.effects = unit.effects.filter((effect) => !fallen.includes(effect));
+        for (const wall of fallen) {
+            events.push({ type: 'effect_expired', unitId: unit.id, effectId: wall.effectId });
+        }
+    }
+
+    return { events, leftover };
+}
+
+/**
+ * Pays percent-of-max amounts into a unit's pools (a percent HoT).
+ *
+ * The values are percents of the holder's *current* maxima, so a buffed
+ * endurance heals proportionally more. `healBlocked` refuses the `hp` pool,
+ * matching how {@link applyEffectResources} treats a regen.
+ */
+function payPercentOfMaxDelta(
+    unit: CombatUnit,
+    percents: CombatStatDelta,
+    healBlocked: boolean,
+): CombatEvent[] {
+    const events: CombatEvent[] = [];
+    const stats = effectiveStats(unit);
+
+    for (const [resource, percent] of Object.entries(percents as Record<string, number>)) {
+        const value = Number(percent);
+        if (!Number.isFinite(value) || value === 0) continue;
+
+        const max = resource === 'hp'
+            ? stats.maxHp
+            : resource === 'mana'
+                ? stats.maxMana
+                : stats.maxStamina;
+        const amount = Math.round(max * value / 100);
+        if (amount <= 0 && value > 0) continue;
+
+        if (resource === 'hp' && healBlocked) continue;
+        events.push(...changeResource(unit, resource as CombatResourceId, amount));
+    }
+
+    return events;
+}
+
+/**
+ * Pays a percent of one random pool's maximum into its resource.
+ *
+ * A heal-blocked holder cannot gain the `hp` pool: it is dropped from the roll
+ * instead of turning the rain into nothing (`cleansing_rain` still pays mana
+ * or stamina when it picks one).
+ */
+function payRandomResourcePercent(
+    unit: CombatUnit,
+    percent: number,
+    random: CombatRandom,
+    healBlocked: boolean,
+): CombatEvent[] {
+    const stats = effectiveStats(unit);
+    const pools = ([
+        { resource: 'hp' as CombatResourceId, max: stats.maxHp },
+        { resource: 'mana' as CombatResourceId, max: stats.maxMana },
+        { resource: 'stamina' as CombatResourceId, max: stats.maxStamina },
+    ]).filter((pool) => !(pool.resource === 'hp' && healBlocked));
+
+    if (pools.length === 0 || percent <= 0) return [];
+
+    const pool = pools[Math.min(pools.length - 1, Math.floor(random() * pools.length))];
+    const amount = Math.round(pool.max * Math.min(100, Math.max(0, percent)) / 100);
+    if (amount <= 0) return [];
+
+    return changeResource(unit, pool.resource, amount);
+}
+
+/** Sheds up to `spec.count` statuses of the named polarity from the holder. */
+function tickCleansePerTurn(
+    unit: CombatUnit,
+    spec: { count: number; polarity: CombatEffectPolarity | 'any' },
+): CombatEvent[] {
+    if (spec.polarity === 'positive') {
+        return dispelEffects(unit, { count: spec.count });
+    }
+    if (spec.polarity === 'negative') {
+        return cleanseEffects(unit, { count: spec.count });
+    }
+
+    // `any`: one negative first; an otherwise clean holder sheds a gift.
+    const removed = cleanseEffects(unit, { count: spec.count });
+    return removed.length > 0 ? removed : dispelEffects(unit, { count: spec.count });
+}
+
 /**
  * Pays a resource delta on a unit's pools.
  *
@@ -652,8 +1236,7 @@ function payResourceDelta(
     unit: CombatUnit,
     delta: CombatStatDelta,
     sign: number,
-): CombatEvent[] {
-    const events: CombatEvent[] = [];
+): CombatEvent[] {    const events: CombatEvent[] = [];
 
     for (const resource of ['hp', 'mana', 'stamina'] as const) {
         const amount = delta[resource];
@@ -722,17 +1305,25 @@ export function applyEffectResources(
         phaseMultiplier?: number;
         /** Direct damage the hit dealt, for a `drain_percent_of_damage` effect. */
         damageDealt?: number;
+        /** Element of the skill that carried the effect (drives the target's modulation). */
+        sourceElementId?: string | null;
     } = {},
 ): CombatEvent[] {
     const events: CombatEvent[] = [];
     const record = asRecord(effect) ?? {};
     const phase = options.phaseMultiplier ?? 1;
+    // The holder's own statuses (Wet, Fog, …) scale every magnitude of the
+    // incoming element: attacks, flat effects, heals and drains alike.
+    const elementScale = elementModulationFor(
+        unit,
+        readString(effect.element_id, '') || options.sourceElementId || null,
+    );
 
     const flatDamage = readNumber(effect.damage, 0);
     if (flatDamage > 0) {
         const variance = readVariance(effect.damage_variance) ?? [1, 1];
         const amount = Math.max(1, Math.round(
-            flatDamage * phase * (variance[0] + random() * (variance[1] - variance[0])),
+            flatDamage * phase * elementScale * (variance[0] + random() * (variance[1] - variance[0])),
         ));
         events.push(...changeResource(unit, 'hp', -amount));
     }
@@ -750,7 +1341,52 @@ export function applyEffectResources(
     // Asclepius Wand boosts them; damage and drain are not touched by it.
     const heal = readNumber(record.heal, 0);
     if (heal > 0 && !options.healBlocked) {
-        events.push(...changeResource(unit, 'hp', Math.round(heal * outputMultiplier * phase)));
+        events.push(...changeResource(unit, 'hp', Math.round(heal * outputMultiplier * phase * elementScale)));
+    }
+
+    // A heal authored as a percent of the holder's max HP (`dew`). The holder's
+    // *current* maxima read, so endurance buffs scale the water bead.
+    const healPercentOfMax = Math.max(0, readNumber(record.heal_percent_of_max, 0));
+    if (healPercentOfMax > 0 && !options.healBlocked) {
+        const maxHp = effectiveStats(unit).maxHp;
+        const amount = Math.round(maxHp * healPercentOfMax / 100 * outputMultiplier * phase * elementScale);
+        if (amount > 0) events.push(...changeResource(unit, 'hp', amount));
+    }
+
+    // A one-shot pool restore as percents of the holder's own maxima
+    // (`water_spring` refills 20% of the target's mana).
+    if (record.resource_regen_percent_of_max) {
+        for (const [resource, value] of Object.entries(record.resource_regen_percent_of_max)) {
+            const percent = readNumber(value, 0);
+            if (percent <= 0) continue;
+
+            const max = resource === 'hp'
+                ? effectiveStats(unit).maxHp
+                : resource === 'mana'
+                    ? effectiveStats(unit).maxMana
+                    : effectiveStats(unit).maxStamina;
+            if (resource === 'hp' && options.healBlocked) continue;
+
+            const amount = Math.round(max * Math.min(100, percent) / 100 * outputMultiplier * phase * elementScale);
+            if (amount > 0) events.push(...changeResource(unit, resource as CombatResourceId, amount));
+        }
+    }
+
+    // `clear_water` rolls one pool and pays a percent of *its* maximum.
+    const randomRegen = asRecord(record.random_resource_regen);
+    if (randomRegen) {
+        const percent = Math.min(100, Math.max(0, readNumber(randomRegen.percent, 0)));
+        if (percent > 0) {
+            const stats = effectiveStats(unit);
+            const pools = ([
+                { resource: 'hp' as CombatResourceId, max: stats.maxHp },
+                { resource: 'mana' as CombatResourceId, max: stats.maxMana },
+                { resource: 'stamina' as CombatResourceId, max: stats.maxStamina },
+            ]).filter((pool) => !(pool.resource === 'hp' && options.healBlocked));
+            const pool = pools[Math.min(pools.length - 1, Math.floor(random() * pools.length))];
+            const amount = Math.round(pool.max * percent / 100 * outputMultiplier * phase * elementScale);
+            if (amount > 0) events.push(...changeResource(unit, pool.resource, amount));
+        }
     }
 
     if (effect.resource_regen) {
@@ -758,8 +1394,8 @@ export function applyEffectResources(
             const amount = readNumber(value, 0);
             const blocked = resource === 'hp' && options.healBlocked;
             if (blocked) continue;
-            if (amount > 0) events.push(...changeResource(unit, resource as CombatResourceId, Math.round(amount * outputMultiplier * phase)));
-            else if (amount !== 0) events.push(...changeResource(unit, resource as CombatResourceId, Math.round(amount * phase)));
+            if (amount > 0) events.push(...changeResource(unit, resource as CombatResourceId, Math.round(amount * outputMultiplier * phase * elementScale)));
+            else if (amount !== 0) events.push(...changeResource(unit, resource as CombatResourceId, Math.round(amount * phase * elementScale)));
         }
     }
 
@@ -768,7 +1404,7 @@ export function applyEffectResources(
         const recipient = toCaster ? options.drainRecipient ?? null : null;
 
         for (const [resource, value] of Object.entries(effect.resource_drain)) {
-            const amount = Math.round(readNumber(value, 0) * phase);
+            const amount = Math.round(readNumber(value, 0) * phase * elementScale);
             if (amount === 0) continue;
 
             events.push(...changeResource(unit, resource as CombatResourceId, -amount));
@@ -786,7 +1422,14 @@ export function applyEffectResources(
 export function effectHeals(effect: AttackEffect): boolean {
     const record = asRecord(effect) ?? {};
     if (readNumber(record.heal, 0) > 0) return true;
-    return readNumber(effect.resource_regen?.hp, 0) > 0;
+    if (readNumber(record.heal_percent_of_max, 0) > 0) return true;
+    if (readNumber(effect.resource_regen?.hp, 0) > 0) return true;
+    for (const value of Object.values(record.resource_regen_percent_of_max ?? {})) {
+        if (readNumber(value, 0) > 0) return true;
+    }
+    if (readNumber(asRecord(record.random_resource_regen)?.percent, 0) > 0) return true;
+    if (readNumber(asRecord(record.random_resource_regen_per_turn)?.percent, 0) > 0) return true;
+    return false;
 }
 
 /**
@@ -951,6 +1594,134 @@ export function liftLuxCurses(unit: CombatUnit): CombatEvent[] {
         unitId: unit.id,
         effectId: effect.effectId,
     }));
+}
+
+/**
+ * Lifts every status the unit marks as expiring on a hit of `elementId`.
+ *
+ * The Wet conditions: ignis wipes the moisture off. This runs after a real
+ * hit lands and reports one `effect_expired` per vanished status so the log
+ * can narrate it.
+ */
+export function expireStatusesOnElementHit(
+    unit: CombatUnit,
+    elementId: string | null,
+): CombatEvent[] {
+    if (!elementId) return [];
+    const wanted = elementId.trim().toLowerCase();
+    if (!wanted) return [];
+
+    const lifted = unit.effects.filter(
+        (effect) => effect.expireOnElements?.some((entry) => entry.toLowerCase() === wanted),
+    );
+    if (lifted.length === 0) return [];
+
+    const liftedIds = new Set(lifted.map((effect) => effect.effectId));
+    unit.effects = unit.effects.filter((effect) => !liftedIds.has(effect.effectId));
+
+    return lifted.map((effect) => ({
+        type: 'effect_expired',
+        unitId: unit.id,
+        effectId: effect.effectId,
+    }));
+}
+
+/**
+ * The multiplier a unit's statuses impose on incoming damage of `damageType`
+ * (`frost_mirror` halves physical while it lives). Compounds multiplicatively.
+ */
+export function damageChannelModulationFor(
+    unit: CombatUnit | null | undefined,
+    damageType: 'physical' | 'magical' | null | undefined,
+): number {
+    if (!unit || !damageType) return 1;
+    let modulation = 1;
+
+    for (const effect of unit.effects) {
+        if (!effect.damageChannelModulation) continue;
+        const factor = effect.damageChannelModulation[damageType];
+        if (typeof factor === 'number' && Number.isFinite(factor)) modulation *= factor;
+    }
+
+    return modulation;
+}
+
+/**
+ * Fires the unit's field traps as it acts: a `thin_ice` status rolls its slip
+ * chance when the bearer performs a matching action, pays its damage and may
+ * plant a punishment status (`Slipped`).
+ */
+export function applyActionTriggers(
+    _state: { units: readonly CombatUnit[] },
+    actor: CombatUnit,
+    action: CombatAction,
+    random: CombatRandom,
+): CombatEvent[] {
+    const events: CombatEvent[] = [];
+
+    for (const effect of actor.effects) {
+        const trap = effect.tripOnAction;
+        if (!trap) continue;
+        if (!trapActionsMatch(trap.actions, action.kind)) continue;
+        if (trap.damageTypes?.length && !trap.damageTypes.includes(action.damageType)) continue;
+        if (trap.chance < 1 && random() >= trap.chance) continue;
+
+        if (trap.damage > 0) {
+            events.push(...changeResource(actor, 'hp', -trap.damage));
+        }
+
+        if (trap.spawn && actor.status === 'alive'
+            && !isImmuneToStatus(actor, trap.spawn.statusEffect ?? trap.spawn.effectId)) {
+            const synthetic: AttackEffect = {
+                effect_id: trap.spawn.effectId,
+                status_effect: trap.spawn.statusEffect ?? '',
+                turns: trap.spawn.turns,
+                polarity: 'negative',
+                ...(trap.spawn.debuff ? { debuff: trap.spawn.debuff as unknown as Record<string, number> } : {}),
+            };
+            actor.effects.push(createEffectInstance(synthetic, effect.sourceId, effect.elementId, 1, 1, random));
+        }
+    }
+
+    return events;
+}
+
+/** Renders whether an action kind matches a trap's authored action list. */
+function trapActionsMatch(actions: readonly string[], kind: CombatAction['kind']): boolean {
+    if (actions.includes(kind)) return true;
+    const offensive = kind === 'skill' || kind === 'weapon';
+    return offensive && actions.includes('attack');
+}
+
+/**
+ * Fires the unit's live spend triggers: a `hangover` status charges its
+ * bearer whenever it pays mana or stamina out, feeding the status's source.
+ *
+ * Called once per cost payment that actually spent a pool — one skill use is
+ * one trigger, whatever mixture of mana and stamina its price was.
+ */
+export function applySpendTriggers(
+    state: { units: readonly CombatUnit[] },
+    unit: CombatUnit,
+): CombatEvent[] {
+    const events: CombatEvent[] = [];
+
+    for (const effect of unit.effects) {
+        const trigger = effect.spendTrigger;
+        if (!trigger) continue;
+
+        if (trigger.damage > 0) {
+            events.push(...changeResource(unit, 'hp', -trigger.damage));
+        }
+        if (trigger.healToSource > 0) {
+            const source = state.units.find((candidate) => candidate.id === effect.sourceId);
+            if (source && source.status === 'alive') {
+                events.push(...changeResource(source, 'hp', trigger.healToSource));
+            }
+        }
+    }
+
+    return events;
 }
 
 /**

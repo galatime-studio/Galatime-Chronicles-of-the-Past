@@ -46,10 +46,13 @@ import { previewImpact } from './combat/damagePreview';
 import { reapDefeated } from './combat/defeatResolver';
 import {
     changeResource,
+    applyActionTriggers,
+    applySpendTriggers,
     areSkillsPrevented,
     effectiveStats,
     isActionPrevented,
     preventedActionKinds,
+    preventedDamageChannels,
     tickUnitEffects,
 } from './combat/effectResolver';
 import { recordTimelineSnapshot } from './combat/rewind';
@@ -206,6 +209,9 @@ function actionAvailability(state: CombatState, actor: CombatUnit, action: Comba
     // A `silenced`-style status forbids the action outright; the reference schema
     // uses `attack` as the umbrella for the offensive kinds.
     if (isActionPrevented(action, preventedActionKinds(actor))) return 'action_unavailable';
+    // A harbour-bound status forbids its channel outright (the ice wall stops
+    // physical attacks while it stands).
+    if (preventedDamageChannels(actor).includes(action.damageType)) return 'action_unavailable';
     // A sealed unit may not use its skills, though it may still brace or rest.
     if (action.kind === 'skill' && areSkillsPrevented(actor)) return 'action_unavailable';
     // Running is a panic move: only a unit below its own health gate may pick it.
@@ -328,7 +334,15 @@ function advanceToNextUnit(
         if (!advance.unit) return { events, unit: null };
 
         events.push(...beginUnitTurn(state, advance.unit, random));
-        if (advance.unit.currentHp > 0) return { events, unit: advance.unit };
+        if (advance.unit.currentHp > 0) {
+            // A full status lock (`Frozen` misses its next turn) skips the
+            // turn outright: nobody is handed a turn they cannot legally act.
+            if (!anyActionAvailable(state, advance.unit)) {
+                events.push({ type: 'turn_skipped', unitId: advance.unit.id });
+                continue;
+            }
+            return { events, unit: advance.unit };
+        }
 
         reapDefeated(state, events, random);
     }
@@ -336,8 +350,12 @@ function advanceToNextUnit(
     return { events, unit: null };
 }
 
-function evaluateOutcome(state: CombatState): CombatOutcome | null {
-    const alliesAlive = state.units.some((unit) => unit.side === 'allies' && unit.status === 'alive');
+/** Whether the unit holds at least one action it may legally take right now. */
+function anyActionAvailable(state: CombatState, unit: CombatUnit): boolean {
+    return unit.actions.some((action) => actionAvailability(state, unit, action) === null);
+}
+
+function evaluateOutcome(state: CombatState): CombatOutcome | null {    const alliesAlive = state.units.some((unit) => unit.side === 'allies' && unit.status === 'alive');
     const enemiesAlive = state.units.some((unit) => unit.side === 'enemies' && unit.status === 'alive');
 
     if (!alliesAlive) return 'defeat';
@@ -950,7 +968,18 @@ export function submitCombatAction(
     const validation = validateTargetRule(state, actor, action, request.targetId);
     if (validation.error) return combatFail(validation.error);
 
+    // The action's resource costs. A `hangover`-style status charges the
+    // spender once the pools actually dropped: paying mana or stamina
+    // triggers any spend trigger the payer carries.
+    const poolsBefore = { mana: actor.currentMana, stamina: actor.currentStamina };
     const events: CombatEvent[] = payCosts(actor, action);
+    const spentSomething = poolsBefore.mana !== actor.currentMana
+        || poolsBefore.stamina !== actor.currentStamina;
+    if (spentSomething) events.push(...applySpendTriggers(state, actor));
+
+    // A field trap the actor carries (Standing On Thin Ice / Frozen Earth)
+    // rolls as the action begins: the trip costs health, never the turn.
+    events.push(...applyActionTriggers(state, actor, action, random));
     const resolved = resolveCombatAction({
         state,
         actor,

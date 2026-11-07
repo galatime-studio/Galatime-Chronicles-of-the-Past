@@ -268,6 +268,69 @@
         return { multiplier: applied ? multiplier : 1, threshold: threshold, applied: applied, value: multiplier };
     }
 
+    /** Modulações elementais dos estados (espelha o motor: Wet/Mist/Fog). */
+    var STATUS_MODULATIONS = {
+        wet: { ignis: 0.25, aqua: 2, chaos: 2 },
+        mist: { ignis: 0.5 },
+        fog: { ignis: 0.5 },
+    };
+
+    function normalizeLabel(value) { return String(value || '').trim().toLowerCase(); }
+
+    /**
+     * Multiplicador que os estados autorizados do defensor impõem ao elemento
+     * da skill (Wet: ignis ×0.25, aqua/chaos ×2). Acumula multiplicativamente
+     * com cada estado em vigor.
+     */
+    function statusModulationFor(statuses, elementId) {
+        var wanted = normalizeLabel(elementId);
+        var modulation = 1;
+        (statuses || []).forEach(function (label) {
+            var spec = STATUS_MODULATIONS[normalizeLabel(label)];
+            if (spec && wanted && typeof spec[wanted] === 'number') modulation *= spec[wanted];
+        });
+        return modulation;
+    }
+
+    function specArray(spec) {
+        if (Array.isArray(spec)) return spec;
+        return spec && typeof spec === 'object' ? [spec] : [];
+    }
+
+    /** Bónus extra contra um portador de estado (`bonus_vs_status`). */
+    function bonusVsStatus(specs, statuses) {
+        var wanted = (statuses || []).map(normalizeLabel);
+        var multiplier = 1;
+        var defensePierce = 0;
+        specArray(specs).forEach(function (spec) {
+            if (!isRecord(spec)) return;
+            var label = normalizeLabel(spec.status);
+            if (label && wanted.indexOf(label) !== -1) {
+                multiplier *= Math.max(1, numberOr(spec.multiplier, 1));
+                defensePierce += numberOr(spec.defense_pierce, 0);
+            }
+        });
+        return { multiplier: multiplier, defensePierce: defensePierce };
+    }
+
+    /** Multiplicador por carga de um estado acumulável (`bonus_per_charge`). */
+    function perChargeBonus(spec, statuses) {
+        if (!isRecord(spec)) return { multiplier: 1, charges: 0, consume: Boolean(spec && spec.consume) };
+        var perCharge = numberOr(spec.multiplier_per_charge, 0);
+        var label = normalizeLabel(spec.status);
+        var charges = label ? (statuses || []).filter(function (entry) {
+            return normalizeLabel(entry) === label;
+        }).length : 0;
+        var applied = charges > 0 && perCharge > 0;
+        return {
+            multiplier: applied ? 1 + perCharge * charges : 1,
+            charges: charges,
+            perCharge: perCharge,
+            consume: spec.consume === true,
+            status: label,
+        };
+    }
+
     /** Fração da defesa do alvo que o golpe ignora. */
     function pierceDefense(defenseValue, pierce) {
         var fraction = clamp(numberOr(pierce, 0), 0, 1);
@@ -348,16 +411,27 @@
         var phase = phaseMultiplier(skill, options.phase === 'night' ? 'night' : 'day');
         var bonus = bonusVsMultiplier(skill.bonus_vs_elements, options.defenderElements || []);
         var hpBonus = bonusVsHpBelow(skill.bonus_vs_hp_below, options.targetHpFraction);
+        var statuses = Array.isArray(options.defenderStatuses)
+            ? options.defenderStatuses.map(String)
+            : [];
+        var statusBonus = bonusVsStatus(specArray(skill.bonus_vs_status), statuses);
+        var statusModulation = statusModulationFor(statuses, skill.element_id);
+        var chargeBonus = perChargeBonus(skill.bonus_per_charge, statuses);
+        // Wet/Mist presentes no simulador têm de existir nos elementos: só
+        // influi quando o elemento da skill é um dos modulados.
         var defenseReduction = options.defenderDefending ? CONSTANTS.DEFEND_DAMAGE_REDUCTION : 0;
-        var pierced = pierceDefense(defenseValue, skill.defense_pierce);
+        var pierced = pierceDefense(
+            defenseValue,
+            (skill.defense_pierce || 0) + statusBonus.defensePierce,
+        );
         var blocked = phaseLock(skill, options.phase === 'night' ? 'night' : 'day');
         var drainPercent = drainPercentOfDamage(skill);
 
         var defense = Math.max(CONSTANTS.MINIMUM_DEFENSE, pierced.value);
-        var base = (attackValue / defense) * element.multiplier * (power / CONSTANTS.POWER_DIVISOR);
-        var afterTraits = base * phase * bonus.multiplier * hpBonus.multiplier;
+        var base = (attackValue / defense) * element.multiplier * statusModulation * (power / CONSTANTS.POWER_DIVISOR);
+        var afterTraits = base * phase * bonus.multiplier * hpBonus.multiplier * statusBonus.multiplier * chargeBonus.multiplier;
         var positioned = afterTraits * position * (1 - defenseReduction);
-        var finalDamage = element.multiplier === 0 ? 0 : Math.max(CONSTANTS.MINIMUM_DAMAGE, roundHalf(positioned));
+        var finalDamage = (element.multiplier * statusModulation) === 0 ? 0 : Math.max(CONSTANTS.MINIMUM_DAMAGE, roundHalf(positioned));
 
         var accuracy = effectiveAccuracy(
             skill.accuracy,
@@ -374,9 +448,9 @@
         var range = powerRange(powerSpec);
         var minDamage = null;
         var maxDamage = null;
-        if (range && element.multiplier !== 0) {
-            var low = computeDamage(attackValue, defense, element.multiplier, range[0] * tier.powerFactor, phase, bonus.multiplier * hpBonus.multiplier, position, defenseReduction);
-            var high = computeDamage(attackValue, defense, element.multiplier, range[1] * tier.powerFactor, phase, bonus.multiplier * hpBonus.multiplier, position, defenseReduction);
+        if (range && (element.multiplier * statusModulation) !== 0) {
+            var low = computeDamage(attackValue, defense, element.multiplier * statusModulation, range[0] * tier.powerFactor, phase, bonus.multiplier * hpBonus.multiplier * statusBonus.multiplier * chargeBonus.multiplier, position, defenseReduction);
+            var high = computeDamage(attackValue, defense, element.multiplier * statusModulation, range[1] * tier.powerFactor, phase, bonus.multiplier * hpBonus.multiplier * statusBonus.multiplier * chargeBonus.multiplier, position, defenseReduction);
             minDamage = low;
             maxDamage = high;
         }
@@ -420,7 +494,10 @@
             fleeBelowHp: skill.flee_below_hp === undefined ? null : numberOr(skill.flee_below_hp, 0),
             phaseLock: blocked,
             drainPercent: drainPercent,
-            drainHeal: element.multiplier !== 0 && drainPercent !== null ? roundHalf(finalDamage * drainPercent) : null,
+            drainHeal: (element.multiplier * statusModulation) !== 0 && drainPercent !== null ? roundHalf(finalDamage * drainPercent) : null,
+            statusModulation: statusModulation,
+            statusBonus: statusBonus,
+            chargeBonus: chargeBonus,
             costs: { mana: manaCost, stamina: staminaCost, hp: hpCost, cooldown: cooldownCost },
             manaPerDamage: expectedTotal > 0 ? manaCost / expectedTotal : null,
             scalingNote: scalingNote,
