@@ -65,7 +65,7 @@ export function TestSkillTreePanel() {
             .then(([attackList, elementList]) => {
                 if (cancelled) return;
                 setAttacks(attackList);
-                setElements(elementList.filter((element) => element.type === 'natural'));
+                setElements(elementList);
                 setLoading(false);
             })
             .catch((error: unknown) => {
@@ -82,6 +82,7 @@ export function TestSkillTreePanel() {
 
     const selectableElements = useMemo(
         () => elements
+            .filter((element) => element.selectable)
             .sort((left, right) => {
                 if (left.id === INANUS_ID) return 1;
                 if (right.id === INANUS_ID) return -1;
@@ -90,9 +91,13 @@ export function TestSkillTreePanel() {
         [elements],
     );
     const selectedKey = selectedElementIds.join('|');
+    const selectedElements = useMemo(
+        () => elements.filter((element) => selectedElementIds.includes(element.id)),
+        [elements, selectedKey],
+    );
     const visibleAttacks = useMemo(
-        () => getLearnableAttacks(attacks, selectedElementIds.length > 0 ? selectedElementIds : [INANUS_ID]),
-        [attacks, selectedKey],
+        () => getLearnableAttacks(attacks, selectedElements),
+        [attacks, selectedElements],
     );
     const layout = useMemo(() => buildSkillTreeLayout(visibleAttacks), [visibleAttacks]);
 

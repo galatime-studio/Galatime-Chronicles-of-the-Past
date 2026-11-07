@@ -8,6 +8,9 @@ elements:
     name: Aqua
     description: "The element of water and ice."
     type: natural
+    skill_trees: [aqua, corporis, vis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       [corporis]
       super_strong: []
@@ -19,6 +22,9 @@ elements:
     name: Caeli
     description: "The element of wind and sky."
     type: natural
+    skill_trees: [caeli, corporis, vis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       [corporis, lux, umbra]
       super_strong: []
@@ -30,6 +36,9 @@ elements:
     name: Chaos
     description: "The element of explosions and electricity."
     type: natural
+    skill_trees: [chaos, corporis, vis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       [corporis]
       super_strong: []
@@ -41,6 +50,9 @@ elements:
     name: Corporis
     description: "The element of force and physicality."
     type: natural
+    skill_trees: [corporis, vis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       []
       super_strong: []
@@ -52,6 +64,9 @@ elements:
     name: Florere
     description: "The element of flora and plant life."
     type: natural
+    skill_trees: [florere, corporis, vis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       []
       super_strong: []
@@ -63,6 +78,9 @@ elements:
     name: Ignis
     description: "The element of fire and heat."
     type: natural
+    skill_trees: [ignis, corporis, vis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       []
       super_strong: []
@@ -74,6 +92,9 @@ elements:
     name: Inanus
     description: "What even is this...?"
     type: natural
+    skill_trees: []
+    tooltip_visible: false
+    selectable: true
     relations:
       immune:       []
       super_strong: []
@@ -85,6 +106,9 @@ elements:
     name: Lapis
     description: "The element of earth and stone."
     type: natural
+    skill_trees: [lapis, corporis, vis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       [vetus, vis]
       super_strong: []
@@ -96,6 +120,9 @@ elements:
     name: Lux
     description: "The element of day and light."
     type: natural
+    skill_trees: [lux, corporis, vis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       [caeli, lux]
       super_strong: []
@@ -107,6 +134,9 @@ elements:
     name: Spatium
     description: "The element of time and space."
     type: natural
+    skill_trees: [spatium, corporis, vis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       [corporis, vetus]
       super_strong: []
@@ -118,6 +148,9 @@ elements:
     name: Umbra
     description: "The element of night and darkness."
     type: natural
+    skill_trees: [umbra, corporis, vis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       [caeli, lapis, umbra]
       super_strong: []
@@ -129,6 +162,9 @@ elements:
     name: Vetus
     description: "The element of the ancient power."
     type: natural
+    skill_trees: [vetus, corporis, vis]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       []
       super_strong: []
@@ -140,6 +176,9 @@ elements:
     name: Vis
     description: "The element of mana."
     type: natural
+    skill_trees: [vis, corporis, vetus]
+    tooltip_visible: true
+    selectable: true
     relations:
       immune:       []
       super_strong: []
@@ -155,6 +194,9 @@ elements:
     name: Corrupted Blaze
     description: "???"
     type: corrupted
+    skill_trees: [ignis, corporis, vis, vetus]
+    tooltip_visible: false
+    selectable: false
     relations:
       immune:       [ignis]
       super_strong: [florere, spatium, umbra]
@@ -166,6 +208,9 @@ elements:
     name: Corrupted Day
     description: "???"
     type: corrupted
+    skill_trees: [lux, corporis, vis, vetus]
+    tooltip_visible: false
+    selectable: false
     relations:
       immune:       [caeli, lux]
       super_strong: [chaos, corporis, ignis, lapis]
@@ -177,6 +222,9 @@ elements:
     name: Corrupted Forest
     description: "???"
     type: corrupted
+    skill_trees: [florere, corporis, vis, vetus]
+    tooltip_visible: false
+    selectable: false
     relations:
       immune:       [florere, umbra]
       super_strong: [chaos, lapis]
@@ -188,6 +236,9 @@ elements:
     name: Corrupted Ice
     description: "???"
     type: corrupted
+    skill_trees: [aqua, corporis, vis, vetus]
+    tooltip_visible: false
+    selectable: false
     relations:
       immune:       [aqua, corporis]
       super_strong: [ignis, lux, umbra]
@@ -199,6 +250,9 @@ elements:
     name: Corrupted Night
     description: "???"
     type: corrupted
+    skill_trees: [umbra, corporis, vis, vetus]
+    tooltip_visible: false
+    selectable: false
     relations:
       immune:       [lapis, umbra]
       super_strong: [aqua, caeli, florere, spatium]
@@ -210,6 +264,9 @@ elements:
     name: Corrupted Void
     description: "???"
     type: corrupted
+    skill_trees: [corporis, vis, vetus]
+    tooltip_visible: false
+    selectable: false
     relations:
       immune:       [corporis, ignis]
       super_strong: [florere, lapis, lux]

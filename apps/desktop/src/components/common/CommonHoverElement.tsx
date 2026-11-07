@@ -73,13 +73,9 @@ const CommonHoverElement: React.FC<CommonHoverElementProps> = ({
     // Split the weakness entries into two columns
     const getSplitWeaknessEntries = () => {
         if (!data) return [[], []];
-        // Attack tooltips are built from the target elements, so `type` holds the
-        // element's own type and the filter keeps the corrupted ones out. Defence
-        // tooltips carry the relationship itself (immune, strong, weak...)
-        // in `type`, but the controller already returns only natural elements, so
-        // every combined entry must be kept.
-        const entries = Object.entries(data.multipliers)
-            .filter(([_, multiplier]) => (isAttack ? multiplier.type === 'natural' : true));
+        // Both attack and defence tooltips read the same filtered list: the controller leaves
+        // out every element the catalogue marks as hidden.
+        const entries = Object.entries(data.multipliers);
         const half = Math.ceil(entries.length / 2);
         return [entries.slice(0, half), entries.slice(half)];
     };

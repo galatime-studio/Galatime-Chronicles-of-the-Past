@@ -18,10 +18,27 @@ export interface ElementData {
     description: string;
     type: "natural" | string;
     relations: ElementRelations;
+    /**
+     * Element ids whose skill trees the caster gains access to. The list is
+     * authored per element so an element can open trees beyond its own.
+     */
+    skillTrees: string[];
+    /** Whether the element is listed in the element tooltip. */
+    tooltipVisible: boolean;
+    /** Whether the player can pick the element. */
+    selectable: boolean;
 }
 
 /** One entry of `elements.yaml` — its `id` is the mapping key, not a field. */
-type ElementEntry = Omit<ElementData, "id">;
+interface ElementEntry {
+    name: string;
+    description: string;
+    type: string;
+    relations?: ElementRelations;
+    skill_trees?: string[];
+    tooltip_visible?: boolean;
+    selectable?: boolean;
+}
 
 /** Shape of the single element catalogue file. */
 interface ElementsFile {
@@ -72,6 +89,9 @@ function loadElementCatalogue(): ElementData[] {
             description: entry.description,
             type: entry.type,
             relations: entry.relations ?? {},
+            skillTrees: entry.skill_trees ?? [],
+            tooltipVisible: entry.tooltip_visible ?? true,
+            selectable: entry.selectable ?? false,
         });
     }
 

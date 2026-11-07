@@ -58,16 +58,16 @@ export async function getElementsWeaknesses(
         }
     }
 
-    // The tooltip lists every natural element, exactly like the attack tooltip does, so the
-    // elements that no relationship mentions come out neutral (score 0 -> x1). Each entry is
-    // the SUM of the defender's elements' scores (unmentioned = 0), the single efficacy rule
-    // shared with the combat damage path. Corrupted elements are left out of the LIST,
-    // matching the attack tooltip's filter, but are still summed when they defend.
+    // The tooltip lists every element the catalogue marks as tooltip-visible, exactly like the
+    // attack tooltip does, so the elements that no relationship mentions come out neutral
+    // (score 0 -> x1). Each entry is the SUM of the defender's elements' scores (unmentioned = 0),
+    // the single efficacy rule shared with the combat damage path. Elements marked as hidden are
+    // left out of the LIST but are still summed when they defend.
     const allElements = await getAllElementsDataService();
     const consolidated: Record<string, { type: string; score: number }> = {};
     const multipliers: Record<string, { type: string; score: number }> = {};
     for (const element of allElements) {
-        if (element.type !== "natural") continue;
+        if (!element.tooltipVisible) continue;
         const score = combineDefenseScores(defenderElements, element.id);
         consolidated[element.id] = { type: scoreToType(score), score };
         multipliers[element.id] = { type: scoreToType(score), score: scoreToMultiplier(score) };
@@ -128,10 +128,11 @@ export async function getElementsDamage(
     // Get data for all possible target elements
     const allTargetElements = await getAllElementsDataService();
 
-    // For each target element, SUM its defensive score against each of the input
+    // For each tooltip-visible target element, SUM its defensive score against each of the input
     // offensive elements (an element that does not mention the offence contributes 0).
     const consolidated: Record<string, { type: string; score: number }> = {};
     for (const targetElement of allTargetElements) {
+        if (!targetElement.tooltipVisible) continue;
         let combinedScoreForTarget = 0;
         for (const offensiveElementId of elementIds) {
             combinedScoreForTarget += elementDefenseScore(targetElement, offensiveElementId);
@@ -153,8 +154,11 @@ export async function getElementsDamage(
             return acc;
         }, {} as Record<string, { type: string; score: number }>);
 
-    // Sort valid elements (these are the target elements)
-    const validElements = allTargetElements.map(e => e.id).sort((a, b) => a.localeCompare(b));
+    // Sort valid elements (these are the tooltip-visible target elements)
+    const validElements = allTargetElements
+        .filter((element) => element.tooltipVisible)
+        .map((element) => element.id)
+        .sort((a, b) => a.localeCompare(b));
 
     // Generate summary
     const hasImmunities = Object.values(multipliers).some((m) => m.score === 0);

@@ -9,10 +9,9 @@
 
 import { Graph, layout } from '@dagrejs/dagre';
 import type { PublicAttack } from '../types/AttackDataType';
+import type { ElementData } from '../types/ElementDataType';
 
-/** Elements that every tree is rooted in, whatever the selection is. */
-export const BASE_ELEMENT_IDS = ['vis', 'corporis'] as const;
-/** Sentinel for "no element selected"; `inanus` owns no skills of its own. */
+/** Sentinel for "no element selected"; `inanus` opens no skill tree. */
 export const INANUS_ID = 'inanus';
 
 /** Box dagre reserves for a skill. The sprite is drawn inside it. */
@@ -65,14 +64,16 @@ export function getRequiredAttackIds(attack: PublicAttack): string[] {
 }
 
 /**
- * Includes only skills whose entire prerequisite path can be learned from the selected
- * elements and the two always-present foundation elements.
+ * Includes only skills whose entire prerequisite path can be learned from the
+ * skill trees opened by the selected elements.
  */
-export function getLearnableAttacks(attacks: PublicAttack[], selectedElementIds: string[]): PublicAttack[] {
-    const isInanusOnly = selectedElementIds.length === 1 && selectedElementIds[0] === INANUS_ID;
-    const allowedElements = new Set(isInanusOnly
-        ? ['corporis', INANUS_ID]
-        : [...BASE_ELEMENT_IDS, ...selectedElementIds]);
+export function getLearnableAttacks(
+    attacks: PublicAttack[],
+    selectedElements: readonly ElementData[],
+): PublicAttack[] {
+    const allowedElements = new Set(selectedElements.flatMap((element) => element.skillTrees));
+    if (allowedElements.size === 0) return [];
+
     const attacksById = new Map(attacks.map((attack) => [attack.id, attack]));
     const availability = new Map<string, boolean>();
 
