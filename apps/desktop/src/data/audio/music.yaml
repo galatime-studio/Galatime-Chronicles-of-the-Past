@@ -48,7 +48,12 @@
   src: ../assets/music/Unknown Laboratory.ogg
   loop: true
 
-- id: suggengear
-  name: Suggengear (Unused)
-  src: ../assets/music/Suggengear (Adnan Theme).ogg
+- id: untitled_from_cellordion
+  name: Untitled from Cellordion
+  src: ../assets/music/Untitled from Cellordion.ogg
+  loop: true
+  
+- id: death
+  name: Death
+  src: ../assets/music/Death.ogg
   loop: true

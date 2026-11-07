@@ -41,6 +41,7 @@ const PUBLIC_SKILL_FIELDS = [
     'kind',
     'range',
     'damage_variance',
+    'sfx',
 ] as const;
 
 const PUBLIC_EFFECT_FIELDS = [

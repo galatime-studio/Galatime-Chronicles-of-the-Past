@@ -92,7 +92,7 @@ elements:
     name: Inanus
     description: "What even is this...?"
     type: natural
-    skill_trees: []
+    skill_trees: [corporis]
     tooltip_visible: false
     selectable: true
     relations:

@@ -30,6 +30,9 @@ import {
     type CombatWeaponEntry,
 } from '../../../controllers/combatController';
 import { previewCombatAttack } from '../../../controllers/damageController';
+import { playSfx } from '../../../controllers/audioController';
+import { elementSfxId } from '../../../utils/elementSfx';
+import { DAMAGE_SFX_ID, LANE_CHANGE_SFX_ID } from '../../../constants/CombatSoundConstants';
 import { chooseCombatAction } from '../../../services/combat/combatAi';
 import { CloseIcon, UNKNOWN_ELEMENT_ICON } from '../../../assets/GalatimeIcon';
 import CommonImage from '../../common/CommonImage';
@@ -471,6 +474,27 @@ export function CombatEncounter({
             return;
         }
 
+        // Play the skill/weapon sound when the action is submitted. A skill may
+        // author its own track; otherwise the action's element is the fallback.
+        const usedEvent = result.data.events.find((event) => event.type === 'action_used') as
+            | {
+                type: 'action_used';
+                actionId: string;
+                actionName: string;
+                elementId?: string | null;
+                sfxId?: string | null;
+            }
+            | undefined;
+        if (usedEvent) {
+            const id = usedEvent.sfxId
+                ?? elementSfxId(usedEvent.elementId, usedEvent.actionName ?? usedEvent.actionId);
+            if (id) void playSfx(id);
+        }
+
+        // A line change is choreographed at the impact when animations are on;
+        // without them there is no impact to wait for, so it follows the swap.
+        const lineChanged = result.data.events.some((event) => event.type === 'unit_line_changed');
+
         const next = snapshot(result.data.state);
         setNotice(null);
         setPending(null);
@@ -482,6 +506,7 @@ export function CombatEncounter({
             : null;
 
         if (!arena) {
+            if (lineChanged) void playSfx(LANE_CHANGE_SFX_ID);
             setState(next);
             onEventsRef.current?.(result.data.events, next);
             return;
@@ -503,6 +528,15 @@ export function CombatEncounter({
         const impact = window.setTimeout(() => {
             const pendingStep = pendingRef.current;
             if (!pendingStep) return;
+
+            // The sound only lands with the reaction it narrates: a landed
+            // damaging hit, and a unit re-placing itself into another line.
+            if (sequence.hits.some((hit) => hit.kind === 'damage' && hit.isHit)) {
+                void playSfx(DAMAGE_SFX_ID);
+            }
+            if (sequence.stepped.length > 0) {
+                void playSfx(LANE_CHANGE_SFX_ID);
+            }
 
             pendingRef.current = null;
             setState(pendingStep.state);

@@ -19,6 +19,7 @@ import {
     FRAGILE_WEAPON_BREAK_CHANCE,
     WEAPON_DAMAGE_TYPE,
 } from '../../constants/CombatConstants';
+import { WEAPON_SFX_ID } from '../../constants/CombatSoundConstants';
 import type { AttackEffect, PublicAttack } from '../../types/AttackDataType';
 import type {
     CombatAction,
@@ -170,6 +171,7 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
         name: skill.name,
         description: readString(skill.description, ''),
         elementId: skill.element_id,
+        sfxId: readString(skill.sfx, '') || null,
         damageType: readDamageType(damage?.damage_type ?? damage?.kind, 'magical'),
         range: readRange(raw.range, DEFAULT_SKILL_RANGE),
         power,
@@ -239,6 +241,7 @@ function buildWeaponAction(weapon: WeaponDefinition, throwing = false): CombatAc
         // the bare fallback the catalogue rarely fills.
         description: readString(weapon.display?.summary, '') || readString(weapon.description, ''),
         elementId: readString(weapon.element, 'inanus'),
+        sfxId: WEAPON_SFX_ID,
         damageType: readDamageType(weapon.damage_type, WEAPON_DAMAGE_TYPE),
         range: readRange(throwSpec?.range ?? weapon.range, DEFAULT_WEAPON_RANGE),
         power,

@@ -147,6 +147,8 @@ export function resolveCombatAction(context: ActionResolutionContext): ActionRes
             actionName: action.name,
             kind: action.kind,
             targetIds: resolveActionTargets(context).map((unit) => unit.id),
+            elementId: action.elementId,
+            sfxId: action.sfxId ?? null,
         },
     ];
 

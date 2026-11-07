@@ -183,6 +183,12 @@ export interface AttackSkill {
     range?: string;
     /** The variance of each hit, as `[min, max]`. */
     damage_variance?: number[];
+    /**
+     * SFX track id played when the skill is used.
+     *
+     * When omitted, the presentation layer falls back to the element's sound.
+     */
+    sfx?: string;
     [key: string]: unknown;
 }
 
@@ -225,6 +231,7 @@ export type PublicAttack = Pick<AttackSkill,
     | 'kind'
     | 'range'
     | 'damage_variance'
+    | 'sfx'
 >;
 
 export interface SkillTreeNode {

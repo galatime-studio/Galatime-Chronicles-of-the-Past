@@ -358,6 +358,8 @@ export interface CombatAction {
     name: string;
     description: string;
     elementId: string;
+    /** SFX track id played when the action is used; `null` falls back to the element sound. */
+    sfxId?: string | null;
     damageType: DamageType;
     range: CombatRange;
     /** Authored power; `0` for actions that only heal or buff. */
@@ -558,6 +560,8 @@ export type CombatEvent =
         actionName: string;
         kind: CombatActionKind;
         targetIds: string[];
+        elementId?: string | null;
+        sfxId?: string | null;
     }
     | { type: 'attack_resolved'; resolution: AttackResolution }
     | { type: 'healed'; resolution: HealResolution }
