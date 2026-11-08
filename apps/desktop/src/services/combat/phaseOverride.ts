@@ -1,40 +1,58 @@
 /**
- * Battlefield-wide phase overrides (Solar Eclipse).
+ * Battlefield-wide celestial blocks (eclipses).
  *
- * A fight normally keeps the hour it opened at. A skill may force the opposite
- * phase for a few rounds, and everything that reads the hour — direct damage,
- * effect magnitudes, previews and the HUD — must read the forced one instead.
+ * A fight normally keeps the natural hour it opened at. An eclipse blocks its
+ * celestial body for a few rounds: lunar blocks the moon (effective during the
+ * night) and solar blocks the sun (effective during the day). Damage/effect
+ * bonuses read the resulting {@link EffectiveCombatTimePhase}; rules that only
+ * apply during the day/night read the natural {@link CombatState.timePhase}.
  */
 
-import type { CombatState, CombatTimePhase } from '../../types/CombatType';
+import type {
+    CombatCelestialBlock,
+    CombatState,
+    EffectiveCombatTimePhase,
+} from '../../types/CombatType';
 
-/** The phase damage and effects actually see, honouring an active override. */
+/**
+ * The combat time state damage, effect magnitudes, previews and the HUD see.
+ *
+ * A block only takes effect when the natural phase matches the body it hides:
+ * `solar` → `day_no_solar` during the day, `lunar` → `night_no_lunar` during
+ * the night. Otherwise the natural phase is returned unchanged.
+ */
 export function effectiveTimePhase(
     state: Pick<CombatState, 'timePhase' | 'phaseOverride'>,
-): CombatTimePhase {
-    return state.phaseOverride?.phase ?? state.timePhase;
+): EffectiveCombatTimePhase {
+    const { phaseOverride, timePhase } = state;
+    if (!phaseOverride) return timePhase;
+
+    if (phaseOverride.blocked === 'solar' && timePhase === 'day') return 'day_no_solar';
+    if (phaseOverride.blocked === 'lunar' && timePhase === 'night') return 'night_no_lunar';
+    return timePhase;
 }
 
 /**
- * Forces the battlefield's phase for `rounds` rounds.
+ * Blocks a celestial body for `rounds` rounds.
  *
- * A second override replaces the first: two eclipses do not stack, the newest
- * one wins and restarts the clock.
+ * The block is recorded even if the natural phase does not currently match; it
+ * will take effect only while the matching natural phase holds. A second block
+ * replaces the first (eclipses do not stack).
  */
-export function setPhaseOverride(
+export function setPhaseBlock(
     state: CombatState,
-    phase: CombatTimePhase,
+    blocked: CombatCelestialBlock,
     rounds: number,
     sourceId: string,
 ): void {
     state.phaseOverride = {
-        phase,
+        blocked,
         rounds: Math.max(1, Math.round(rounds)),
         sourceId,
     };
 }
 
-/** Spends one round of an active override, clearing it when it runs out. */
+/** Spends one round of an active block, clearing it when it runs out. */
 export function tickPhaseOverride(state: CombatState): void {
     const override = state.phaseOverride;
     if (!override) return;

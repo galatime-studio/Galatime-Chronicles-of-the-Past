@@ -18,6 +18,24 @@ export type {
 type FocusedEntity = { key: string; entity: CombatFormationEntity } | null;
 
 /** Mirrored, visual-only formation board to compose above the combat action HUD. */
+function isDayState(phase: string | undefined): boolean {
+    return phase === 'day' || phase === 'day_no_solar';
+}
+
+function timeIconFor(phase: string): string {
+    switch (phase) {
+        case 'day_no_solar':
+            return daytimeNoSunIcon;
+        case 'night_no_lunar':
+            return nightNoMoonIcon;
+        case 'night':
+            return nightPhaseIcon;
+        case 'day':
+        default:
+            return dayPhaseIcon;
+    }
+}
+
 export function CombatFormationHUD({
     allies,
     adversaries,
@@ -31,7 +49,6 @@ export function CombatFormationHUD({
     tooltipVisible,
     hour,
     timePhase,
-    phaseOverridden,
 }: CombatFormationHUDProps) {
     const { gameState } = useGame();
     const [hoveredEntity, setHoveredEntity] = useState<FocusedEntity>(null);
@@ -142,23 +159,19 @@ export function CombatFormationHUD({
             />
 
             {/* The hour of the day: a solar skill bites harder by day and a
-                lunar one at night, so the player can see which side of the
-                fight they are on. A phase override (a skill forcing the other
-                phase) hides that phase's own celestial body — a compelled
-                phase comes without its sun or moon, so the icons say which
-                side of the sky the fight is really happening under. */}
+                lunar one at night. An eclipse blocks its celestial body
+                (`day_no_solar` / `night_no_lunar`) without changing the
+                natural hour, and the icon shows which body is hidden. */}
             {timePhase && (
                 <div className="pointer-events-none absolute left-2 top-2 z-10 flex items-center gap-2 border-game border-white/70 bg-black/60 px-2 py-1 backdrop-blur-sm">
                     <img
                         aria-hidden="true"
-                        src={phaseOverridden
-                            ? (timePhase === 'day' ? daytimeNoSunIcon : nightNoMoonIcon)
-                            : (timePhase === 'day' ? dayPhaseIcon : nightPhaseIcon)}
+                        src={timeIconFor(timePhase)}
                         alt=""
                         className="h-4 w-4"
                     />
                     <span className="text-[11px] uppercase tracking-[0.15em] text-white/80">
-                        {timePhase === 'day' ? 'Day' : 'Night'}
+                        {isDayState(timePhase) ? 'Day' : 'Night'}
                     </span>
                     {hour !== undefined && (
                         <span className="text-[11px] tabular-nums tracking-[0.15em] text-white/60">

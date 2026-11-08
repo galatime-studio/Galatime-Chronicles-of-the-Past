@@ -58,9 +58,9 @@ import type {
     CombatLine,
     CombatRandom,
     CombatStats,
-    CombatTimePhase,
     CombatUnit,
     DamageType,
+    EffectiveCombatTimePhase,
 } from '../../types/CombatType';
 import type { ElementData } from '../../types/ElementDataType';
 import { clamp } from '../../utils/combatUtils';
@@ -126,24 +126,24 @@ export function defenseStat(stats: CombatStats, damageType: DamageType): number 
 }
 
 /**
- * The hour-of-the-day multiplier an action gets.
+ * The combat time-state multiplier an action gets.
  *
- * A `solar` skill is worth its full strength by day and a quarter of it at
- * night; a `lunar` one is the mirror. A skill with neither is the same at every
- * hour.
+ * A `solar` skill is worth its full strength only when the state is exactly
+ * `day` and is penalised otherwise; a `lunar` skill only when the state is
+ * exactly `night`. Blocked states (`day_no_solar` / `night_no_lunar`) suppress
+ * their body's bonus. A skill with neither flag is unchanged.
  */
 export function phaseDamageMultiplier(
     action: Pick<CombatAction, 'solar' | 'lunar'>,
-    timePhase: CombatTimePhase,
+    timePhase: EffectiveCombatTimePhase,
 ): number {
-    const night = timePhase === 'night';
     let multiplier = 1;
 
     if (action.solar) {
-        multiplier *= night ? SOLAR_NIGHT_MULTIPLIER : SOLAR_DAY_MULTIPLIER;
+        multiplier *= timePhase === 'day' ? SOLAR_DAY_MULTIPLIER : SOLAR_NIGHT_MULTIPLIER;
     }
     if (action.lunar) {
-        multiplier *= night ? LUNAR_NIGHT_MULTIPLIER : LUNAR_DAY_MULTIPLIER;
+        multiplier *= timePhase === 'night' ? LUNAR_NIGHT_MULTIPLIER : LUNAR_DAY_MULTIPLIER;
     }
 
     return multiplier;
@@ -158,7 +158,7 @@ export function phaseDamageMultiplier(
  */
 export function phaseEffectMultiplier(
     action: Pick<CombatAction, 'solar' | 'lunar'>,
-    timePhase: CombatTimePhase,
+    timePhase: EffectiveCombatTimePhase,
 ): number {
     return phaseDamageMultiplier(action, timePhase);
 }
@@ -356,12 +356,12 @@ export interface DamageRequest {
     modifier: AttackModifier;
     random: CombatRandom;
     /**
-     * The hour of the day the fight happens at.
+     * The effective combat time state.
      *
-     * It decides what a `solar` or `lunar` action is worth, so it has to
-     * be part of the chain — not folded in by the caller.
+     * It decides what a `solar` or `lunar` action is worth (exact `day`/`night`
+     * required for the bonus), so it has to be part of the chain.
      */
-    timePhase: CombatTimePhase;
+    timePhase: EffectiveCombatTimePhase;
     /**
      * The defender's remaining health, as a fraction of its maximum.
      *

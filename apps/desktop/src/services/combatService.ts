@@ -247,11 +247,11 @@ function actionAvailability(state: CombatState, actor: CombatUnit, action: Comba
         || action.targeting === 'both_teams';
     if (needsTarget && legalTargetIds(state, actor, action).length === 0) return 'target_invalid';
 
-    // A skill that borrows its power from the sky only works while that sky is
-    // the one it was written for ("Only works during the day").
-    const timePhase = effectiveTimePhase(state);
-    if (action.onlyDuringDay && timePhase !== 'day') return 'action_unavailable';
-    if (action.onlyDuringNight && timePhase !== 'night') return 'action_unavailable';
+    // A skill that borrows its power from the sky only works while the
+    // natural hour is the one it was written for; eclipse blocks do not change
+    // the natural day/night for this gate.
+    if (action.onlyDuringDay && state.timePhase !== 'day') return 'action_unavailable';
+    if (action.onlyDuringNight && state.timePhase !== 'night') return 'action_unavailable';
 
     return null;
 }

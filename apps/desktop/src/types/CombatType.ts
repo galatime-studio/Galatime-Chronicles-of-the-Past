@@ -792,20 +792,36 @@ export type CombatEvent =
  */
 export type CombatTurnGauges = Record<string, number>;
 
-/** Whether the sun is up. Decides what `solar` and `lunar` skills are worth. */
+/** Whether the sun is up, as the natural hour of the fight. */
 export type CombatTimePhase = 'day' | 'night';
 
+/** A celestial body an eclipse can block. */
+export type CombatCelestialBlock = 'solar' | 'lunar';
+
 /**
- * A battlefield-wide phase forced by a skill (Solar Eclipse).
+ * The time state the battlefield actually presents.
  *
- * While it lasts, `solar` and `lunar` skills and effects read this phase
- * instead of the hour the fight opened at.
+ * An eclipse blocks its celestial body without changing the natural hour:
+ * `day_no_solar` means the sun is blocked (solar eclipse, effective during the
+ * day) and `night_no_lunar` means the moon is blocked (lunar eclipse, effective
+ * during the night). Damage and effect bonuses read this state; skills that
+ * only work during the day/night read the natural {@link CombatTimePhase}.
+ */
+export type EffectiveCombatTimePhase = CombatTimePhase | 'day_no_solar' | 'night_no_lunar';
+
+/**
+ * A battlefield-wide celestial block forced by an eclipse.
+ *
+ * The block only takes effect when the natural phase matches the body it hides
+ * (solar during the day, lunar during the night). While active it suppresses
+ * that body's combat bonuses without changing the natural hour.
  */
 export interface CombatPhaseOverride {
-    phase: CombatTimePhase;
+    /** Which celestial body is blocked. */
+    blocked: CombatCelestialBlock;
     /** Full rounds left; the override clears when it reaches zero. */
     rounds: number;
-    /** The unit whose action forced the phase. */
+    /** The unit whose action forced the block. */
     sourceId: string;
 }
 
@@ -824,13 +840,13 @@ export interface CombatState {
      * duration — the sun does not move while two people are hitting each other.
      */
     hour: number;
-    /** Whether the sun is up, derived from {@link CombatState.hour}. */
+    /** The natural phase (sun up/down), derived from {@link CombatState.hour}. */
     timePhase: CombatTimePhase;
     /**
-     * A phase forced over the battlefield, or `null`.
+     * A celestial block forced over the battlefield, or `null`.
      *
-     * Read instead of {@link CombatState.timePhase} by damage, effect magnitudes,
-     * previews and the HUD while it lasts.
+     * Folded into {@link EffectiveCombatTimePhase} by {@link effectiveTimePhase}
+     * when the natural hour matches the blocked body.
      */
     phaseOverride: CombatPhaseOverride | null;
     /**

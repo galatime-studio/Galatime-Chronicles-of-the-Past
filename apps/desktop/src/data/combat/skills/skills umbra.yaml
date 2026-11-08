@@ -648,7 +648,7 @@ skills:
         polarity: positive
   - id: solar_eclipse
     name: Solar Eclipse
-    description: "The moon covers the sun for 5 turns, supressing all day-light; Lunar attacks deal damage like it was day and Solar attacks deal damage like it was night"
+    description: "The moon covers the sun for 5 turns, suppressing all daylight. Only works during the day."
     element_id: umbra
     sfx: umbra
     learning_cost:
@@ -657,6 +657,7 @@ skills:
       required_attack_ids:
         - blood_moon
     targeting: self
+    only_during_day: true
     costs:
       mana: 20
       stamina: 0
@@ -666,7 +667,7 @@ skills:
         status_effect: Solar Eclipse
         apply_to: self
         turns: 5
-        set_phase: night
+        block_solar: true
         phase_rounds: 5
         polarity: neutral
   - id: darkness

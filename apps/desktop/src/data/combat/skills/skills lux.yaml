@@ -367,7 +367,7 @@ skills:
         polarity: positive
   - id: lunar_eclipse
     name: Lunar Eclipse
-    description: "The sun hides the moon light for 5 turns, supressing all moonlight; Lunar attacks deal damage like it was day and Solar attacks deal damage like it was night"
+    description: "The sun hides the moonlight for 5 turns, suppressing all moonlight. Only works at night."
     element_id: lux
     sfx: lux
     learning_cost:
@@ -375,7 +375,8 @@ skills:
     learning_requirements:
       required_attack_ids:
         - dawn
-    targeting: both_teams
+    targeting: self
+    only_during_night: true
     costs:
       mana: 20
       stamina: 0
@@ -385,7 +386,7 @@ skills:
         status_effect: Lunar Eclipse
         apply_to: self
         turns: 5
-        set_phase: day
+        block_lunar: true
         phase_rounds: 5
         polarity: neutral
   - id: mass

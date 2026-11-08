@@ -16,8 +16,8 @@ import type {
     CombatActionImpact,
     CombatElementIndex,
     CombatRandom,
-    CombatTimePhase,
     CombatUnit,
+    EffectiveCombatTimePhase,
 } from '../../types/CombatType';
 import { foldAttackModifiers } from './abilityModifiers';
 import { DETERMINISTIC_PREVIEW_RANDOM, resolveDamage } from './damageCalculator';
@@ -58,8 +58,8 @@ export interface PreviewImpactParams {
     units: readonly CombatUnit[];
     elementIndex: CombatElementIndex;
     random: CombatRandom;
-    /** The hour of the day the fight happens at. */
-    timePhase: CombatTimePhase;
+    /** The effective combat time state. */
+    timePhase: EffectiveCombatTimePhase;
     /** The defender's remaining health, as a fraction of its maximum. */
     defenderHpFraction?: number;
 }

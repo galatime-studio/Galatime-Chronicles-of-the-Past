@@ -58,9 +58,11 @@ export interface AttackEffect {
      * (`0.15` = 15%).
      */
     drain_percent_of_damage?: number;
-    /** Forces the battlefield's phase (`day`/`night`) while the effect lasts. */
-    set_phase?: 'day' | 'night';
-    /** Rounds the forced phase lasts; defaults to 5. */
+    /** Blocks lunar combat bonuses while the effect lasts (effective at night). */
+    block_lunar?: boolean;
+    /** Blocks solar combat bonuses while the effect lasts (effective during the day). */
+    block_solar?: boolean;
+    /** Rounds the eclipse block lasts; defaults to 5. */
     phase_rounds?: number;
     /** Flat damage the effect deals to its owner at the start of its turn. */
     damage_per_turn?: number;

@@ -1,5 +1,5 @@
 import type { AbilityDisplayEntry } from '../../../../types/AbilityType';
-import type { CombatActionImpact, CombatStats, CombatTimePhase, CombatUnitStatus } from '../../../../types/CombatType';
+import type { CombatActionImpact, CombatStats, CombatUnitStatus, EffectiveCombatTimePhase } from '../../../../types/CombatType';
 import type { ArenaSequence } from '../battle/combatArenaSequence';
 
 /**
@@ -121,16 +121,8 @@ export interface CombatFormationHUDProps {
      * bug: a solar skill is worth less at night, and the board says so.
      */
     hour?: number;
-    /** Whether the sun is up. */
-    timePhase?: CombatTimePhase;
-    /**
-     * Whether a skill has forced the opposite phase on the battlefield.
-     *
-     * A compelled phase comes without its own celestial body — a forced day has
-     * no sun and a forced night no moon — so the hour chip draws the matching
-     * `*_no_*` icon instead of the plain one.
-     */
-    phaseOverridden?: boolean;
+    /** The effective combat time state (natural phase plus any eclipse block). */
+    timePhase?: EffectiveCombatTimePhase;
     /** Selection is visual-only; clearing a pin reports `null`. */
     onEntitySelect?: (entity: CombatFormationEntity | null) => void;
     className?: string;

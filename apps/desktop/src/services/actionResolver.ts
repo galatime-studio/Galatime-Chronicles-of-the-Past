@@ -56,7 +56,7 @@ import {
     applyRewind,
 } from './combat/effectMechanics';
 import { reachableTargets, scatterCandidates } from './combat/targetResolver';
-import { effectiveTimePhase, setPhaseOverride } from './combat/phaseOverride';
+import { effectiveTimePhase, setPhaseBlock } from './combat/phaseOverride';
 import { moveUnitToLine } from './combat/positionRules';
 import { fleeChanceFor } from './combat/fleeRules';
 import { weaponStackMultiplier, effectPowerMultiplier } from './combat/weaponEffects';
@@ -127,10 +127,11 @@ function attackAbilityContext(
 }
 
 /**
- * Applies any battlefield-phase override the action authors (`set_phase`).
+ * Applies any eclipse block the action authors (`block_lunar` / `block_solar`).
  *
- * It runs after the action's own hit and effects, so the eclipse cannot change
- * the cast that created it.
+ * Lunar eclipses only take effect during the night and solar only during the
+ * day; a cast outside its window does nothing. It runs after the action's own
+ * hit and effects, so the eclipse cannot change the cast that created it.
  */
 function resolveForcedPhase(
     state: CombatState,
@@ -139,11 +140,17 @@ function resolveForcedPhase(
 ): void {
     for (const effect of action.effects) {
         const record = asRecord(effect);
-        const phase = readString(record?.set_phase, '');
-        if (phase !== 'day' && phase !== 'night') continue;
+        if (!record) continue;
 
-        setPhaseOverride(state, phase, readNumber(record?.phase_rounds, 5), actor.id);
-        return;
+        const rounds = Math.max(1, Math.round(readNumber(record.phase_rounds ?? record.turns, 5)));
+        if (readBoolean(record.block_lunar, false)) {
+            if (state.timePhase === 'night') setPhaseBlock(state, 'lunar', rounds, actor.id);
+            return;
+        }
+        if (readBoolean(record.block_solar, false)) {
+            if (state.timePhase === 'day') setPhaseBlock(state, 'solar', rounds, actor.id);
+            return;
+        }
     }
 }
 
