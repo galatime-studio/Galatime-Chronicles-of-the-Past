@@ -17,6 +17,7 @@ import type {
     CombatElementIndex,
     CombatRandom,
     CombatUnit,
+    CombatWeather,
     EffectiveCombatTimePhase,
 } from '../../types/CombatType';
 import { foldAttackModifiers } from './abilityModifiers';
@@ -60,6 +61,8 @@ export interface PreviewImpactParams {
     random: CombatRandom;
     /** The effective combat time state. */
     timePhase: EffectiveCombatTimePhase;
+    /** The battlefield weather state, when one holds. */
+    weather?: CombatWeather | null;
     /** The defender's remaining health, as a fraction of its maximum. */
     defenderHpFraction?: number;
 }
@@ -88,6 +91,8 @@ export function previewImpact(params: PreviewImpactParams): CombatActionImpact {
         defenderStats: effectiveStats(target),
         defenderElementIds: target.elementIds,
         defender: target,
+        attacker: actor,
+        weather: params.weather ?? null,
         elementIndex,
         attackerLine: actor.line,
         defenderLine: target.line,

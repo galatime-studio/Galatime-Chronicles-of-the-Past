@@ -1,0 +1,1292 @@
+skills:
+  - id: wind
+    name: Wind
+    description: "The caster whips up a wild gust at the target, creating some light wounds; Reduces the target's SPD for 2 turns."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids: []
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 4
+    accuracy: 50
+    hit_count: 1
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: wind_effect
+        status_effect: Winded
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 10
+
+  - id: wind_slash
+    name: Wind Slash
+    description: "A quick attack that deals little damage; strikes three times in a flash."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - wind
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 5
+    accuracy: 95
+    hit_count: 3
+    costs:
+      mana: 4
+      stamina: 0
+      cooldown: 0
+
+  - id: razor_wind
+    name: Razor Wind
+    description: "A finer, faster flurry of razor-thin cuts; Each strike deals light damage."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - wind_slash
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 5
+    accuracy: 95
+    hit_count: 5
+    costs:
+      mana: 7
+      stamina: 0
+      cooldown: 0
+
+  - id: cutting_gale
+    name: Cutting Gale
+    description: "A single heavy wind-edge; PDEF −6 for 2 turns."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - wind_slash
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 14
+    accuracy: 95
+    hit_count: 1
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: cutting_gale_effect
+        status_effect: Sheared
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          physical_defense: 6
+
+  - id: tempest_flurry
+    name: Tempest Flurry
+    description: "A blur of cuts; Strikes with a force that grows with the caster's SPD."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - razor_wind
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 6
+    accuracy: 95
+    hit_count: 6
+    power_scaling:
+      stat: speed
+      per_point: 0.5
+    costs:
+      mana: 11
+      stamina: 0
+      cooldown: 0
+
+  - id: vacuum_blade
+    name: Vacuum Blade
+    description: "A blade of voided air; PDEF −10 for 2 turns, ignores some defence."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - cutting_gale
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 22
+    accuracy: 95
+    hit_count: 1
+    defense_pierce: 0.25
+    costs:
+      mana: 11
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: vacuum_blade_effect
+        status_effect: Punctured
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          physical_defense: 10
+ 
+  - id: storm_of_blades
+    name: Storm of Blades
+    description: "A swirling gale of edges that rakes every enemy; Combines rapid cuts with heavy wind-edges for area pressure."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - tempest_flurry
+        - cutting_gale
+    targeting: enemies_all
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 6
+    accuracy: 90
+    hit_count: 4
+    costs:
+      mana: 18
+      stamina: 0
+      cooldown: 0
+
+  - id: tailwind
+    name: Tailwind
+    description: "The caster rides a tailwind forward in the turn order; Gains SPD +12 for 2 turns, and if they act before the target, pushes the target to the back row (if there is space)."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - wind
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: tailwind_effect
+        status_effect: Tailwind
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff:
+          speed: 12
+      - effect_id: tailwind_push_effect
+        apply_to: target
+        move:
+          who: target
+          to_line: rear
+          condition:
+            requires_pending: true
+
+  - id: cloudstep
+    name: Cloudstep
+    description: "Ride the wind: SPD +14 for 2 turns and the caster may change lanes freely."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - tailwind
+    targeting: self
+    kind: utility
+    costs:
+      mana: 9
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: cloudstep_effect
+        status_effect: Cloudstep
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff:
+          speed: 14
+        lane_change_free: true
+
+  - id: updraft
+    name: Updraft
+    description: "The caster uses the wind to evade attacks; Gains EVASION +8 until their next action."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - wind
+    targeting: self
+    kind: utility
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: updraft_effect
+        status_effect: Updraft
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff:
+          evasion: 8
+        expires: turn_start
+
+  - id: windborne
+    name: Windborne
+    description: "The caster marks an ally with a guiding wind; The marked ally may move to the other line freely while the status lives."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - tailwind
+    targeting: any_one
+    kind: utility
+    costs:
+      mana: 9
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: windborne_effect
+        status_effect: Windborne
+        apply_to: target
+        turns: 3
+        polarity: positive
+        lane_change_free: true
+
+  - id: zephyr_veil
+    name: Zephyr Veil
+    description: "The caster sends a gentle breeze around the bearer, helping them avoid attacks; Grants SPD +8 and EVASION +12 for 2 turns, After an entity misses the bearer, the bearer will move to the other line without using a turn (and the effect breaks)."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - updraft
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: zephyr_veil_effect
+        status_effect: Zephyr Veil
+        apply_to: target
+        turns: 2
+        polarity: positive
+        buff:
+          speed: 8
+          evasion: 12
+        on_miss_move:
+          who: self
+          to_line: other
+          break_after: true
+
+  - id: slipstream
+    name: Slipstream
+    description: "The caster directs the wind to help the team move quicker; Grants SPD +14 for the caster's allies and SPD −6 for enemies for 1 turn."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - windborne
+        - zephyr_veil
+    targeting: both_teams
+    kind: buff
+    costs:
+      mana: 14
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: slipstream_effect
+        status_effect: Slipstream
+        apply_to: allies_all
+        turns: 1
+        polarity: positive
+        buff:
+          speed: 14
+      - effect_id: slipstream_headwind_effect
+        status_effect: Headwind
+        apply_to: enemies_all
+        turns: 1
+        polarity: negative
+        debuff:
+          speed: 6
+
+  - id: eye_of_the_storm
+    name: Eye of the Storm
+    description: "The caster concentrates the wind in his direction, helping him in speed and accuracy; SPD +18, MATK +8 and ACC +10% for 3 turns."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - slipstream
+    targeting: self
+    kind: buff
+    costs:
+      mana: 20
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: eye_of_the_storm_effect
+        status_effect: Eye of the Storm
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff:
+          speed: 18
+          magical_attack: 8
+          accuracy: 10
+
+  - id: gust
+    name: Gust
+    description: "The target loses SPD for 2 turns; If it has not yet acted this round, its action is postponed in the turn order but not canceled."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - wind
+    targeting: any_one
+    kind: debuff
+    costs:
+      mana: 4
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: gust_effect
+        status_effect: Swept
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 10
+        turn_postpone:
+          slots: 1
+          condition:
+            requires_pending: true
+
+  - id: pressure_edge
+    name: Pressure Edge
+    description: "ACC −15% for 3 turns."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - wind
+    targeting: any_one
+    kind: debuff
+    costs:
+      mana: 4
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: pressure_edge_effect
+        status_effect: Uneven Pressure
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff:
+          accuracy: 15
+
+  - id: squall
+    name: Squall
+    description: "ACC −12% for 3 turns to all enemies."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - pressure_edge
+    targeting: enemies_all
+    kind: debuff
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: squall_effect
+        status_effect: Squall
+        apply_to: enemies_all
+        turns: 3
+        polarity: negative
+        debuff:
+          accuracy: 12
+
+  - id: galeforce_shove
+    name: Galeforce Shove
+    description: "The caster gains SPD until the end of the round; If they act before the target, pushes them from the front line to the rear line; if the target is already in the rear line, their action is postponed. Does not deal damage."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - gust
+    targeting: any_one
+    kind: control
+    costs:
+      mana: 7
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: galeforce_shove_stall_effect
+        apply_to: target
+        turn_postpone:
+          slots: 1
+          condition:
+            requires_pending: true
+            target_line: rear
+      - effect_id: galeforce_shove_effect
+        status_effect: Gale Stance
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff:
+          speed: 12
+        expires: round_end
+      - effect_id: galeforce_shove_push_effect
+        apply_to: target
+        move:
+          who: target
+          to_line: rear
+          condition:
+            requires_pending: true
+            target_line: front
+
+  - id: crosswind
+    name: Crosswind
+    description: "The caster sends various winds from different directions in the enemy area, reducing their accuracy; Reduces the Accuracy of all enemies for 2 turns; Enemies in the rear line have an even lower chance of landing ranged attacks."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - squall
+    targeting: enemies_all
+    kind: debuff
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: crosswind_effect
+        status_effect: Crosswind
+        apply_to: enemies_all
+        turns: 2
+        polarity: negative
+        debuff:
+          accuracy: 12
+      - effect_id: crosswind_rear_effect
+        status_effect: Beating Winds
+        apply_to: enemies_all
+        turns: 2
+        polarity: negative
+        debuff:
+          accuracy: 8
+        condition:
+          target_line: rear
+
+  - id: uproot
+    name: Uproot
+    description: "If the target has not yet acted this round, delays their next action based on the caster's speed; If they have already acted, reduces their SPD for 2 turns instead."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - galeforce_shove
+    targeting: any_one
+    kind: control
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: uproot_delay_effect
+        apply_to: target
+        turn_postpone:
+          slots: 1
+          per_speed_advantage: 20
+          condition:
+            requires_pending: true
+      - effect_id: uproot_sway_effect
+        status_effect: Swaying
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 12
+        condition:
+          requires_acted: true
+
+  - id: windfunnel
+    name: Windfunnel
+    description: "Seal every enemy's actions for 1 turn and ACC −10% while the seal stands (does not reach whoever has already used their turn); Attempts at changing lines while the seal stands are also canceled. Does not deal damage."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 7
+    learning_requirements:
+      required_attack_ids:
+        - crosswind
+        - uproot
+    targeting: enemies_all
+    kind: control
+    costs:
+      mana: 18
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: windfunnel_effect
+        status_effect: Sealed
+        apply_to: enemies_all
+        turns: 2
+        polarity: negative
+        debuff:
+          accuracy: 10
+        condition:
+          requires_pending: true
+        prevent_actions:
+          - attack
+          - defend
+          - rest
+          - flee
+          - inventory
+          - switch_line
+      - effect_id: windfunnel_scuttle_effect
+        status_effect: Scattered
+        apply_to: enemies_all
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 12
+        condition:
+          requires_pending: true
+
+  - id: sky
+    name: Sky
+    description: "Attunes the caster to the open sky. A rite of passage with no combat effect of its own."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids: []
+    targeting: self
+    kind: utility
+    costs:
+      mana: 2
+      stamina: 0
+      cooldown: 0
+
+  - id: skyfall
+    name: Skyfall
+    description: "A silhouette splits from the clouds and crashes onto the target. The impact is hard to read — damage swings between half and one and a half times the base power."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids: []
+    targeting: any_one
+    kind: attack
+    costs:
+      mana: 6
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 16
+    accuracy: 85
+    damage_variance: [0.5, 1.5]
+
+  - id: dive_bomb
+    name: Dive Bomb
+    description: "A steeper, heavier dive that slams into the target from high above. Damage varies widely with the angle of the drop."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - skyfall
+    targeting: any_one
+    kind: attack
+    costs:
+      mana: 9
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 22
+    accuracy: 85
+    damage_variance: [0.6, 1.4]
+
+  - id: cloudpiercer
+    name: Cloudpiercer
+    description: "A needle of compressed air thrown from the clouds. It flies true (never misses) and pierces part of the target's defence."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - skyfall
+    targeting: any_one
+    kind: attack
+    costs:
+      mana: 9
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 18
+    accuracy: 100
+    defense_pierce: 0.25
+
+  - id: downburst
+    name: Downburst
+    description: "A column of air slams the target into the ground. Deals solid magical damage and reduces the target's SPD by 10 for 2 turns."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - skyfall
+    targeting: any_one
+    kind: attack
+    costs:
+      mana: 11
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 20
+    accuracy: 95
+    effects:
+      - effect_id: downburst_effect
+        status_effect: Grounded
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 10
+
+  - id: skydive
+    name: Skydive
+    description: "A full plummet from the edge of the sky. Heavy damage that is wildly erratic — the landing decides everything."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - dive_bomb
+    targeting: any_one
+    kind: attack
+    costs:
+      mana: 13
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 28
+    accuracy: 85
+    damage_variance: [0.6, 1.4]
+
+  - id: meteor_drop
+    name: Meteor Drop
+    description: "A mass of gathered cloud and stone falls like a meteor. Enormous variance, and each hit that lands as a critical strike deals double damage."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - skydive
+    targeting: any_one
+    kind: attack
+    costs:
+      mana: 17
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 34
+    accuracy: 80
+    damage_variance: [0.5, 1.5]
+    crit_multiplier: 2
+
+  - id: rain_of_lances
+    name: Rain of Lances
+    description: "Hardens the sky into spears that rain down on every enemy, ignoring part of their defence."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - cloudpiercer
+    targeting: enemies_all
+    kind: attack
+    costs:
+      mana: 15
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 14
+    accuracy: 95
+    defense_pierce: 0.25
+
+  - id: hail
+    name: Hail
+    description: "Whips up a brief storm of ice pellets that pelt every enemy in the field."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - sky
+    targeting: enemies_all
+    kind: attack
+    costs:
+      mana: 7
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 8
+    accuracy: 95
+
+  - id: thunderhead
+    name: Thunderhead
+    description: "Lightning cracks down on every enemy, and a heavy thunderhead settles over the field for 3 rounds, boosting Chaos skills by 20% while it stands."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - storm
+        - hail
+    targeting: enemies_all
+    kind: control
+    costs:
+      mana: 22
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 12
+    accuracy: 85
+    effects:
+      - effect_id: thunderhead_weather_effect
+        apply_to: enemies_all
+        weather:
+          rounds: 3
+          element_effect_multipliers:
+            chaos: 1.2
+
+  - id: cloudy
+    name: Cloudy
+    description: "Draws a blanket of clouds over the battlefield for 2 rounds: the boost of the guiding celestial body is suppressed — solar boosts by day, lunar boosts by night."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - sky
+    targeting: self
+    kind: control
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: cloudy_effect
+        apply_to: self
+        block_solar: true
+        block_lunar: true
+        turns: 2
+
+  - id: rain
+    name: Rain
+    description: "Sets a steady rain over the field for 3 rounds: Aqua skills are 10% stronger while it falls, and Ignis skills are dampened to 90% of their effect."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - cloudy
+    targeting: self
+    kind: control
+    costs:
+      mana: 16
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: rain_weather_effect
+        apply_to: self
+        weather:
+          rounds: 3
+          element_effect_multipliers:
+            aqua: 1.1
+            ignis: 0.9
+
+  - id: storm
+    name: Storm
+    description: "Unleashes a violent storm that lashes every enemy, and hangs over the field for 3 rounds: Aqua skills become 20% stronger while it rages, and every enemy loses 8 HP to the whipping wind each round."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - rain
+    targeting: enemies_all
+    kind: control
+    costs:
+      mana: 22
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 12
+    accuracy: 85
+    effects:
+      - effect_id: storm_weather_effect
+        apply_to: enemies_all
+        weather:
+          rounds: 3
+          chip_damage: 8
+          element_effect_multipliers:
+            aqua: 1.2
+
+  - id: tornado
+    name: Tornado
+    description: "Tears a funnel cloud across the enemies' formation: heavy magical damage to all of them, and the wind drags enemies toward the front line wherever there is room."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 7
+    learning_requirements:
+      required_attack_ids:
+        - storm
+        - tempest_flurry
+    targeting: enemies_all
+    kind: attack
+    costs:
+      mana: 24
+      stamina: 0
+      cooldown: 0
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 32
+    accuracy: 80
+    effects:
+      - effect_id: tornado_drag_effect
+        apply_to: enemies_all
+        move:
+          who: target
+          to_line: front
+
+  - id: sky_lift
+    name: Sky Lift
+    description: "The wind scoops an ally and carries them to the rear line without spending their turn. If the rear line is full, they instead brace mid-air (EVA +8) until their next action."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - sky
+    targeting: any_one
+    kind: utility
+    costs:
+      mana: 6
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: sky_lift_brace_effect
+        status_effect: Updraft
+        apply_to: target
+        turns: 2
+        polarity: positive
+        buff:
+          evasion: 8
+        expires: turn_start
+        condition:
+          requires_no_space: rear
+      - effect_id: sky_lift_move_effect
+        apply_to: target
+        move:
+          who: target
+          to_line: rear
+
+  - id: air_current
+    name: Air Current
+    description: "Raises a wall of moving air around the enemies for 2 turns: while it stands, they cannot cross lines with switch_line."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - sky_lift
+    targeting: enemies_all
+    kind: utility
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: air_current_effect
+        status_effect: Air Current
+        apply_to: enemies_all
+        turns: 2
+        polarity: negative
+        prevent_actions:
+          - switch_line
+
+  - id: sky_zone
+    name: Sky Zone
+    description: "Couples the enemies to the unstable sky for 2 turns (does not reach whoever already used their turn): SPD −8 and switching lines is cancelled while the zone stands."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - air_current
+    targeting: enemies_all
+    kind: control
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: sky_zone_effect
+        status_effect: Sky Zone
+        apply_to: enemies_all
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 8
+        condition:
+          requires_pending: true
+        prevent_actions:
+          - switch_line
+
+  - id: gale_resonance
+    name: Gale Resonance
+    description: "Tunes the team to the gale for 3 turns: SPD +10, and Caeli skills used by the bearer have 15% stronger effects."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - cloudstep
+    targeting: allies_all
+    kind: buff
+    costs:
+      mana: 18
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: gale_resonance_effect
+        status_effect: Gale Resonance
+        apply_to: allies_all
+        turns: 3
+        polarity: positive
+        buff:
+          speed: 10
+        element_power:
+          caeli: 1.15
+
+  - id: ranged_veil
+    name: Ranged Veil
+    description: "Spreads a veil through the caster's lane that lasts until each veiled ally acts: thrown and long-reach weapons and spells aimed at them find them 15 points harder to hit."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - sky_zone
+        - gale_resonance
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: ranged_veil_effect
+        status_effect: Ranged Veil
+        apply_to: allies_lane
+        turns: 2
+        polarity: positive
+        ranged_evasion: 15
+        expires: turn_end
+
+  - id: blackout
+    name: Blackout
+    description: "Smothers the light for 3 rounds: solar boosts are suppressed and Lux skills drop to 90% of their effect while it lasts."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - cloudy
+    targeting: self
+    kind: debuff
+    costs:
+      mana: 18
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: blackout_effect
+        apply_to: self
+        block_solar: true
+        phase_rounds: 3
+        weather:
+          rounds: 3
+          element_effect_multipliers:
+            lux: 0.9
+
+  - id: pressure_crush
+    name: Pressure Crush
+    description: "Focuses the sky's weight onto every enemy for 2 turns: SPD −8 and MAG −10."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - sky_zone
+    targeting: enemies_all
+    kind: debuff
+    costs:
+      mana: 16
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: pressure_crush_effect
+        status_effect: Pressured
+        apply_to: enemies_all
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 8
+          magical_attack: 10
+
+  - id: skyline_sight
+    name: Skyline Sight
+    description: "Grants the target a thrower's eye for 3 turns: thrown weapons and long-reach attacks gain ACC +12 (spells and melee do not benefit)."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - sky
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: skyline_sight_effect
+        status_effect: Skyline Sight
+        apply_to: target
+        turns: 3
+        polarity: positive
+        projectile_accuracy:
+          amount: 12
+
+  - id: tailwind_trajectory
+    name: Tailwind Trajectory
+    description: "Reads the currents for the whole team for 3 turns: thrown weapons and long-reach attacks aimed at enemies in the rear lane gain ACC +18."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - skyline_sight
+    targeting: allies_all
+    kind: buff
+    costs:
+      mana: 14
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: tailwind_trajectory_effect
+        status_effect: Tailwind Trajectory
+        apply_to: allies_all
+        turns: 3
+        polarity: positive
+        projectile_accuracy:
+          amount: 18
+          vs_lane: rear
+
+  - id: crosswind_mark
+    name: Crosswind Mark
+    description: "Charts crossing streams over the target for 2 turns: thrown weapons and long-reach attacks aimed at them gain ACC +15."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - tailwind_trajectory
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 14
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: crosswind_mark_effect
+        status_effect: Crosswind Mark
+        apply_to: target
+        turns: 2
+        polarity: positive
+        projectile_mark:
+          accuracy: 15
+
+  - id: second_chance
+    name: Second Chance
+    description: "Covers the caster in wind that carries missed shots back on course. For 2 turns, the first thrown or long-reach, single-hit attack that misses each round is re-thrown once at the same target with no extra cost."
+    element_id: caeli
+    sfx: caeli
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - tailwind_trajectory
+        - crosswind_mark
+    targeting: self
+    kind: utility
+    costs:
+      mana: 20
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: second_chance_effect
+        status_effect: Second Chance
+        apply_to: self
+        turns: 2
+        polarity: positive
+        projectile_reroll:
+          per_turn: 1

@@ -198,6 +198,15 @@
         move: 'Deslocação',
         upkeep: 'Manutenção',
         rewind: 'Retroceder tempo',
+        // Vento (caeli): atraso de turno e reação a golpes falhados.
+        stall: 'Atraso',
+        react_move: 'Véu',
+        // Céu (caeli): clima, mira de projéteis e véu anti-atiradores.
+        weather: 'Clima',
+        sight: 'Mira firme',
+        mark: 'Marca cruzada',
+        veil: 'Véu antiaéreo',
+        reroll: 'Segunda chance',
     };
 
     function patternStatusName(pattern) { return PATTERN_STATUS_NAMES[pattern] || 'Efeito'; }
@@ -309,6 +318,32 @@
             id: 'oath', title: 'Juramento de sangue', category: 'Preço em vida', description: 'Custa vida agora e paga o resto no turno seguinte.',
             build: function (skillId) { return { targeting: 'any_one', damage: { kind: 'physical', power: { kind: 'fixed', value: 26 } }, accuracy: 100, hit_count: 1, effects: [makeEffect(skillId, 'debuff', 'target', 0, { deferred_cost: { hp: 12 } })], costs: { mana: 0, stamina: 0, hp: 10, cooldown: 1 } }; },
         },
+        // Vento (caeli): tempo, posição livre e reação a golpes falhados.
+        {
+            id: 'stall_gust', title: 'Atolamento', category: 'Vento (caeli)', description: 'Atrasa o próximo turno de um inimigo que ainda não agiu.',
+            build: function (skillId) { return { targeting: 'any_one', effects: [makeEffect(skillId, 'stall', 'target', 0, { turn_postpone: { slots: 1, condition: { requires_pending: true } } })], costs: { mana: 5, stamina: 0, cooldown: 1 } }; },
+        },
+        {
+            id: 'free_lane', title: 'Travessia', category: 'Vento (caeli)', description: 'O portador troca de linha sem gastar o turno.',
+            build: function (skillId) { return { targeting: 'any_one', effects: [makeEffect(skillId, 'buff', 'target', 0, { buff: { speed: 6 }, lane_change_free: true, turns: 2 })], costs: { mana: 9, stamina: 0, cooldown: 1 } }; },
+        },
+        {
+            id: 'miss_veil', title: 'Véu reativo', category: 'Vento (caeli)', description: 'Quando um ataque falha o portador, ele escapa para a outra linha.',
+            build: function (skillId) { return { targeting: 'any_one', effects: [makeEffect(skillId, 'react_move', 'target', 0, { buff: { evasion: 10 }, on_miss_move: { who: 'self', to_line: 'other', break_after: true }, turns: 2 })], costs: { mana: 10, stamina: 0, cooldown: 1 } }; },
+        },
+        // Céu (caeli): clima, mira de projéteis e véu anti-atiradores.
+        {
+            id: 'rain_field', title: 'Chuva', category: 'Céu (caeli)', description: 'Instala a chuva sobre o campo por 3 rodadas: Aqua mais forte, Ignis mais fraco.',
+            build: function (skillId) { return { targeting: 'self', effects: [makeEffect(skillId, 'weather', 'self', 0, { weather: { rounds: 3, element_effect_multipliers: { aqua: 1.1, ignis: 0.9 } } })], costs: { mana: 14, stamina: 0, cooldown: 1 } }; },
+        },
+        {
+            id: 'shooting_sight', title: 'Mira da linha do céu', category: 'Céu (caeli)', description: 'Arremessos e ataques de longo alcance do portador ganham precisão.',
+            build: function (skillId) { return { targeting: 'any_one', effects: [makeEffect(skillId, 'sight', 'target', 0, { projectile_accuracy: { amount: 12 }, turns: 3 })], costs: { mana: 8, stamina: 0, cooldown: 0 } }; },
+        },
+        {
+            id: 'sky_veil', title: 'Véu anti-atiradores', category: 'Céu (caeli)', description: 'Ataques à distância findam o portador mais difícil de acertar até este agir.',
+            build: function (skillId) { return { targeting: 'any_one', effects: [makeEffect(skillId, 'veil', 'target', 0, { ranged_evasion: 15, turns: 2, expires: 'turn_end' })], costs: { mana: 10, stamina: 0, cooldown: 1 } }; },
+        },
     ];
 
     function makeSkill(project, name, elementId, requirements, template) {
@@ -373,11 +408,19 @@
             if (accuracy !== 100) details.push(accuracy + '% de precisão');
             sentences.push(headline + (details.length ? ' (' + details.join(', ') + ')' : '') + '.');
         }
+        if (skill.power_scaling && typeof skill.power_scaling === 'object') {
+            sentences.push('Cada golpe soma ' + skill.power_scaling.per_point
+                + ' de poder por ponto de ' + (STAT_LABELS[skill.power_scaling.stat]
+                    ? String(skill.power_scaling.stat) : skill.power_scaling.stat) + '.');
+        }
         if (skill.solar) sentences.push('Dano solar: ×1.5 de dia, ×0.5 de noite.');
         if (skill.lunar) sentences.push('Dano noturno: ×1.5 de noite, ×0.5 de dia.');
         if (skill.only_during_day) sentences.push('Só funciona de dia.');
         if (skill.only_during_night) sentences.push('Só funciona de noite.');
         if (skill.crit_chance) sentences.push(skill.crit_chance + '% de chance de crítico (×1.75).');
+        if (skill.crit_multiplier && skill.crit_multiplier > 0) {
+            sentences.push('Críticos valem ×' + skill.crit_multiplier + ' de dano.');
+        }
         if (skill.ignore_accuracy) sentences.push('Acerta sempre, sem tirada de precisão.');
         if (skill.defense_pierce) sentences.push('Ignora ' + Math.round(skill.defense_pierce * 100) + '% da defesa do alvo.');
         if (skill.guaranteed_crit_vs_status) sentences.push('Crítico garantido contra “' + skill.guaranteed_crit_vs_status + '”.');
@@ -628,6 +671,71 @@
                 + (effect.trip_on_action.damage ?? 0) + ' de dano.');
         }
         if (effect.require_all_hits) fragments.push('Só aplica quando todos os golpes da skill acertam.');
+        // Mecânicas de vento (caeli).
+        var condition = effect.condition && typeof effect.condition === 'object' ? effect.condition : null;
+        if (condition) {
+            var conditionParts = [];
+            if (condition.requires_pending) conditionParts.push('só se o alvo ainda não agiu nesta ronda');
+            if (condition.requires_acted) conditionParts.push('só se o alvo já agiu nesta ronda');
+            if (condition.target_line) conditionParts.push('só contra ' + (condition.target_line === 'front' ? 'a linha da frente' : 'a linha de trás'));
+            if (conditionParts.length) fragments.push('Aplica-se ' + conditionParts.join(' e ') + '.');
+        }
+        if (effect.turn_postpone && typeof effect.turn_postpone === 'object') {
+            var postponeText = 'Atrasa o próximo turno do alvo em ' + (effect.turn_postpone.slots ?? 1) + ' espaço(s)';
+            if (effect.turn_postpone.per_speed_advantage) {
+                postponeText += ', mais um espaço por cada ' + effect.turn_postpone.per_speed_advantage
+                    + ' ponto(s) de vantagem de velocidade';
+            }
+            fragments.push(postponeText + '.');
+        }
+        if (effect.lane_change_free) fragments.push('O portador pode trocar de linha sem gastar o turno.');
+        if (effect.on_miss_move && typeof effect.on_miss_move === 'object') {
+            fragments.push('Quando um ataque falha o portador, ele muda para a linha '
+                + (effect.on_miss_move.to_line === 'front' ? 'da frente' : effect.on_miss_move.to_line === 'rear' ? 'de trás' : 'oposta')
+                + (effect.on_miss_move.swap_with_caster ? ', trocando de posição com quem atacou' : '')
+                + ' sem gastar o turno'
+                + (effect.on_miss_move.break_after === false ? '' : ', e o estado acaba') + '.');
+        }
+        if (effect.expires === 'turn_start') fragments.push('O efeito termina assim que o portador começar o próximo turno.');
+        if (effect.expires === 'turn_end') fragments.push('O efeito termina assim que o portador terminar o turno em curso.');
+        if (effect.expires === 'round_end') fragments.push('O efeito termina no fim da ronda.');
+        // Mecânicas de céu (caeli Sky): clima, projéteis e véu.
+        if (effect.weather && typeof effect.weather === 'object') {
+            var weatherParts = [];
+            if (effect.weather.element_effect_multipliers && typeof effect.weather.element_effect_multipliers === 'object') {
+                Object.keys(effect.weather.element_effect_multipliers).forEach(function (element) {
+                    weatherParts.push('efeitos e dano de ' + element + ' ×' + effect.weather.element_effect_multipliers[element]);
+                });
+            }
+            if (effect.weather.chip_damage) weatherParts.push('dano de ' + effect.weather.chip_damage + ' ao lado adversário por ronda');
+            fragments.push('Instala um clima durante ' + (effect.weather.rounds ?? 3) + ' ronda(s)'
+                + (weatherParts.length ? ': ' + weatherParts.join(', ') : '') + '.');
+        }
+        if (effect.element_power && typeof effect.element_power === 'object') {
+            Object.keys(effect.element_power).forEach(function (element) {
+                fragments.push('Skills de ' + element + ' de quem usa valem ×' + effect.element_power[element] + '.');
+            });
+        }
+        if (effect.projectile_accuracy && typeof effect.projectile_accuracy === 'object') {
+            fragments.push('Lançamentos e ataques de longo alcance ganham +' + effect.projectile_accuracy.amount
+                + ' de precisão'
+                + (effect.projectile_accuracy.vs_lane === 'front' ? ' contra a linha da frente'
+                    : effect.projectile_accuracy.vs_lane === 'rear' ? ' contra a linha de trás' : '') + '.');
+        }
+        if (effect.projectile_mark && typeof effect.projectile_mark === 'object') {
+            fragments.push('Lançamentos e ataques de longo alcance contra o portador ganham +'
+                + effect.projectile_mark.accuracy + ' de precisão para quem atira.');
+        }
+        if (effect.ranged_evasion) fragments.push('O portador ganha +' + effect.ranged_evasion
+            + ' de esquiva contra projéteis e feitiços.');
+        if (effect.projectile_reroll && typeof effect.projectile_reroll === 'object') {
+            fragments.push('Até ' + (effect.projectile_reroll.per_turn ?? 1)
+                + ' vez(es) por ronda, o portador repete o primeiro disparo que falhou.');
+        }
+        if (condition && condition.requires_no_space) {
+            fragments.push('Só aplica se a linha ' + (condition.requires_no_space === 'front' ? 'da frente' : 'de trás')
+                + ' estiver cheia.');
+        }
         return fragments.join(' ');
     }
 
@@ -682,6 +790,11 @@
             'charges', 'trip_on_action', 'block_stat_buffs', 'damage_channel_modulation',
             'counter_chance', 'counter_except_elements', 'prevent_damage_channels',
             'require_all_hits',
+            // Vento (caeli): condições de aplicação, tempo e posição reativas.
+            'condition', 'turn_postpone', 'lane_change_free', 'on_miss_move', 'expires',
+            // Céu (caeli Sky): clima, projéteis e véu antiaéreo.
+            'weather', 'element_power', 'projectile_accuracy', 'projectile_mark',
+            'ranged_evasion', 'projectile_reroll',
         ];
         var cleaned = {};
         allowed.forEach(function (key) {
@@ -703,7 +816,8 @@
             delete cleaned.random_targets;
         }
         // Casca vazia das novas mecânicas: some.
-        ['shield', 'cleanse_per_turn', 'spend_trigger', 'upgrade_vs_status', 'charges', 'trip_on_action', 'element_modulation'].forEach(function (key) {
+        ['shield', 'cleanse_per_turn', 'spend_trigger', 'upgrade_vs_status', 'charges', 'trip_on_action', 'element_modulation',
+            'condition', 'turn_postpone', 'on_miss_move', 'element_power', 'projectile_accuracy', 'projectile_mark'].forEach(function (key) {
             if (cleaned[key] && typeof cleaned[key] === 'object' && !Object.keys(cleaned[key]).length) {
                 delete cleaned[key];
             }
@@ -747,7 +861,11 @@
         if (source.only_during_night === true || source.only_during_night === 'true') skill.only_during_night = true;
         if (source.ignore_accuracy === true || source.ignore_accuracy === 'true') skill.ignore_accuracy = true;
         if (source.kind && typeof source.kind === 'string') skill.kind = source.kind;
-        ['crit_chance', 'flee_below_hp', 'defense_pierce'].forEach(function (key) {
+        if (source.power_scaling && typeof source.power_scaling === 'object'
+            && source.power_scaling.stat && Number.isFinite(Number(source.power_scaling.per_point))) {
+            skill.power_scaling = { stat: String(source.power_scaling.stat), per_point: Number(source.power_scaling.per_point) };
+        }
+        ['crit_chance', 'flee_below_hp', 'defense_pierce', 'crit_multiplier'].forEach(function (key) {
             if (source[key] === undefined || source[key] === null) return;
             var value = Number(source[key]);
             if (Number.isFinite(value)) skill[key] = value;
@@ -861,7 +979,20 @@
                 }
             }
             if (skill.damage && skill.damage.power && typeof skill.damage.power === 'object' && skill.damage.power.kind === 'scaling') {
-                warnings.push({ path: path + '.damage.power', message: 'O motor ainda não lê “power.kind: scaling” (readPower devolve 0) — usa um valor fixo até existir suporte.' });
+                warnings.push({ path: path + '.damage.power', message: 'O motor não lê “power.kind: scaling” dentro do dano — autoriza a escala no nível da skill via “power_scaling”.' });
+            }
+            if (skill.power_scaling !== undefined) {
+                if (!skill.power_scaling || typeof skill.power_scaling !== 'object' || !String(skill.power_scaling.stat || '').trim()) {
+                    errors.push({ path: path + '.power_scaling', message: 'power_scaling precisa de um atributo (ex.: speed, magical_attack).' });
+                } else if (!Number.isFinite(Number(skill.power_scaling.per_point)) || Number(skill.power_scaling.per_point) <= 0) {
+                    errors.push({ path: path + '.power_scaling.per_point', message: 'O ganho por ponto de atributo tem de ser positivo.' });
+                }
+            }
+            if (skill.crit_multiplier !== undefined && skill.crit_multiplier !== null) {
+                var critMultiplier = Number(skill.crit_multiplier);
+                if (!Number.isFinite(critMultiplier) || critMultiplier < 1) {
+                    errors.push({ path: path + '.crit_multiplier', message: 'O multiplicador de crítico tem de ser 1 ou mais (omito-o para ficar com o ×1.75 base).' });
+                }
             }
             if (skill.accuracy !== undefined && skill.accuracy !== null) {
                 var accuracy = Number(skill.accuracy);
@@ -1265,6 +1396,156 @@
                         }
                     });
                 });
+                // Vento (caeli): condições, atraso de turno, movimentos reativos.
+                if (effect.condition !== undefined) {
+                    if (!effect.condition || typeof effect.condition !== 'object' || Array.isArray(effect.condition)) {
+                        errors.push({ path: effectPath + '.condition', message: 'A condição tem de ser um objeto.' });
+                    } else {
+                        ['requires_pending', 'requires_acted'].forEach(function (flag) {
+                            if (effect.condition[flag] !== undefined && typeof effect.condition[flag] !== 'boolean') {
+                                errors.push({ path: effectPath + '.condition.' + flag, message: '“' + flag + '” tem de ser verdadeiro ou falso.' });
+                            }
+                        });
+                        if (effect.condition.target_line !== undefined && effect.condition.target_line !== ''
+                            && ['front', 'rear'].indexOf(effect.condition.target_line) === -1) {
+                            errors.push({ path: effectPath + '.condition.target_line', message: 'A linha da condição tem de ser front ou rear.' });
+                        }
+                        if (effect.condition.requires_no_space !== undefined && effect.condition.requires_no_space !== ''
+                            && ['front', 'rear'].indexOf(effect.condition.requires_no_space) === -1) {
+                            errors.push({ path: effectPath + '.condition.requires_no_space', message: 'A linha cheia da condição tem de ser front ou rear.' });
+                        }
+                        if (!effect.condition.requires_pending && !effect.condition.requires_acted
+                            && !String(effect.condition.target_line || '').trim()
+                            && !String(effect.condition.requires_no_space || '').trim()) {
+                            warnings.push({ path: effectPath + '.condition', message: 'Condição sem cláusulas — o motor ignora-a. Apaga-a.' });
+                        }
+                    }
+                }
+                if (effect.turn_postpone !== undefined) {
+                    if (!effect.turn_postpone || typeof effect.turn_postpone !== 'object' || Array.isArray(effect.turn_postpone)) {
+                        errors.push({ path: effectPath + '.turn_postpone', message: 'O atraso de turno tem de ser um objeto.' });
+                    } else {
+                        if (effect.turn_postpone.slots !== undefined && effect.turn_postpone.slots !== null) {
+                            var postponeSlots = Number(effect.turn_postpone.slots);
+                            if (!Number.isInteger(postponeSlots) || postponeSlots < 1) {
+                                errors.push({ path: effectPath + '.turn_postpone.slots', message: 'Os espaços de atraso têm de ser um inteiro de 1 ou mais.' });
+                            }
+                        }
+                        if (effect.turn_postpone.per_speed_advantage !== undefined && effect.turn_postpone.per_speed_advantage !== null) {
+                            var postponeAdvantage = Number(effect.turn_postpone.per_speed_advantage);
+                            if (!Number.isInteger(postponeAdvantage) || postponeAdvantage < 1) {
+                                errors.push({ path: effectPath + '.turn_postpone.per_speed_advantage', message: 'A vantagem de velocidade tem de ser um inteiro de 1 ou mais.' });
+                            }
+                        }
+                        if (effect.turn_postpone.condition !== undefined
+                            && (!effect.turn_postpone.condition || typeof effect.turn_postpone.condition !== 'object')) {
+                            errors.push({ path: effectPath + '.turn_postpone.condition', message: 'A condição do atraso tem de ser um objeto.' });
+                        }
+                    }
+                }
+                if (effect.lane_change_free !== undefined && typeof effect.lane_change_free !== 'boolean') {
+                    errors.push({ path: effectPath + '.lane_change_free', message: '“lane_change_free” tem de ser verdadeiro ou falso.' });
+                }
+                if (effect.on_miss_move !== undefined) {
+                    if (!effect.on_miss_move || typeof effect.on_miss_move !== 'object' || Array.isArray(effect.on_miss_move)) {
+                        errors.push({ path: effectPath + '.on_miss_move', message: 'O movimento ao falhar tem de ser um objeto.' });
+                    } else {
+                        if (effect.on_miss_move.who !== undefined && ['target', 'self'].indexOf(effect.on_miss_move.who) === -1) {
+                            errors.push({ path: effectPath + '.on_miss_move.who', message: 'A reação tem de dizer quem se move: “target” ou “self”.' });
+                        }
+                        if (effect.on_miss_move.to_line !== undefined && ['front', 'rear', 'other'].indexOf(effect.on_miss_move.to_line) === -1) {
+                            errors.push({ path: effectPath + '.on_miss_move.to_line', message: 'A linha de destino tem de ser front, rear ou other.' });
+                        }
+                        if (effect.on_miss_move.break_after !== undefined && typeof effect.on_miss_move.break_after !== 'boolean') {
+                            errors.push({ path: effectPath + '.on_miss_move.break_after', message: '“break_after” tem de ser verdadeiro ou falso.' });
+                        }
+                    }
+                }
+                if (effect.expires !== undefined && effect.expires !== ''
+                    && ['turn_start', 'turn_end', 'round_end'].indexOf(effect.expires) === -1) {
+                    errors.push({ path: effectPath + '.expires', message: 'O modo de expiração tem de ser turn_start, turn_end ou round_end.' });
+                }
+                // Céu (caeli Sky): clima, projéteis e véu.
+                if (effect.weather !== undefined) {
+                    if (!effect.weather || typeof effect.weather !== 'object' || Array.isArray(effect.weather)) {
+                        errors.push({ path: effectPath + '.weather', message: 'O clima tem de ser um objeto.' });
+                    } else {
+                        if (effect.weather.rounds !== undefined && effect.weather.rounds !== null) {
+                            var weatherRounds = Number(effect.weather.rounds);
+                            if (!Number.isInteger(weatherRounds) || weatherRounds < 0) {
+                                errors.push({ path: effectPath + '.weather.rounds', message: 'As rondas de clima têm de ser um inteiro de zero ou mais.' });
+                            }
+                        }
+                        if (effect.weather.chip_damage !== undefined && Number(effect.weather.chip_damage) < 0) {
+                            errors.push({ path: effectPath + '.weather.chip_damage', message: 'O dano por ronda do clima não pode ser negativo.' });
+                        }
+                        if (effect.weather.element_effect_multipliers !== undefined) {
+                            if (!effect.weather.element_effect_multipliers || typeof effect.weather.element_effect_multipliers !== 'object') {
+                                errors.push({ path: effectPath + '.weather.element_effect_multipliers', message: 'The multipliers must be an object.' });
+                            } else {
+                                Object.keys(effect.weather.element_effect_multipliers).forEach(function (element) {
+                                    if (!ELEMENTS.includes(element)) {
+                                        errors.push({ path: effectPath + '.weather.element_effect_multipliers.' + element, message: 'Elemento desconhecido: ' + element });
+                                    }
+                                    if (!Number.isFinite(Number(effect.weather.element_effect_multipliers[element]))) {
+                                        errors.push({ path: effectPath + '.weather.element_effect_multipliers.' + element, message: 'O multiplicador tem de ser um número.' });
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+                if (effect.element_power !== undefined) {
+                    if (!effect.element_power || typeof effect.element_power !== 'object' || Array.isArray(effect.element_power)) {
+                        errors.push({ path: effectPath + '.element_power', message: 'O reforço por elemento tem de ser um objeto elemento → multiplicador.' });
+                    } else {
+                        Object.keys(effect.element_power).forEach(function (element) {
+                            if (!ELEMENTS.includes(element)) {
+                                errors.push({ path: effectPath + '.element_power.' + element, message: 'Elemento desconhecido: ' + element });
+                            }
+                            if (!Number.isFinite(Number(effect.element_power[element]))) {
+                                errors.push({ path: effectPath + '.element_power.' + element, message: 'O multiplicador tem de ser um número.' });
+                            }
+                        });
+                    }
+                }
+                if (effect.projectile_accuracy !== undefined) {
+                    if (!effect.projectile_accuracy || typeof effect.projectile_accuracy !== 'object' || Array.isArray(effect.projectile_accuracy)) {
+                        errors.push({ path: effectPath + '.projectile_accuracy', message: 'A mira de projéteis tem de ser um objeto.' });
+                    } else {
+                        var sightAmount = Number(effect.projectile_accuracy.amount);
+                        if (!Number.isFinite(sightAmount) || sightAmount <= 0) {
+                            errors.push({ path: effectPath + '.projectile_accuracy.amount', message: 'O ganho de precisão tem de ser maior que zero.' });
+                        }
+                        if (effect.projectile_accuracy.vs_lane !== undefined && effect.projectile_accuracy.vs_lane !== ''
+                            && ['front', 'rear'].indexOf(effect.projectile_accuracy.vs_lane) === -1) {
+                            errors.push({ path: effectPath + '.projectile_accuracy.vs_lane', message: 'A linha alvo da mira tem de ser front ou rear.' });
+                        }
+                    }
+                }
+                if (effect.projectile_mark !== undefined) {
+                    if (!effect.projectile_mark || typeof effect.projectile_mark !== 'object' || Array.isArray(effect.projectile_mark)) {
+                        errors.push({ path: effectPath + '.projectile_mark', message: 'A marca de projéteis tem de ser um objeto.' });
+                    } else if (!Number.isFinite(Number(effect.projectile_mark.accuracy)) || Number(effect.projectile_mark.accuracy) <= 0) {
+                        errors.push({ path: effectPath + '.projectile_mark.accuracy', message: 'O ganho de precisão contra o portador tem de ser maior que zero.' });
+                    }
+                }
+                if (effect.ranged_evasion !== undefined && effect.ranged_evasion !== null) {
+                    var veilAmount = Number(effect.ranged_evasion);
+                    if (!Number.isFinite(veilAmount) || veilAmount <= 0) {
+                        errors.push({ path: effectPath + '.ranged_evasion', message: 'A esquiva contra projéteis tem de ser maior que zero.' });
+                    }
+                }
+                if (effect.projectile_reroll !== undefined) {
+                    if (!effect.projectile_reroll || typeof effect.projectile_reroll !== 'object' || Array.isArray(effect.projectile_reroll)) {
+                        errors.push({ path: effectPath + '.projectile_reroll', message: 'A segunda chance tem de ser um objeto.' });
+                    } else {
+                        var rerollPerTurn = Number(effect.projectile_reroll.per_turn ?? 1);
+                        if (!Number.isInteger(rerollPerTurn) || rerollPerTurn < 1 || rerollPerTurn > 3) {
+                            errors.push({ path: effectPath + '.projectile_reroll.per_turn', message: 'As repetições por ronda têm de ser um inteiro entre 1 e 3.' });
+                        }
+                    }
+                }
             });
         });
 

@@ -25,6 +25,44 @@ export interface AttackMoveSpec {
     swap_with_caster?: boolean;
 }
 
+/** Which targets an effect's conditional clause may reach. */
+export interface AttackEffectCondition {
+    /** Only units that have not acted yet this round. */
+    requires_pending?: boolean;
+    /** Only units that have already acted this round. */
+    requires_acted?: boolean;
+    /** Only units standing in the named line. */
+    target_line?: 'front' | 'rear';
+    /** Only units that cannot be placed in the named line (it is full). */
+    requires_no_space?: 'front' | 'rear';
+}
+
+/** A `weather` clause: it forces a battlefield-wide weather state. */
+export interface AttackWeatherSpec {
+    /** Full rounds the weather lasts; omitted means 3. */
+    rounds?: number;
+    /** Flat HP the opposing side loses at every round tick. */
+    chip_damage?: number;
+    /** Effect/damage multipliers per element id while the weather holds. */
+    element_effect_multipliers?: Record<string, number>;
+}
+
+/** A `turn_postpone` clause: it delays the target's next turn mid-round. */
+export interface AttackPostponeSpec {
+    /** Slots to push the target's next turn back; omitted means 1. */
+    slots?: number;
+    /** One extra slot per this many points the caster's speed leads the target's. */
+    per_speed_advantage?: number;
+    /** Gate on the target's state; omitted means always. */
+    condition?: AttackEffectCondition;
+}
+
+/** A `move` effect that triggers on its own. */
+export interface AttackOnMissMoveSpec extends AttackMoveSpec {
+    /** Drops the status after the move fires. */
+    break_after?: boolean;
+}
+
 /** How far back a `rewind` pulls its target, and what it restores. */
 export interface AttackRewindSpec {
     /** How many of the target's own turns to undo; omitted means all of them. */
@@ -120,6 +158,42 @@ export interface AttackEffect {
     cooldown_tick?: number;
     /** Where the effect moves its bearer. */
     move?: AttackMoveSpec;
+    /** Gate: only units matching the condition receive the effect at all. */
+    condition?: AttackEffectCondition;
+    /** Delays the target's next turn by one or more slots, once, on landing. */
+    turn_postpone?: AttackPostponeSpec;
+    /** While the effect lives its holder may switch lines without spending a turn. */
+    lane_change_free?: boolean;
+    /** Move the holder fires by itself when an attack misses them. */
+    on_miss_move?: AttackOnMissMoveSpec;
+    /**
+     * Ends the effect at a boundary rather than counting `turns`: its holder's
+     * next turn start (`turn_start`), right after the holder's action ends
+     * (`turn_end`), or when the round wraps (`round_end`).
+     */
+    expires?: 'turn_start' | 'turn_end' | 'round_end';
+    /**
+     * Forces a battlefield-wide weather state on landing (`Rain`, `Storm`):
+     * it replaces whatever weather holds, lasts whole rounds, chips the
+     * opposing side and multiplies listed elements' effectiveness.
+     */
+    weather?: AttackWeatherSpec;
+    /**
+     * Effect-strength multipliers the holder's own effects gain by element id
+     * while the status lives (`Gale Resonance`, caeli ×1.15).
+     */
+    element_power?: Record<string, number>;
+    /**
+     * Accuracy the holder's projectile hits gain (`Skyline Sight`); `vs_lane`
+     * narrows the bonus to one defender lane (`Tailwind Trajectory`).
+     */
+    projectile_accuracy?: { amount: number; vs_lane?: 'front' | 'rear' };
+    /** Accuracy every projectile attacker gains against the marked holder. */
+    projectile_mark?: { accuracy: number };
+    /** Flat evasion the holder gains against ranged actions (`Ranged Veil`). */
+    ranged_evasion?: number;
+    /** The holder may re-roll its first missed projectile shot each turn. */
+    projectile_reroll?: { per_turn: number };
     /** How far back the effect rewinds its bearer. */
     rewind?: AttackRewindSpec;
     /** Where the drained resource goes: back to the caster, or nowhere. */
@@ -285,6 +359,10 @@ export interface AttackSkill {
     range?: string;
     /** The variance of each hit, as `[min, max]`. */
     damage_variance?: number[];
+    /** Adds `power = base + per_point × stat` to every hit (speed-scaled skills). */
+    power_scaling?: { stat: string; per_point: number };
+    /** Multiplier a critical hit uses instead of the global ×1.75 (`Meteor Drop` doubles). */
+    crit_multiplier?: number;
     /**
      * SFX track id played when the skill is used.
      *
@@ -335,6 +413,8 @@ export type PublicAttack = Pick<AttackSkill,
     | 'kind'
     | 'range'
     | 'damage_variance'
+    | 'power_scaling'
+    | 'crit_multiplier'
     | 'sfx'
 >;
 

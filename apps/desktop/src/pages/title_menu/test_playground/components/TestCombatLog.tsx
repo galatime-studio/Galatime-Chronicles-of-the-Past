@@ -183,6 +183,38 @@ function formatEvents(
                 });
                 break;
 
+            case 'action_postponed':
+                lines.push({
+                    key,
+                    tone: 'action',
+                    text: `${nameOf(event.unitId)}'s next action is pushed ${event.slots} slot${event.slots === 1 ? '' : 's'} back`,
+                });
+                break;
+
+            case 'weather_changed':
+                lines.push({
+                    key,
+                    tone: 'action',
+                    text: `${event.label} rolls over the field (${event.rounds} round${event.rounds === 1 ? '' : 's'})`,
+                });
+                break;
+
+            case 'weather_ended':
+                lines.push({
+                    key,
+                    tone: 'action',
+                    text: `${event.id} clears from the field`,
+                });
+                break;
+
+            case 'attack_retried':
+                lines.push({
+                    key,
+                    tone: 'action',
+                    text: `${nameOf(event.attackerId)} re-shoots at ${nameOf(event.targetId)}`,
+                });
+                break;
+
             case 'flee_attempted':
                 lines.push({
                     key,

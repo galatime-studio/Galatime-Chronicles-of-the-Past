@@ -43,6 +43,8 @@ const PUBLIC_SKILL_FIELDS = [
     'kind',
     'range',
     'damage_variance',
+    'power_scaling',
+    'crit_multiplier',
     'sfx',
 ] as const;
 
@@ -123,6 +125,17 @@ const PUBLIC_EFFECT_FIELDS = [
     'damage_channel_modulation',
     'counter_chance',
     'counter_except_elements',
+    'weather',
+    'element_power',
+    'projectile_accuracy',
+    'projectile_mark',
+    'ranged_evasion',
+    'projectile_reroll',
+    'condition',
+    'turn_postpone',
+    'lane_change_free',
+    'on_miss_move',
+    'expires',
 ] as const;
 
 function clone(value: unknown): unknown {

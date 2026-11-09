@@ -59,6 +59,7 @@ import type {
     CombatRandom,
     CombatStats,
     CombatUnit,
+    CombatWeather,
     DamageType,
     EffectiveCombatTimePhase,
 } from '../../types/CombatType';
@@ -67,6 +68,7 @@ import { clamp } from '../../utils/combatUtils';
 import { elementDefenseScore, scoreToMultiplier } from '../../utils/elementUtils';
 import { elementModulationFor, isImmuneToDamageType } from './effectResolver';
 import { positionDamageModifier } from './positionRules';
+import { weatherElementMultiplierFor } from './weather';
 
 /**
  * Precomputes the RAW defensive score of every target element against every
@@ -161,6 +163,82 @@ export function phaseEffectMultiplier(
     timePhase: EffectiveCombatTimePhase,
 ): number {
     return phaseDamageMultiplier(action, timePhase);
+}
+
+/**
+ * Whether an action reads as a *projectile*: a thrown weapon or a
+ * long-reach weapon (bow construction). Skills and spells never count, so
+ * projectile-only bonuses (`Skyline Sight`) stay out of their chain.
+ */
+export function isProjectileAction(
+    action: Pick<CombatAction, 'weapon' | 'range'>,
+): boolean {
+    if (action.weapon?.throw === true) return true;
+    return action.range === 'long' && action.weapon !== undefined;
+}
+
+/**
+ * Whether an action reads as *ranged* on the receiving end: projectiles, or
+ * a spell (magical damage) whose reach is not a swing (`Ranged Veil` veils
+ * both thrown weapons and cast spells).
+ */
+export function isRangedAction(
+    action: Pick<CombatAction, 'weapon' | 'range' | 'damageType'>,
+): boolean {
+    return isProjectileAction(action) || action.damageType === 'magical';
+}
+
+/**
+ * The chance of a hit, in percent, with the projectile extras folded in.
+ *
+ * Base = authored + attacker accuracy − defender evasion. A projectile shot
+ * then gains the holder's `projectileAccuracy` sight (`Skyline Sight`,
+ * lane-narrowing honoured) plus the mark the defender carries
+ * (`Crosswind Mark`), and pays the defender's `rangedEvasion`
+ * (`Ranged Veil`). An action that ignores accuracy always lands.
+ */
+function projectileAccuracy(
+    action: CombatAction,
+    request: DamageRequest,
+    authoredAccuracy: number,
+): number {
+    if (action.ignoreAccuracy) return 100;
+
+    const attacker = request.attacker ?? null;
+    const defender = request.defender ?? null;
+    let value = normalizeAccuracy(authoredAccuracy)
+        + (request.attackerStats.accuracy ?? 0)
+        - (request.defenderStats.evasion ?? 0);
+
+    if (isProjectileAction(action)) {
+        // The caster's sight: the strongest lane-matching bonus wins.
+        let sight = 0;
+        for (const effect of attacker?.effects ?? []) {
+            const spec = effect.projectileAccuracy;
+            if (!spec) continue;
+            if (spec.vsLine && spec.vsLine !== request.defenderLine) continue;
+            sight = Math.max(sight, spec.amount);
+        }
+        value += sight;
+
+        // A marked target is easier to hit with projectiles.
+        let mark = 0;
+        for (const effect of defender?.effects ?? []) {
+            mark = Math.max(mark, effect.projectileMark?.accuracy ?? 0);
+        }
+        value += mark;
+    }
+
+    // A veiled target is harder to hit with any ranged action.
+    if (isRangedAction(action)) {
+        let veil = 0;
+        for (const effect of defender?.effects ?? []) {
+            veil = Math.max(veil, effect.rangedEvasion ?? 0);
+        }
+        value -= veil;
+    }
+
+    return clamp(value, MIN_EFFECTIVE_ACCURACY, 100);
 }
 
 /**
@@ -342,6 +420,20 @@ export interface DamageRequest {
     elementIndex: CombatElementIndex;
     attackerLine: CombatLine;
     defenderLine: CombatLine;
+    /**
+     * The acting unit itself, when the caller holds one.
+     *
+     * Status extras that do not fold into the stats (a `projectileAccuracy`
+     * sight bonus) read from here; `null` keeps them out of the chain.
+     */
+    attacker?: CombatUnit | null;
+    /**
+     * The battlefield weather, when one holds.
+     *
+     * Its element table multiplies the action's damage (`Rain` boosts aqua,
+     * dampens ignis); both the real hit and the preview thread it in.
+     */
+    weather?: CombatWeather | null;
     /** `true` when attacker and defender fight for the same side. */
     sameSide: boolean;
     /** `true` when the defender is bracing (`defend`). */
@@ -471,16 +563,12 @@ export function resolveDamage(request: DamageRequest): DamageResult {
 
     // Per-range accuracy (staff/bow): the target's line stands in for distance,
     // so a shot at the back line is judged by the `rear` value and a swing at the
-    // front line by `front`.
+    // front line by `front`. The projectile extras then fork in on top.
     const byRange = action.weapon?.accuracyByRange;
     const authoredAccuracy = byRange
         ? (request.defenderLine === 'front' ? byRange.front : byRange.rear)
         : action.accuracy;
-    const accuracy = effectiveAccuracy(
-        { accuracy: authoredAccuracy, ignoreAccuracy: action.ignoreAccuracy },
-        request.attackerStats,
-        request.defenderStats,
-    );
+    const accuracy = projectileAccuracy(action, request, authoredAccuracy);
     const critChance = critChanceFor(action, request.attackerStats, request.defender ?? null);
     // A live `damage_immunities` status voids the hit the same way an ability
     // does, so a preview and a real hit read the same immunity.
@@ -490,6 +578,11 @@ export function resolveDamage(request: DamageRequest): DamageResult {
     // Bazar goods (`randomize_power`) wager the authored power on every swing.
     const randomizePower = action.weapon?.randomizePower === true;
     const [powerMin, powerMax] = RANDOMIZE_POWER_RANGE;
+    // Speed-scaled skills (`Tempest Flurry`) read the caster's live stat on
+    // every hit, so a buffed speed strikes harder and previews agree.
+    const hitPowerBase = action.power + (action.powerScaling
+        ? action.powerScaling.perPoint * Math.max(0, request.attackerStats[action.powerScaling.stat] ?? 0)
+        : 0);
 
     // The skill's traits, folded once so every hit of the same action reads
     // the same numbers. A `bonus_per_charge` trait (`avalanche`) trades each
@@ -500,6 +593,9 @@ export function resolveDamage(request: DamageRequest): DamageResult {
         * bonusVsHpBelowMultiplier(action, request.defenderHpFraction ?? 1)
         * statusBonus.multiplier
         * (request.attackerTraits ?? 1)
+        // A battlefield weather state multiplies its listed elements both ways
+        // (damage and effect magnitude), so the damage chain folds it here too.
+        * weatherElementMultiplierFor(request, action.elementId)
         * (1 + (chargeCount > 0 && action.bonusPerCharge
             ? action.bonusPerCharge.multiplierPerCharge * chargeCount
             : 0));
@@ -514,13 +610,18 @@ export function resolveDamage(request: DamageRequest): DamageResult {
         if (rolling && !rollHit(random, accuracy)) continue;
 
         const hitPower = rolling && randomizePower
-            ? action.power * (powerMin + random() * (powerMax - powerMin))
-            : action.power;
+            ? hitPowerBase * (powerMin + random() * (powerMax - powerMin))
+            : hitPowerBase;
 
         // A critical hit is rolled per hit: a skill that hits four times can
         // crit once and miss the rest.
         const critical = rolling && critChance > 0 && random() * 100 < critChance;
         if (critical) isCrit = true;
+        // An authored `crit_multiplier` (`Meteor Drop` doubles) replaces the
+        // global ×1.75 when it is strictly bigger.
+        const critMultiplier = (action.critMultiplier && action.critMultiplier > 0)
+            ? action.critMultiplier
+            : CRIT_MULTIPLIER;
 
         const breakdown = calculateDamage({
             attackValue,
@@ -533,7 +634,7 @@ export function resolveDamage(request: DamageRequest): DamageResult {
             attackMultiplier: request.modifier.multiplier,
             immune,
             atkDefRatio,
-            traits: traitMultiplier * (critical ? CRIT_MULTIPLIER : 1),
+            traits: traitMultiplier * (critical ? critMultiplier : 1),
         });
 
         baseDamage = breakdown.base;
@@ -546,7 +647,7 @@ export function resolveDamage(request: DamageRequest): DamageResult {
         hits,
         attackValue,
         defenseValue: rawDefense,
-        power: action.power,
+        power: hitPowerBase,
         damageType: action.damageType,
         elementMultiplier: effect,
         statusModulation,

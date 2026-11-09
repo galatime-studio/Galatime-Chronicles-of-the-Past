@@ -31,7 +31,7 @@ import { asRecord, readBoolean, readNumber, readString } from '../utils/combatUt
 import type { AbilityTriggerContext } from './combat/abilityContext';
 import { foldAttackModifiers } from './combat/abilityModifiers';
 import { resolveAbilityEvent } from './combat/abilityTriggers';
-import { phaseEffectMultiplier, resolveDamage } from './combat/damageCalculator';
+import { phaseEffectMultiplier, resolveDamage, isProjectileAction } from './combat/damageCalculator';
 import { reapDefeated, promoteRearLines } from './combat/defeatResolver';
 import { idleRegenAmount } from './combat/resourceRegen';
 import {
@@ -53,7 +53,11 @@ import {
     applyCleanse,
     applyDispel,
     applyMove,
+    applyMoveSpec,
     applyRewind,
+    applyTurnPostpone,
+    effectConditionSatisfied,
+    readConditionRecord,
 } from './combat/effectMechanics';
 import { reachableTargets, scatterCandidates } from './combat/targetResolver';
 import { effectiveTimePhase, setPhaseBlock } from './combat/phaseOverride';
@@ -61,6 +65,7 @@ import { moveUnitToLine } from './combat/positionRules';
 import { fleeChanceFor } from './combat/fleeRules';
 import { weaponStackMultiplier, effectPowerMultiplier } from './combat/weaponEffects';
 import { applyWeaponActionHooks } from './combat/weaponActionHooks';
+import { applyWeather, readWeatherSpec, weatherElementMultiplierFor } from './combat/weather';
 
 export interface ActionResolutionContext {
     state: CombatState;
@@ -143,11 +148,20 @@ function resolveForcedPhase(
         if (!record) continue;
 
         const rounds = Math.max(1, Math.round(readNumber(record.phase_rounds ?? record.turns, 5)));
-        if (readBoolean(record.block_lunar, false)) {
+        const blocksLunar = readBoolean(record.block_lunar, false);
+        const blocksSolar = readBoolean(record.block_solar, false);
+        // An author who writes both flags means *hide whichever body is up now*
+        // (`Clouds` nulls the day's solar or the night's lunar, automatically).
+        if (blocksLunar && blocksSolar) {
+            const blocked = state.timePhase === 'night' ? 'lunar' : 'solar';
+            setPhaseBlock(state, blocked, rounds, actor.id);
+            return;
+        }
+        if (blocksLunar) {
             if (state.timePhase === 'night') setPhaseBlock(state, 'lunar', rounds, actor.id);
             return;
         }
-        if (readBoolean(record.block_solar, false)) {
+        if (blocksSolar) {
             if (state.timePhase === 'day') setPhaseBlock(state, 'solar', rounds, actor.id);
             return;
         }
@@ -307,6 +321,8 @@ function buildResolution(
         defenderStats: effectiveStats(target),
         defenderElementIds: target.elementIds,
         defender: target,
+        attacker: actor,
+        weather: state.weather ?? null,
         elementIndex,
         attackerLine: actor.line,
         defenderLine: target.line,
@@ -584,7 +600,18 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
             for (const target of actionTargets) {
                 resolutions.set(target.id, buildResolution(context, target));
             }
+            // A single-shot projectile miss may be re-shot on the spot
+            // (`Second Chance`): once per its bearer's turn, same target.
+            rerollSingleShot(context, actionTargets, resolutions, events);
         }
+    }
+
+    // A weather skill (`Rain`, `Storm`) forces its sky on landing: the newest
+    // cast replaces whatever held, regardless of hits.
+    for (const effect of action.effects) {
+        const spec = readWeatherSpec(effect);
+        if (!spec) continue;
+        events.push(...applyWeather(state, action.id, action.name, actor.side, spec));
     }
 
     // A `collateral` splash (riptide) throws a reduced copy of the hit onto
@@ -606,7 +633,10 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
         : actionTargets;
 
     // The same hour-of-the-day curve the direct hit uses also scales the effect
-    // magnitudes — never their duration, costs or control flags.
+    // magnitudes — never their duration, costs or control flags. A battlefield
+    // weather (`Rain`) and the caster's own element power (`Gale Resonance`)
+    // multiply their listed elements the same way, on top of the hour and the
+    // weapon's own output boost.
     const phaseMultiplier = phaseEffectMultiplier(action, effectiveTimePhase(state));
 
     // Any Lux attack that lands lifts a `removable_by_lux` curse (Curse, Hex,
@@ -633,9 +663,21 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
                 state.units,
             );
         const effectTargets = pickRandomTargets(scopeTargets, effect, random);
+        // Weather and the caster's element power scale one effect's magnitude;
+        // the strongest wording wins over pure stacking.
+        const effectElementId = readString(asRecord(effect)?.element_id, '') || action.elementId;
+        const weatherMult = weatherElementMultiplierFor(state, effectElementId);
+        const outputBoost = effectPowerMultiplier(actor)
+            * weatherMult
+            * elementPowerFor(actor, effectElementId);
 
         for (const scopeTarget of effectTargets) {
             if (scopeTarget.status !== 'alive') continue;
+
+            // A conditional effect (`Wind Funnel`'s pending seal, `Crosswind`'s
+            // rear-line penalty) only lands on units matching its clause.
+            const condition = readConditionRecord((asRecord(effect) ?? {}).condition);
+            if (!effectConditionSatisfied(state, scopeTarget, condition)) continue;
 
             // A charge-bearing landing only marks a hit: a target the ice
             // skill missed stays dry of charges.
@@ -651,7 +693,7 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
                 continue;
             }
 
-            const applied = applyEffectToUnit(scopeTarget, effect, action.id, action.elementId, random, effectPowerMultiplier(actor), phaseMultiplier);
+            const applied = applyEffectToUnit(scopeTarget, effect, action.id, action.elementId, random, outputBoost, phaseMultiplier);
             if (applied) {
                 events.push(applied);
                 if (applied.type === 'effect_applied') {
@@ -679,7 +721,7 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
                 scopeTarget,
                 effect,
                 random,
-                effectPowerMultiplier(actor),
+                outputBoost,
                 {
                     healBlocked,
                     drainRecipient: actor,
@@ -700,6 +742,7 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
                 events.push(...invertBuffsOn(scopeTarget));
             }
             events.push(...applyMove(state, actor, scopeTarget, effect));
+            events.push(...applyTurnPostpone(state, actor, scopeTarget, effect));
             events.push(...applyRewind(scopeTarget, effect));
 
             // A cooldown tick takes turns off the target's waiting actions.
@@ -719,6 +762,28 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
         if (!resolution) continue;
         resolution.appliedEffectIds = appliedByUnit.get(target.id) ?? [];
         events.push({ type: 'attack_resolved', resolution });
+    }
+
+    // A status carrying an `on_miss_move` clause answers misses on its own:
+    // whenever a damaging action misses its holder, the holder steps across
+    // the field by itself, without spending a turn (`Zephyr Veil`), and the
+    // status breaks once it has done its job — unless the author keeps it.
+    if (action.dealsDamage) {
+        for (const target of resolvedUnits) {
+            const resolution = resolutions.get(target.id);
+            if (!resolution || resolution.isHit || target.status !== 'alive') continue;
+
+            const moveClause = target.effects.find((effect) => effect.onMissMove);
+            if (!moveClause?.onMissMove) continue;
+
+            events.push(...applyMoveSpec(state, actor, target, moveClause.onMissMove));
+            if (moveClause.onMissMove.breakAfter) {
+                target.effects = target.effects.filter(
+                    (effect) => effect.effectId !== moveClause.effectId,
+                );
+                events.push({ type: 'effect_expired', unitId: target.id, effectId: moveClause.effectId });
+            }
+        }
     }
 
     // A hit of an element statuses name as their undo (Wet vs ignis) lifts
@@ -848,4 +913,63 @@ function readyCounter(
         return effect;
     }
     return null;
+}
+
+/**
+ * The strongest effect-strength boost the unit's live statuses grant for one
+ * element (`Gale Resonance`, caeli ×1.15). Boosts do not stack: the strongest
+ * wording wins.
+ */
+function elementPowerFor(unit: CombatUnit, elementId: string | null | undefined): number {
+    if (!elementId) return 1;
+
+    let best = 1;
+    for (const effect of unit.effects) {
+        const value = effect.elementPower?.[elementId];
+        if (typeof value === 'number' && Number.isFinite(value) && value > best) best = value;
+    }
+    return best;
+}
+
+/**
+ * Re-shots the first missed projectile hit, when the caster holds a live
+ * `Second Chance` with a re-roll still in the bank.
+ *
+ * Only single-shot, non-scatter damaging actions qualify: a volley is several
+ * rolls at once, and the clause speaks of one shot. The fresh resolution
+ * replaces the missed one whole, and the re-roll is spent on the spot.
+ */
+function rerollSingleShot(
+    context: ActionResolutionContext,
+    actionTargets: CombatUnit[],
+    resolutions: Map<string, AttackResolution>,
+    events: CombatEvent[],
+): void {
+    const { state } = context;
+    const action = context.action;
+    if (!action.dealsDamage || action.scatterTargets) return;
+    if (Math.max(1, action.hitCount) !== 1) return;
+    if (!isProjectileAction(action)) return;
+
+    const holder = state.units.find((unit) => unit.id === context.actor.id)
+        ?? context.actor;
+    const reroll = holder.effects.find((effect) => (
+        effect.projectileReroll
+        && effect.projectileReroll.used < effect.projectileReroll.perTurn
+    ));
+    if (!reroll?.projectileReroll) return;
+
+    for (const target of actionTargets) {
+        const missed = resolutions.get(target.id);
+        if (!missed || missed.isHit) continue;
+
+        resolutions.set(target.id, buildResolution(context, target, { attempts: 1 }));
+        reroll.projectileReroll = {
+            ...reroll.projectileReroll,
+            used: reroll.projectileReroll.used + 1,
+        };
+        events.push({ type: 'attack_retried', attackerId: holder.id, targetId: target.id });
+        // One re-roll per action, even against several aims.
+        return;
+    }
 }

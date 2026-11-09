@@ -33,12 +33,16 @@ alvo, o dano, a precisão, o custo e os traços da skill.
 
 Os padrões disponíveis são: recuperar recurso, regenerar por turno, buff,
 debuff, dano, drenar recurso, purificar, dissipar, dano atrasado, repetir
-ação, mover posição, manter carga e **retroceder o tempo**. O editor de
+ação, mover posição, **atrasar turno**, **mover ao ser falhado**,
+**instalar clima**, **mira de projéteis**, **marcar para projéteis**,
+**véu anti-atiradores**, **segunda chance no ar**, manter carga
+e **retroceder o tempo**. O editor de
 atributos aceita todos os stats do motor — **`accuracy`** (precisão dos
 próprios ataques), **`evasion`** (esquiva: dificulta ser atingido) e
 **`crit_chance`** (crítico dos próprios ataques) — e cada cartão de efeito
 tem *Opções avançadas* com a polaridade, as imunidades a status, as ações
-proibidas, o controlo de turno, os custos diferidos e a manutenção.
+proibidas, o controlo de turno, as mecânicas de vento, as mecânicas do céu,
+os custos diferidos e a manutenção.
 
 #### Retroceder o tempo (rewind)
 
@@ -72,13 +76,18 @@ Em resumo:
   por ×1.75.
 - `ignore_accuracy`, `guaranteed_crit_vs_status`, `defense_pierce`,
   `bonus_vs_elements`, `bonus_vs_hp_below` e `flee_below_hp`.
-- Os efeitos `move`, `rewind`, `cleanse`, `dispel`, `regen_per_turn`,
-  `heal_block`, `untargetable`, `prevent_skills`, `status_immunities`,
-  `counter`, `drain_to`, `turn_offset`, `cooldown_tick`, `self_upkeep` e
-  `deferred_cost`.
+- Os efeitos `move`, `turn_postpone`, `on_miss_move`, `condition`,
+  `lane_change_free`, `expires`, `weather`, `element_power`,
+  `projectile_accuracy`, `projectile_mark`, `ranged_evasion`,
+  `projectile_reroll`, `rewind`, `cleanse`, `dispel`,
+  `regen_per_turn`, `heal_block`, `untargetable`, `prevent_skills`,
+  `status_immunities`, `counter`, `drain_to`, `turn_offset`, `cooldown_tick`,
+  `self_upkeep` e `deferred_cost`.
+- `crit_multiplier` dá à skill o próprio multiplicador crítico
+  (por omissão ×1.75).
 
-Ainda não são lidos pelo motor: `deferred_damage`, `echo`,
-`self_damage_per_target` e `collateral`.
+Ainda não são lidos pelo motor: `deferred_damage`, `echo` e
+`self_damage_per_target`.
 
 ### Traços por elemento
 
@@ -87,6 +96,7 @@ que a skill possa ser composta já no formato final:
 
 | Elemento | Campos que usa |
 |---|---|
+| **Caeli** (vento, céu, tempo) | `power_scaling`, `condition`, `turn_postpone`, `lane_change_free`, `on_miss_move`, `expires`, `weather`, `element_power`, `projectile_accuracy`, `projectile_mark`, `ranged_evasion`, `projectile_reroll`, `crit_multiplier`, `move`, de buffs de `speed` / `evasion` / `accuracy` |
 | **Umbra** (noite, escuridão) | `lunar`, `crit_chance`, `evasion` (buff), `heal_block`, `guaranteed_crit_vs_status`, `bonus_vs_hp_below`, `drain_to` |
 | **Spatium** (tempo, espaço) | `turn_offset`, `cooldown_tick`, `move`, `deferred_damage`, `echo`, `untargetable`, `ignore_accuracy`, `prevent_actions` |
 | **Vetus** (poder antigo) | `costs.hp`, `deferred_cost`, `self_upkeep`, `prevent_skills`, `defense_pierce`, `cleanse`, `dispel` |
@@ -101,11 +111,11 @@ O separador **Simulador** reproduz a cadeia de dano do motor
 dano = (ATK / RES) × elemento × (PWR / 1) × traços × linha × defesa
 ```
 
-Podes ajustar o atacante (ataques, stat `accuracy`, stat `crit_chance`, linha),
-o defensor (defesas, esquiva, elementos, linha, a defender, vida restante), a
-hora do dia e o nível da skill (I–V). O resultado mostra o dano por acerto, o
-dano esperado por uso, a chance de acerto, os golpes esperados e a cadeia
-passo a passo.
+Podes ajustar o atacante (ataques, `speed`, stat `accuracy`, stat
+`crit_chance`, linha), o defensor (defesas, esquiva, elementos, linha, a
+defender, vida restante), a hora do dia e o nível da skill (I–V). O resultado
+mostra o dano por acerto, o dano esperado por uso, a chance de acerto, os
+golpes esperados e a cadeia passo a passo.
 
 **Sem críticos e sem a variância aleatória** (0.9 … 1.1): o número mostrado é
 o valor esperado de um acerto, não uma tiragem. Se o poder for sorteado, o
@@ -119,10 +129,11 @@ quando o motor ainda não as implementa:
 | `solar` / `lunar` | ×1.5 de dia / ×0.5 de noite (e o inverso) |
 | `accuracy` / `evasion` | A precisão do atacante menos a esquiva do alvo |
 | `ignore_accuracy` | O golpe acerta sempre |
-| `crit_chance` | Chance de crítico mostrada à parte (×1.75) |
+| `crit_chance` | Chance de crítico mostrada à parte (×1.75, ou `crit_multiplier` da skill) |
 | `bonus_vs_elements` | Multiplicador extra sobre a tabela de elementos |
 | `bonus_vs_hp_below` | Multiplicador extra contra alvos enfraquecidos |
 | `defense_pierce` | Fração da defesa do alvo que o golpe ignora |
+| `power_scaling` | Soma `per_point × stat do atacante` (speed usa o campo novo do simulador) ao poder de cada golpe |
 
 ### Árvores
 
@@ -178,6 +189,8 @@ da skill.
 | `costs` | `mana`, `stamina`, `hp`, `cooldown` |
 | `solar`, `lunar` | ×1.5 de dia / ×0.5 de noite (e o inverso) |
 | `crit_chance` | Percentagem de acertos críticos (×1.75) |
+| `crit_multiplier` | Multiplicador de dano crítico desta skill (omisso: ×1.75) |
+| `power_scaling` | `{ stat, per_point }` — cada golpe soma `per_point × stat` ao poder base (ex.: speed) |
 | `ignore_accuracy` | O golpe acerta sempre |
 | `guaranteed_crit_vs_status` | ID do status que garante o crítico |
 | `defense_pierce` | Fração da defesa do alvo que o golpe ignora |
@@ -207,6 +220,17 @@ da skill.
 | `heal_block` | O alvo não pode ser curado por outros |
 | `counter` | Reflete o próximo golpe recebido |
 | `turn_offset`, `cooldown_tick` | Adiantar/atrasar turnos, reduzir cooldowns |
+| `condition` | `{ requires_pending, requires_acted, target_line }` — só aplica quando as cláusulas se cumprem (fila da ronda ao vivo / linha do alvo) |
+| `turn_postpone` | `{ slots, per_speed_advantage, condition }` — atrasa o próximo turno pendente do alvo na ronda atual |
+| `lane_change_free` | O portador troca de linha sem gastar o turno, enquanto o estado durar |
+| `on_miss_move` | `{ who, to_line, swap_with_caster, break_after }` — quando um ataque falha o portador, ele move-se sem gastar o turno |
+| `expires` | `turn_start` (cai ao começar o próximo turno do portador), `turn_end` (cai ao terminar o turno em curso do portador) ou `round_end` (cai no fim da ronda) |
+| `weather` | `{ rounds, chip_damage, element_effect_multipliers }` — instala um clima de arena que dura rodas e mexe no dano/efeitos por elemento |
+| `element_power` | `{ <elemento>: multiplicador }` — efeitos daquele elemento usados pelo portador valem mais |
+| `projectile_accuracy` | `{ amount, vs_lane }` — bónus de precisão do portador em disparos (armas de arremesso ou longo alcance) |
+| `projectile_mark` | `{ accuracy }` — o portador marcado: disparos contra ele acertam melhor |
+| `ranged_evasion` | Esquiva do portador contra disparos e feitiços (dano mágico) |
+| `projectile_reroll` | `{ per_turn }` — o portador repete o primeiro disparo falhado, até N vezes por ronda |
 | `deferred_damage`, `echo`, `move` | Golpe atrasado, repetir a última ação, mudar de posição |
 | `rewind` | `{ turns, resources, cleanse }` — desfazer os últimos turnos do alvo |
 | `deferred_cost`, `self_upkeep`, `self_damage_per_target` | Preços: dívida, manutenção por turno e custo por alvo |

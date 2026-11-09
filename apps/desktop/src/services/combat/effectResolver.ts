@@ -361,6 +361,34 @@ export function readRewindSpec(effect: AttackEffect): CombatRewindSpec | null {
 }
 
 /**
+ * Reads an effect's `on_miss_move` clause: a move the holder fires by itself
+ * when an attack misses them (`Zephyr Veil`). `break_after` drops the status
+ * after the move fires, and defaults to `true`.
+ */
+export function readOnMissMove(
+    effect: AttackEffect,
+): (CombatMoveSpec & { breakAfter?: boolean }) | null {
+    const spec = asRecord(asRecord(effect)?.on_miss_move);
+    if (!spec) return null;
+
+    const who = readString(spec.who, 'self');
+    const toLine = readString(spec.to_line, 'other');
+
+    return {
+        who: who === 'target' ? 'target' : 'self',
+        toLine: toLine === 'front' || toLine === 'rear' ? toLine : 'other',
+        swapWithCaster: readBoolean(spec.swap_with_caster, false),
+        breakAfter: readBoolean(spec.break_after, true),
+    };
+}
+
+/** Reads the authored `expires` boundary; absent or unknown counts `turns` normally. */
+export function readExpiresMode(effect: AttackEffect): 'turn_start' | 'turn_end' | 'round_end' | null {
+    const mode = readString(asRecord(effect)?.expires, '');
+    return mode === 'turn_start' || mode === 'turn_end' || mode === 'round_end' ? mode : null;
+}
+
+/**
  * How an effect reads to a cleanse or a dispel.
  *
  * The authored `polarity` wins; otherwise a debuff or a damage-over-time is a
@@ -472,7 +500,7 @@ function readDamageChannels(source: unknown): DamageType[] | null {
 }
 
 /** Reads a flat `element_id → multiplier` record (`element_modulation`). */
-function readNumberRecord(source: unknown): Record<string, number> | null {
+export function readNumberRecord(source: unknown): Record<string, number> | null {
     const record = asRecord(source);
     if (!record) return null;
 
@@ -733,6 +761,29 @@ export function createEffectInstance(
         spendTrigger: readSpendTrigger(record.spend_trigger),
         stacks: 1,
         canStack: readBoolean(effect.can_stack, false),
+        expiresMode: readExpiresMode(effect),
+        laneChangeFree: readBoolean(record.lane_change_free, false) || undefined,
+        onMissMove: readOnMissMove(effect),
+        elementPower: readNumberRecord(record.element_power),
+        projectileAccuracy: ((): CombatEffectInstance['projectileAccuracy'] => {
+            const spec = asRecord(record.projectile_accuracy);
+            const amount = spec ? readNumber(spec.amount, 0) : 0;
+            if (amount <= 0) return null;
+            const vsLane = spec ? readString(spec.vs_lane, '') : '';
+            return { amount, vsLine: vsLane === 'front' || vsLane === 'rear' ? vsLane : null };
+        })(),
+        projectileMark: ((): CombatEffectInstance['projectileMark'] => {
+            const spec = asRecord(record.projectile_mark);
+            const accuracy = spec ? readNumber(spec.accuracy, 0) : 0;
+            return accuracy > 0 ? { accuracy } : null;
+        })(),
+        rangedEvasion: Math.max(0, readNumber(record.ranged_evasion, 0)) || undefined,
+        projectileReroll: ((): CombatEffectInstance['projectileReroll'] => {
+            const spec = asRecord(record.projectile_reroll);
+            if (!spec) return null;
+            const perTurn = Math.round(readNumber(spec.per_turn, 0));
+            return perTurn > 0 ? { perTurn: Math.min(3, perTurn), used: 0 } : null;
+        })(),
     };
 
     instance.polarity = readPolarity(effect, instance);
@@ -786,6 +837,11 @@ export function resolveEffectTargets(
             return alive.filter((unit) => unit.id === actor.id);
         case 'allies_all':
             return alive.filter((unit) => unit.side === actor.side);
+        case 'allies_lane':
+            // The chosen row: the actor's allies standing in the aimed
+            // target's line (`Ranged Veil` veils one lane, not the side).
+            return alive.filter((unit) => unit.side === actor.side
+                && unit.line === (primaryTarget?.line ?? actor.line));
         case 'enemies_all':
             return alive.filter((unit) => unit.side !== actor.side);
         case 'both_teams':
@@ -804,6 +860,60 @@ export function isImmuneToStatus(unit: CombatUnit, statusId: string): boolean {
     return unit.effects.some((effect) => (
         effect.immunities?.some((immune) => immune.trim().toLowerCase() === wanted) ?? false
     ));
+}
+
+/**
+ * Whether an effect instance houses any persistent state a status can keep.
+ *
+ * Application-time clauses (`move`, `rewind`) and one-shot specs live outside
+ * the status list, so an effect that carries nothing but them attaches no
+ * status at all.
+ */
+function carriesStatusPayload(instance: CombatEffectInstance): boolean {
+    return Boolean(
+        instance.statusEffect
+        || instance.buff
+        || instance.debuff
+        || instance.statMultipliers
+        || instance.preventActions
+        || instance.preventSkills
+        || instance.untargetable
+        || instance.healBlock
+        || instance.immunities
+        || instance.counter
+        || instance.turnOffset
+        || instance.cooldownTick
+        || instance.damagePerTurn > 0
+        || instance.regenPerTurn
+        || instance.regenPerTurnPercent
+        || (instance.randomRegenPerTurnPercent ?? 0) > 0
+        || instance.selfUpkeep
+        || instance.deferredCost
+        || instance.locksTarget
+        || instance.confuse
+        || instance.healOnKill
+        || instance.bonusVsHpBelow
+        || instance.removableByLux
+        || instance.damageImmunities
+        || instance.elementModulation
+        || instance.shieldPercentOfMaxHp
+        || instance.cleansePerTurn
+        || (instance.healPercentOfMax ?? 0) > 0
+        || instance.spendTrigger
+        || instance.chargeMax
+        || instance.counterExceptElements
+        || instance.damageChannelModulation
+        || instance.blockStatBuffs
+        || instance.preventDamageChannels
+        || instance.tripOnAction
+        || instance.laneChangeFree
+        || instance.onMissMove
+        || instance.elementPower
+        || instance.projectileAccuracy
+        || instance.projectileMark
+        || (instance.rangedEvasion ?? 0) > 0
+        || instance.projectileReroll,
+    );
 }
 
 /**
@@ -833,6 +943,11 @@ export function applyEffectToUnit(
     const instance = createEffectInstance(
         effect, sourceId, elementId, outputMultiplier * modulation, phaseMultiplier, random,
     );
+
+    // A landing that houses nothing a status can keep (a bare `move`, a
+    // one-shot `turn_postpone` clause) resolves in the field and leaves no
+    // status behind to wear off.
+    if (!carriesStatusPayload(instance)) return null;
 
     // A landing upgrade (`condensation` under `mist`) applies when the target
     // already carries a matching status; it folds its numbers into the instance.
@@ -1040,14 +1155,23 @@ export function tickUnitEffects(
             // The debt is paid once; the effect keeps living without it.
             remaining.push({ ...effect, deferredCost: null });
         } else {
-            remaining.push(effect);
+            // A projectile-re-roll status (`Second Chance`) re-arms on every
+            // one of its holder's turns, so its counter restarts here.
+            remaining.push(
+                effect.projectileReroll
+                    ? { ...effect, projectileReroll: { ...effect.projectileReroll, used: 0 } }
+                    : effect,
+            );
         }
     }
 
     const expiring: CombatEffectInstance[] = [];
     for (const effect of remaining) {
         if (shedThisTick.has(effect.effectId)) continue;
-        const expires = effect.turns !== null && effect.turns - 1 <= 0;
+        // A `turn_start` status ends the very moment its holder's turn begins
+        // (`Updraft`); its turn is spent guarding, not counting.
+        const expires = effect.expiresMode === 'turn_start'
+            || (effect.turns !== null && effect.turns - 1 <= 0);
         if (!expires) {
             expiring.push(
                 effect.turns === null ? effect : { ...effect, turns: effect.turns - 1 },
@@ -1065,6 +1189,50 @@ export function tickUnitEffects(
     }
 
     unit.effects = expiring;
+    return events;
+}
+
+/**
+ * Drops every `round_end` status the moment a round wraps (`Gale Force` lasts
+ * until the end of the round, whoever set it). Returns the `effect_expired`
+ * events; the caller fires its own on-removal abilities with them.
+ */
+export function expireRoundBoundEffects(units: CombatUnit[]): CombatEvent[] {
+    const events: CombatEvent[] = [];
+
+    for (const unit of units) {
+        const kept: CombatEffectInstance[] = [];
+        for (const effect of unit.effects) {
+            if (effect.expiresMode === 'round_end') {
+                events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+                continue;
+            }
+            kept.push(effect);
+        }
+        unit.effects = kept;
+    }
+
+    return events;
+}
+
+/**
+ * Drops the unit's `turn_end` statuses right after its action resolves
+ * (`Ranged Veil` veils one lane until each veiled ally acts). Returns the
+ * events; the caller fires its own on-removal abilities with them.
+ */
+export function expireTurnEndEffects(unit: CombatUnit): CombatEvent[] {
+    const events: CombatEvent[] = [];
+    const kept: CombatEffectInstance[] = [];
+
+    for (const effect of unit.effects) {
+        if (effect.expiresMode === 'turn_end') {
+            events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+            continue;
+        }
+        kept.push(effect);
+    }
+    unit.effects = kept;
+
     return events;
 }
 

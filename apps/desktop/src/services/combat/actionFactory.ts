@@ -25,6 +25,7 @@ import type {
     CombatAction,
     CombatActionCost,
     CombatRange,
+    CombatStats,
     CombatTargetRule,
     DamageType,
 } from '../../types/CombatType';
@@ -174,6 +175,16 @@ function readBonusPerCharge(source: Record<string, unknown>): CombatAction['bonu
     };
 }
 
+/** Reads a `power_scaling` trait (`Tempest Flurry` scales with speed). */
+function readPowerScaling(source: Record<string, unknown>): CombatAction['powerScaling'] {
+    const record = asRecord(source.power_scaling);
+    const stat = record ? readString(record.stat, '') : '';
+    const perPoint = record ? readNumber(record.per_point, 0) : 0;
+    if (!stat || perPoint <= 0) return null;
+
+    return { stat: stat as keyof CombatStats, perPoint };
+}
+
 /**
  * The traits every action carries, whatever it came from.
  *
@@ -186,6 +197,7 @@ function defaultTraits(): Pick<
     | 'bonusVsElements' | 'bonusVsHpBelow' | 'fleeBelowHp' | 'guaranteedCritVsStatus'
     | 'bonusVsStatus' | 'bonusPerCharge' | 'collateral'
     | 'scatterTargets' | 'scatterHits' | 'canHitAnyEnemy' | 'ignorePositionPenalty'
+    | 'powerScaling' | 'critMultiplier'
 > {
     return {
         solar: false,
@@ -206,6 +218,8 @@ function defaultTraits(): Pick<
         scatterHits: null,
         canHitAnyEnemy: false,
         ignorePositionPenalty: false,
+        powerScaling: null,
+        critMultiplier: null,
     };
 }
 
@@ -268,6 +282,11 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
         bonusVsStatus: readBonusVsStatus(skill as unknown as Record<string, unknown>),
         bonusPerCharge: readBonusPerCharge(skill as unknown as Record<string, unknown>),
         collateral: readCollateral(skill as unknown as Record<string, unknown>),
+        powerScaling: readPowerScaling(skill as unknown as Record<string, unknown>),
+        critMultiplier: ((): number | null => {
+            const value = readNumber(raw.crit_multiplier, 0);
+            return Number.isFinite(value) && value > 0 ? value : null;
+        })(),
     };
 }
 

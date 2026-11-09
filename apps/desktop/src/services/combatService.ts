@@ -50,12 +50,15 @@ import {
     applySpendTriggers,
     areSkillsPrevented,
     effectiveStats,
+    expireRoundBoundEffects,
+    expireTurnEndEffects,
     isActionPrevented,
     preventedActionKinds,
     preventedDamageChannels,
     tickUnitEffects,
 } from './combat/effectResolver';
 import { recordTimelineSnapshot } from './combat/rewind';
+import { tickWeather } from './combat/weather';
 import { effectiveTimePhase, tickPhaseOverride } from './combat/phaseOverride';
 import { canAttemptFlee, fleeRuleFor } from './combat/fleeRules';
 import { resolveFightHour, timePhaseForHour } from './state/worldClock';
@@ -187,6 +190,11 @@ export const AVAILABILITY_MESSAGES: Partial<Record<CombatErrorCode, string>> = {
 /** The unit whose turn it is, or `null` when the order points at nobody. */
 function currentUnit(state: CombatState): CombatUnit | null {
     return state.units.find((unit) => unit.id === state.order[state.turnIndex]) ?? null;
+}
+
+/** Whether a live status grants its holder a free line change (`Cloudstep`/`Windborne`). */
+function laneChangeFree(unit: CombatUnit): boolean {
+    return unit.effects.some((effect) => effect.laneChangeFree === true);
 }
 
 /** How much of its maximum health a unit still has, as a fraction. */
@@ -329,7 +337,24 @@ function advanceToNextUnit(
         state.turnGauges = advance.gauges;
 
         // A forced phase lasts whole rounds; spend one at every round boundary.
-        if (advance.round !== previousRound) tickPhaseOverride(state);
+        if (advance.round !== previousRound) {
+            tickPhaseOverride(state);
+            // The weather runs one round forward: the opposing side pays its
+            // chip damage and the countdown falls, clearing at zero. A felled
+            // unit is reaped on the sweeping pass below.
+            events.push(...tickWeather(state));
+            // `round_end` statuses (`Gale Force`) drop the moment a new round
+            // is planned, whoever set them.
+            const expired = expireRoundBoundEffects(state.units);
+            events.push(...expired);
+            for (const event of expired) {
+                if (event.type !== 'effect_expired') continue;
+                const bearer = state.units.find((unit) => unit.id === event.unitId);
+                if (bearer) {
+                    events.push(...resolveAbilityEvent(state, bearer, 'on_status_removed', passiveTriggerContext(random, state.units)));
+                }
+            }
+        }
 
         if (!advance.unit) return { events, unit: null };
 
@@ -558,6 +583,7 @@ export async function startCombat(
         hour,
         timePhase,
         phaseOverride: null,
+        weather: null,
         phase: 'active',
         outcome: null,
         log: [],
@@ -915,6 +941,7 @@ export function previewCombatDamage(
         elementIndex,
         random,
         timePhase: effectiveTimePhase(state),
+        weather: state.weather ?? null,
         defenderHpFraction: hpFraction(target),
     }));
 }
@@ -968,6 +995,27 @@ export function submitCombatAction(
     const validation = validateTargetRule(state, actor, action, request.targetId);
     if (validation.error) return combatFail(validation.error);
 
+    // A status granting a free crossing (`Cloudstep`, `Windborne`) lets its
+    // holder step to the other line without spending the turn: the move
+    // resolves on the spots and the turn keeps going, like a weapon switch.
+    if (action.kind === 'switch_line' && laneChangeFree(actor)) {
+        const resolved = resolveCombatAction({
+            state,
+            actor,
+            action,
+            target: validation.target,
+            elementIndex,
+            random,
+        });
+        state.log.push(...resolved.events);
+        trimLog(state.log, MAX_LOG_ENTRIES);
+        return combatOk({
+            state,
+            events: resolved.events,
+            outcome: resolved.outcome ?? state.outcome,
+        });
+    }
+
     // The action's resource costs. A `hangover`-style status charges the
     // spender once the pools actually dropped: paying mana or stamina
     // triggers any spend trigger the payer carries.
@@ -998,6 +1046,9 @@ export function submitCombatAction(
     // (a reflection) does not get a turn end.
     if (!resolved.outcome && actor.status === 'alive') {
         events.push(...resolveUnitTurnEnd(state, actor, random));
+        // `turn_end` statuses (`Ranged Veil`) expire right after their holder
+        // acts — they guard exactly one of the holder's turns.
+        events.push(...expireTurnEndEffects(actor));
     }
 
     const outcome = resolved.outcome ?? evaluateOutcome(state);
@@ -1074,6 +1125,7 @@ function submitInventoryAction(
 
     if (actor.status === 'alive') {
         events.push(...resolveUnitTurnEnd(state, actor, random));
+        events.push(...expireTurnEndEffects(actor));
     }
 
     const outcome = evaluateOutcome(state);

@@ -287,6 +287,43 @@ export interface CombatEffectInstance {
     /** How many copies are stacked; `1` when the effect does not stack. */
     stacks: number;
     canStack: boolean;
+    /**
+     * Boundary expiry rather than turn counting (`expires`): `turn_start` drops
+     * the status the moment its holder's next turn begins, `round_end` when the
+     * round wraps. `null`/absent counts `turns` normally.
+     */
+    expiresMode?: 'turn_start' | 'turn_end' | 'round_end' | null;
+    /** While live, the holder may switch lanes without spending its turn (`Cloudstep`). */
+    laneChangeFree?: boolean;
+    /** Move the holder fires by itself when an attack misses them (`Zephyr Veil`). */
+    onMissMove?: (CombatMoveSpec & { breakAfter?: boolean }) | null;
+    /**
+     * Outgoing effect-strength multipliers by element id while the status lives
+     * (`Gale Resonance` boosts the bearer's caeli effects by ×1.15). Folded into
+     * the output multiplier of every effect the bearer lands.
+     */
+    elementPower?: Record<string, number> | null;
+    /**
+     * Accuracy the holder's projectile hits gain (`Skyline Sight` +12). The
+     * bonus only reaches actions that read as projectiles, and `vsLine` narrows
+     * it to one defender lane (`Tailwind Trajectory` aims at the rear).
+     */
+    projectileAccuracy?: { amount: number; vsLine: 'front' | 'rear' | null } | null;
+    /**
+     * Accuracy every attacker gains against the marked holder, as long as the
+     * incoming action is a projectile (`Crosswind Mark` +15).
+     */
+    projectileMark?: { accuracy: number } | null;
+    /**
+     * Flat evasion the holder gains against ranged actions (`Ranged Veil` +15):
+     * thrown/long-reach weapons and spells (magical damage).
+     */
+    rangedEvasion?: number;
+    /**
+     * The holder may re-roll its first missed projectile shot each of its turns
+     * (`Second Chance`); `used` tracks how often it fired since the last reset.
+     */
+    projectileReroll?: { perTurn: number; used: number } | null;
 }
 
 /** Remaining cooldown, in turns, keyed by action id. */
@@ -524,6 +561,17 @@ export interface CombatAction {
      * when the hit resolves (`avalanche` spends Freeze charges for damage).
      */
     bonusPerCharge?: { status: string; multiplierPerCharge: number; consume: boolean } | null;
+    /**
+     * Adds `power = power + perPoint × stat` to every hit, read straight off
+     * the caster's live stats (`Tempest Flurry` scales with speed). Previews
+     * share the same chain, so they stay in sync. `null`/absent keeps `power`.
+     */
+    powerScaling?: { stat: keyof CombatStats; perPoint: number } | null;
+    /**
+     * Multiplier a critical hit uses instead of the global ×1.75
+     * (`Meteor Drop` doubles on crit). `null`/absent keeps the default.
+     */
+    critMultiplier?: number | null;
 }
 
 /**Damage-channel modifiers folded from a defender's passive abilities.
@@ -704,6 +752,14 @@ export type CombatEvent =
     | { type: 'unit_defeated'; unitId: string }
     /** A living rear-line unit stepped into its side's emptied front line. */
     | { type: 'unit_line_changed'; unitId: string; line: CombatLine; slot: number }
+    /** A skill pushed the unit's next turn back through the queue mid-round. */
+    | { type: 'action_postponed'; unitId: string; slots: number }
+    /** A skill raised a battlefield-wide weather state (`Rain`, `Storm`). */
+    | { type: 'weather_changed'; id: string; label: string; rounds: number }
+    /** The weather state faded away. */
+    | { type: 'weather_ended'; id: string }
+    /** A projectile hit was re-rolled and landed (`Second Chance`). */
+    | { type: 'attack_retried'; attackerId: string; targetId: string }
     /** An ability owned by `unitId` satisfied its trigger and condition. */
     | {
         type: 'ability_triggered';
@@ -825,6 +881,30 @@ export interface CombatPhaseOverride {
     sourceId: string;
 }
 
+/**
+ * A battlefield-wide weather state forced by a skill (`Rain`, `Storm` …).
+ *
+ * Weather lasts whole rounds, chips the opposing side lightly at every round
+ * tick (`chipDamage`), and multiplies the effectiveness of actions/effects of
+ * the elements listed in {@link elementEffectMultipliers} — both their damage
+ * and their effect magnitudes (`Rain` makes aqua skills stronger and ignis
+ * skills weaker).
+ */
+export interface CombatWeather {
+    /** Catalogue id of the skill that raised the weather. */
+    id: string;
+    /** Display name (`Rain`, `Storm`). */
+    label: string;
+    /** Which side enjoys the weather; the other one pays the chip damage. */
+    side: CombatSide;
+    /** Full rounds left; the weather clears when it reaches zero. */
+    rounds: number;
+    /** Effect/damage multipliers per element id (absent elements read ×1). */
+    elementEffectMultipliers: Record<string, number>;
+    /** Flat HP the opposing side loses at every round tick. */
+    chipDamage: number;
+}
+
 /** The serializable shape of a fight. The frontend renders this directly. */
 export interface CombatState {
     sessionId: string;
@@ -849,6 +929,11 @@ export interface CombatState {
      * when the natural hour matches the blocked body.
      */
     phaseOverride: CombatPhaseOverride | null;
+    /**
+     * A battlefield-wide weather state (`Rain`, `Storm` …), or `null` for a
+     * clear sky. Lasts whole rounds and modulates elements while it holds.
+     */
+    weather?: CombatWeather | null;
     /**
      * Turn queue for the current round, fastest first.
      *

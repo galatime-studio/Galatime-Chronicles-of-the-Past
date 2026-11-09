@@ -9,17 +9,69 @@
  * *do*", and so the same rule is never written twice.
  */
 
-import type { AttackEffect } from '../../types/AttackDataType';
-import type { CombatEvent, CombatState, CombatUnit } from '../../types/CombatType';
+import type { AttackEffect, AttackEffectCondition } from '../../types/AttackDataType';
+import type {
+    CombatEvent,
+    CombatMoveSpec,
+    CombatState,
+    CombatUnit,
+} from '../../types/CombatType';
 import { asRecord, readBoolean, readNumber, readString } from '../../utils/combatUtils';
 import {
     cleanseEffects,
     dispelEffects,
+    effectiveStats,
     readMoveSpec,
     readRewindSpec,
 } from './effectResolver';
-import { moveUnitToLine } from './positionRules';
+import { canPlaceInLine, moveUnitToLine } from './positionRules';
 import { rewindUnit } from './rewind';
+import { hasActedThisRound, postponeUnitTurn } from './turnOrderService';
+
+/** Reads a condition clause as authored; an absent clause lets everything through. */
+export function readConditionRecord(source: unknown): AttackEffectCondition | null {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const line = readString(record.target_line, '');
+    const noSpace = readString(record.requires_no_space, '');
+    const condition: AttackEffectCondition = {
+        requires_pending: readBoolean(record.requires_pending, false) || undefined,
+        requires_acted: readBoolean(record.requires_acted, false) || undefined,
+        target_line: line === 'front' || line === 'rear' ? line : undefined,
+        requires_no_space: noSpace === 'front' || noSpace === 'rear' ? noSpace : undefined,
+    };
+    return !condition.requires_pending && !condition.requires_acted && !condition.target_line
+        && !condition.requires_no_space
+        ? null
+        : condition;
+}
+
+/**
+ * Whether a unit satisfies an effect's `condition` clause.
+ *
+ * `requires_pending` passes for units that have not acted yet this round (the
+ * caster acts *before* the target), `requires_acted` for units that already
+ * have, and `target_line` for units standing in the named line. An absent
+ * condition is always satisfied.
+ */
+export function effectConditionSatisfied(
+    state: CombatState,
+    unit: CombatUnit,
+    condition: AttackEffectCondition | null | undefined,
+): boolean {
+    if (!condition) return true;
+    const acted = hasActedThisRound(state, unit.id);
+    if (condition.requires_pending && acted) return false;
+    if (condition.requires_acted && !acted) return false;
+    if (condition.target_line && unit.line !== condition.target_line) return false;
+    if (condition.requires_no_space && canPlaceInLine(state.units, unit.side, condition.requires_no_space)) {
+        // The clause only passes when the named line is full: a `sky_lift`
+        // fallback fires because the caster's rear row has no free slot.
+        return false;
+    }
+    return true;
+}
 
 /**
  * The curses a cleanse takes off a unit.
@@ -69,6 +121,24 @@ export function applyMove(
     const spec = readMoveSpec(effect);
     if (!spec) return [];
 
+    // A `move` may carry its own `condition` (`Tailwind` only pushes a target
+    // that has not acted yet); the clause reads the mover, not the caster.
+    const condition = readConditionRecord(asRecord(asRecord(effect)?.move)?.condition);
+    if (!effectConditionSatisfied(state, spec.who === 'self' ? actor : unit, condition)) return [];
+
+    return applyMoveSpec(state, actor, unit, spec);
+}
+
+/**
+ * Walks the unit the spec names to the spec's line, with no condition of its
+ * own — shared by reactive moves fired from a live status (`Zephyr Veil`).
+ */
+export function applyMoveSpec(
+    state: CombatState,
+    actor: CombatUnit,
+    unit: CombatUnit,
+    spec: CombatMoveSpec,
+): CombatEvent[] {
     const mover = spec.who === 'self' ? actor : unit;
     if (mover.status !== 'alive') return [];
 
@@ -98,4 +168,39 @@ export function applyRewind(unit: CombatUnit, effect: AttackEffect): CombatEvent
     if (!spec) return [];
 
     return rewindUnit(unit, spec);
+}
+
+/**
+ * Delays the target's next turn a few places through the queue.
+ *
+ * Authored by `turn_postpone`: `slots` (default `1`) is the base pushback, and
+ * `per_speed_advantage` adds one extra place per multiple of itself the
+ * caster's live speed leads the target's by (`Uproot` pushes harder the
+ * faster the gale comes down). The clause's own `condition` gates the whole
+ * call, and a target with no pending turn cannot be delayed. Fires
+ * `action_postponed` when it lands.
+ */
+export function applyTurnPostpone(
+    state: CombatState,
+    actor: CombatUnit,
+    unit: CombatUnit,
+    effect: AttackEffect,
+): CombatEvent[] {
+    const record = asRecord(asRecord(effect)?.turn_postpone);
+    if (!record) return [];
+
+    const condition = readConditionRecord(record.condition);
+    if (!effectConditionSatisfied(state, unit, condition)) return [];
+    if (unit.status !== 'alive') return [];
+
+    const base = readNumber(record.slots, 1);
+    const per = readNumber(record.per_speed_advantage, 0);
+    const edge = per > 0
+        ? Math.floor(Math.max(0, effectiveStats(actor).speed - effectiveStats(unit).speed) / per)
+        : 0;
+    const slots = Math.max(0, Math.round(base) + edge);
+    const moved = postponeUnitTurn(state, unit.id, slots);
+    if (moved <= 0) return [];
+
+    return [{ type: 'action_postponed', unitId: unit.id, slots: moved }];
 }

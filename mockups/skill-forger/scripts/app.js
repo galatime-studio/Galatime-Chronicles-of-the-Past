@@ -26,6 +26,13 @@
         ['deferred', 'Dano atrasado'],
         ['echo', 'Repetir ação'],
         ['move', 'Mover posição'],
+        ['stall', 'Atrasar turno'],
+        ['react_move', 'Mover ao ser falhado'],
+        ['weather', 'Instalar clima'],
+        ['sight', 'Mira de projéteis'],
+        ['mark', 'Marcar para projéteis'],
+        ['veil', 'Véu anti-atiradores'],
+        ['reroll', 'Segunda chance no ar'],
         ['upkeep', 'Manter carga'],
         ['rewind', 'Retroceder tempo'],
     ];
@@ -42,6 +49,7 @@
         skillId: null,
         attackerPhysicalAttack: 30,
         attackerMagicalAttack: 30,
+        attackerSpeed: 16,
         attackerAccuracyStat: 0,
         attackerCritStat: 0,
         attackerLine: 'front',
@@ -253,6 +261,7 @@
         var SIM_NUMBER_FIELDS = {
             'sim-attack-physical': 'attackerPhysicalAttack',
             'sim-attack-magical': 'attackerMagicalAttack',
+            'sim-attacker-speed': 'attackerSpeed',
             'sim-attacker-accuracy': 'attackerAccuracyStat',
             'sim-attacker-crit': 'attackerCritStat',
             'sim-defense-physical': 'defenderPhysicalDefense',
@@ -379,8 +388,11 @@
         form.elements.damage_type.value = skill.damage?.kind || skill.damage?.damage_type || 'magical';
         var power = skill.damage?.power;
         if (typeof power === 'number') power = { kind: 'fixed', value: power };
-        form.elements.power_kind.value = power?.kind === 'random' ? 'random' : (power?.kind === 'scaling' ? 'attribute' : 'fixed');
-        form.elements.power_value.value = power?.value ?? power?.multiplier ?? power?.min ?? 0;
+        form.elements.power_kind.value = skill.power_scaling?.stat ? 'attribute'
+            : power?.kind === 'random' ? 'random' : 'fixed';
+        form.elements.power_value.value = skill.power_scaling?.stat
+            ? skill.power_scaling.per_point
+            : (power?.value ?? power?.multiplier ?? power?.min ?? 0);
         form.elements.accuracy.value = Number(skill.accuracy ?? 100);
         form.elements.hit_count.value = skill.hit_count ?? 1;
         form.elements.mana_cost.value = skill.costs?.mana ?? 0;
@@ -393,6 +405,7 @@
         form.elements.only_during_night.checked = Boolean(skill.only_during_night);
         form.elements.ignore_accuracy.checked = Boolean(skill.ignore_accuracy);
         form.elements.crit_chance.value = skill.crit_chance ?? '';
+        if (form.elements.crit_multiplier) form.elements.crit_multiplier.value = skill.crit_multiplier ?? '';
         form.elements.guaranteed_crit_vs_status.value = skill.guaranteed_crit_vs_status || '';
         form.elements.defense_pierce.value = skill.defense_pierce ?? '';
         form.elements.bonus_vs_hp_below_threshold.value = skill.bonus_vs_hp_below?.threshold ?? '';
@@ -407,7 +420,7 @@
         form.elements.bonus_per_charge_consume.checked = Boolean(skill.bonus_per_charge?.consume);
         updatePowerFields(false);
         if (form.elements.power_kind.value === 'random' && form.elements.power_max) form.elements.power_max.value = power?.max ?? form.elements.power_value.value;
-        if (form.elements.power_kind.value === 'attribute' && form.elements.power_stat) form.elements.power_stat.value = power?.stat || 'magical_attack';
+        if (form.elements.power_kind.value === 'attribute' && form.elements.power_stat) form.elements.power_stat.value = skill.power_scaling?.stat || 'speed';
         renderPrerequisites(skill);
         updateTargetContext(skill);
         renderCollateral(skill);
@@ -474,6 +487,7 @@
         if (skill.only_during_day) chips.push({ label: 'Restrição', value: 'Só de dia' });
         if (skill.only_during_night) chips.push({ label: 'Restrição', value: 'Só de noite' });
         if (skill.crit_chance) chips.push({ label: 'Crítico', value: skill.crit_chance + '%' });
+        if (skill.crit_multiplier) chips.push({ label: 'Crítico', value: '×' + skill.crit_multiplier });
         if (skill.ignore_accuracy) chips.push({ label: 'Traço', value: 'Não falha' });
         if (skill.defense_pierce) chips.push({ label: 'Traço', value: 'Ignora ' + Math.round(skill.defense_pierce * 100) + '% da defesa' });
         if (skill.bonus_vs_elements && Object.keys(skill.bonus_vs_elements).length) {
@@ -740,6 +754,7 @@
         var sim = Engine.simulate(skill, {
             attackerPhysicalAttack: state.simulator.attackerPhysicalAttack,
             attackerMagicalAttack: state.simulator.attackerMagicalAttack,
+            attackerSpeed: state.simulator.attackerSpeed,
             attackerAccuracyStat: state.simulator.attackerAccuracyStat,
             attackerCritStat: state.simulator.attackerCritStat,
             attackerLine: state.simulator.attackerLine,
@@ -770,6 +785,7 @@
     function syncSimulatorInputs() {
         byId('sim-attack-physical').value = state.simulator.attackerPhysicalAttack;
         byId('sim-attack-magical').value = state.simulator.attackerMagicalAttack;
+        byId('sim-attacker-speed').value = state.simulator.attackerSpeed;
         byId('sim-attacker-accuracy').value = state.simulator.attackerAccuracyStat;
         byId('sim-attacker-crit').value = state.simulator.attackerCritStat;
         byId('sim-attacker-line').value = state.simulator.attackerLine;
@@ -1070,6 +1086,7 @@
         if (form.elements.ignore_accuracy.checked) skill.ignore_accuracy = true;
         else delete skill.ignore_accuracy;
         setOptionalNumber(skill, 'crit_chance', form.elements.crit_chance.value);
+        if (form.elements.crit_multiplier) setOptionalNumber(skill, 'crit_multiplier', form.elements.crit_multiplier.value);
         setOptionalNumber(skill, 'defense_pierce', form.elements.defense_pierce.value);
         setOptionalNumber(skill, 'flee_below_hp', form.elements.flee_below_hp.value);
         if (form.elements.guaranteed_crit_vs_status.value.trim()) {
@@ -1113,18 +1130,26 @@
         if (form.elements.direct_action.value === 'damage') {
             var powerValue = numberValue(form.elements.power_value.value, 0);
             var powerKind = form.elements.power_kind.value;
-            var power = powerKind === 'random'
-                ? { kind: 'random', min: powerValue, max: numberValue(form.elements.power_max?.value, powerValue) }
-                : powerKind === 'attribute'
-                    ? { kind: 'scaling', stat: form.elements.power_stat?.value || 'magical_attack', multiplier: powerValue }
+            if (powerKind === 'attribute') {
+                // Escala por atributo vive no nível da skill (o motor lê
+                // `power_scaling`), e o poder base do golpe fica fixo.
+                var scaledStat = (form.elements.power_stat?.value || 'speed');
+                skill.power_scaling = { stat: scaledStat, per_point: Math.max(0, powerValue) };
+                skill.damage = { kind: form.elements.damage_type.value, power: { kind: 'fixed', value: powerValue } };
+            } else {
+                delete skill.power_scaling;
+                var power = powerKind === 'random'
+                    ? { kind: 'random', min: powerValue, max: numberValue(form.elements.power_max?.value, powerValue) }
                     : { kind: 'fixed', value: powerValue };
-            skill.damage = { kind: form.elements.damage_type.value, power: power };
+                skill.damage = { kind: form.elements.damage_type.value, power: power };
+            }
             skill.accuracy = Math.max(0, Math.min(100, numberValue(form.elements.accuracy.value, 100)));
             skill.hit_count = Math.max(1, numberValue(form.elements.hit_count.value, 1));
         } else {
             delete skill.damage;
             delete skill.accuracy;
             delete skill.hit_count;
+            delete skill.power_scaling;
         }
 
         syncEffectCards(skill);
@@ -1434,6 +1459,51 @@
                 + optionMarkup('other', 'Para a outra linha', move.to_line === 'other') + '</select></label>'
                 + '<label class="effect-stack"><input type="checkbox" data-effect-field="move.swap_with_caster" ' + (move.swap_with_caster ? 'checked' : '') + '> Trocar de posição</label>';
         }
+        if (pattern === 'stall') {
+            var postpone = effect.turn_postpone || {};
+            var postponeCondition = postpone.condition || {};
+            return '<label class="effect-field"><span>Espaços de atraso</span><input class="control" data-effect-field="turn_postpone.slots" type="number" min="1" value="' + escapeHtml(postpone.slots ?? 1) + '"><small>Adia o próximo turno pendente do alvo na ronda atual.</small></label>'
+                + '<label class="effect-field"><span>Vantagem de velocidade</span><input class="control" data-effect-field="turn_postpone.per_speed_advantage" type="number" min="1" value="' + escapeHtml(postpone.per_speed_advantage ?? '') + '" placeholder="—"><small>Por cada N pontos em que quem usa a skill é mais rápido, atrasa mais um espaço.</small></label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="turn_postpone.condition.requires_pending" ' + (postponeCondition.requires_pending ? 'checked' : '') + '> Só se o alvo ainda não agiu</label>';
+        }
+        if (pattern === 'react_move') {
+            var reaction = effect.on_miss_move || {};
+            return '<label class="effect-field"><span>Quem se move</span><select class="control" data-effect-field="on_miss_move.who">'
+                + optionMarkup('self', 'O portador do estado', (reaction.who || 'self') === 'self')
+                + optionMarkup('target', 'O atacante', reaction.who === 'target') + '</select></label>'
+                + '<label class="effect-field"><span>Para a linha</span><select class="control" data-effect-field="on_miss_move.to_line">'
+                + optionMarkup('front', 'Frente', reaction.to_line === 'front')
+                + optionMarkup('rear', 'Trás', reaction.to_line === 'rear')
+                + optionMarkup('other', 'Para a outra linha', (reaction.to_line || 'other') === 'other') + '</select></label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="on_miss_move.swap_with_caster" ' + (reaction.swap_with_caster ? 'checked' : '') + '> Trocar de posição</label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="on_miss_move.break_after" ' + (reaction.break_after !== false ? 'checked' : '') + '> O estado acaba depois de mover</label>';
+        }
+        if (pattern === 'weather') {
+            var weather = effect.weather || {};
+            return '<label class="effect-field"><span>Rondas de clima</span><input class="control" data-effect-field="weather.rounds" type="number" min="0" value="' + escapeHtml(weather.rounds ?? 3) + '"><small>O clima cobre todo o campo e cai no fim da ronda.</small></label>'
+                + '<label class="effect-field"><span>Dano aos adversários</span><input class="control" data-effect-field="weather.chip_damage" type="number" min="0" value="' + escapeHtml(weather.chip_damage ?? '') + '" placeholder="0"><small>Dano fixo por ronda a quem se opõe ao lado que instalou o clima.</small></label>'
+                + pairsEditor('Efeitos por elemento', weather.element_effect_multipliers || {}, 'weather_element_pairs', 'aqua: 1.1, ignis: 0.9')
+                + '<small>Dano e efeitos desses elementos multiplicam-se enquanto o clima durar.</small>';
+        }
+        if (pattern === 'sight') {
+            var sight = effect.projectile_accuracy || {};
+            return '<label class="effect-field"><span>Ganho de precisão</span><input class="control" data-effect-field="projectile_accuracy.amount" type="number" min="0" value="' + escapeHtml(sight.amount ?? 12) + '"><small>Aplica-se a armas lançadas e armas de longo alcance.</small></label>'
+                + '<label class="effect-field"><span>Contra a linha</span><select class="control" data-effect-field="projectile_accuracy.vs_lane">'
+                + optionMarkup('', 'Qualquer linha', !sight.vs_lane)
+                + optionMarkup('front', 'Só a linha da frente', sight.vs_lane === 'front')
+                + optionMarkup('rear', 'Só a linha de trás', sight.vs_lane === 'rear') + '</select></label>';
+        }
+        if (pattern === 'mark') {
+            var mark = effect.projectile_mark || {};
+            return '<label class="effect-field"><span>Precisão contra o portador</span><input class="control" data-effect-field="projectile_mark.accuracy" type="number" min="0" value="' + escapeHtml(mark.accuracy ?? 15) + '"><small>Lançamentos e tiros de longo alcance contra quem traz a marca ganham este bónus.</small></label>';
+        }
+        if (pattern === 'veil') {
+            return '<label class="effect-field"><span>Esquiva contra projéteis</span><input class="control" data-effect-field="ranged_evasion" type="number" min="0" value="' + escapeHtml(effect.ranged_evasion ?? 15) + '"><small>Torna mais difícil acertar o portador com armas lançadas, tiros longos e feitiços.</small></label>';
+        }
+        if (pattern === 'reroll') {
+            var reroll = effect.projectile_reroll || {};
+            return '<label class="effect-field"><span>Repetições por ronda</span><input class="control" data-effect-field="projectile_reroll.per_turn" type="number" min="1" max="3" value="' + escapeHtml(reroll.per_turn ?? 1) + '"><small>Repõe no início da ronda seguinte; só funciona em ações de um golpe e sem dispersão.</small></label>';
+        }
         if (pattern === 'upkeep') {
             var upkeep = effect.self_upkeep || {};
             return '<label class="effect-field"><span>Vida por turno</span><input class="control" data-effect-field="self_upkeep.hp" type="number" min="0" value="' + escapeHtml(upkeep.hp ?? '') + '" placeholder="0"></label>'
@@ -1550,6 +1620,35 @@
             + optionMarkup('caster', 'Quem usa a skill recebe', effect.drain_to === 'caster') + '</select></label>'
             + '</div></div>'
             + '<div class="effect-advanced-group">'
+            + '<span class="effect-group-title">Vento (caeli)</span>'
+            + '<div class="form-grid effect-main-grid">'
+            + '<label class="effect-stack"><input type="checkbox" data-effect-field="condition.requires_pending" ' + ((effect.condition || {}).requires_pending ? 'checked' : '') + '> Só aplica se o alvo ainda não agiu nesta ronda</label>'
+            + '<label class="effect-stack"><input type="checkbox" data-effect-field="condition.requires_acted" ' + ((effect.condition || {}).requires_acted ? 'checked' : '') + '> Só aplica se o alvo já agiu nesta ronda</label>'
+            + '<label class="effect-field"><span>Condição de linha</span><select class="control" data-effect-field="condition.target_line">'
+            + optionMarkup('', 'Qualquer linha', !((effect.condition || {}).target_line))
+            + optionMarkup('front', 'Só na frente', (effect.condition || {}).target_line === 'front')
+            + optionMarkup('rear', 'Só atrás', (effect.condition || {}).target_line === 'rear')
+            + '</select></label>'
+            + '<label class="effect-field"><span>Linha cheia exigida</span><select class="control" data-effect-field="condition.requires_no_space">'
+            + optionMarkup('', 'Nenhuma', !((effect.condition || {}).requires_no_space))
+            + optionMarkup('front', 'Só se a frente estiver cheia', (effect.condition || {}).requires_no_space === 'front')
+            + optionMarkup('rear', 'Só se atrás estiver cheio', (effect.condition || {}).requires_no_space === 'rear')
+            + '</select></label>'
+            + '<label class="effect-stack"><input type="checkbox" data-effect-field="lane_change_free" ' + (effect.lane_change_free ? 'checked' : '') + '> O portador troca de linha sem gastar o turno</label>'
+            + '<label class="effect-field"><span>O efeito termina</span><select class="control" data-effect-field="expires">'
+            + optionMarkup('', 'Nos turnos normais', !effect.expires)
+            + optionMarkup('turn_start', 'Quando o portador começar o próximo turno', effect.expires === 'turn_start')
+            + optionMarkup('turn_end', 'Quando o portador terminar o turno em curso', effect.expires === 'turn_end')
+            + optionMarkup('round_end', 'No fim da ronda', effect.expires === 'round_end')
+            + '</select></label>'
+            + '</div></div>'
+            + '<div class="effect-advanced-group">'
+            + '<span class="effect-group-title">Céu (caeli)</span>'
+            + '<div class="form-grid effect-main-grid">'
+            + pairsEditor('Reforço de efeitos por elemento', effect.element_power || {}, 'element_power_pairs', 'caeli: 1.15')
+            + '<small>Multiplica os efeitos das skills de cada elemento lançadas por quem o carrega.</small>'
+            + '</div></div>'
+            + '<div class="effect-advanced-group">'
             + '<span class="effect-group-title">Polaridade</span>'
             + '<div class="form-grid effect-main-grid">'
             + '<label class="effect-field"><span>Polaridade</span><select class="control" data-effect-field="polarity">' + polarityOptions + '</select><small>Automática: buff → positive, debuff ou dano → negative, controlo → neutral.</small></label>'
@@ -1630,6 +1729,13 @@
         if (effect.deferred_damage) return 'deferred';
         if (effect.echo) return 'echo';
         if (effect.move) return 'move';
+        if (effect.turn_postpone) return 'stall';
+        if (effect.on_miss_move) return 'react_move';
+        if (effect.weather) return 'weather';
+        if (effect.projectile_accuracy) return 'sight';
+        if (effect.projectile_mark) return 'mark';
+        if (effect.ranged_evasion) return 'veil';
+        if (effect.projectile_reroll) return 'reroll';
         if (effect.rewind) return 'rewind';
         if (effect.self_upkeep) return 'upkeep';
         if (effect.regen_per_turn) return 'regen_turn';
@@ -1732,6 +1838,13 @@
         if (pattern === 'deferred') properties.deferred_damage = { amount: 12, after_turns: 2 };
         if (pattern === 'echo') properties.echo = { multiplier: 1 };
         if (pattern === 'move') properties.move = { who: 'target', to_line: 'rear' };
+        if (pattern === 'stall') properties.turn_postpone = { slots: 1, condition: { requires_pending: true } };
+        if (pattern === 'react_move') properties.on_miss_move = { who: 'self', to_line: 'other', break_after: true };
+        if (pattern === 'weather') properties.weather = { rounds: 3, element_effect_multipliers: { aqua: 1.1 } };
+        if (pattern === 'sight') properties.projectile_accuracy = { amount: 12 };
+        if (pattern === 'mark') properties.projectile_mark = { accuracy: 15 };
+        if (pattern === 'veil') properties.ranged_evasion = 15;
+        if (pattern === 'reroll') properties.projectile_reroll = { per_turn: 1 };
         if (pattern === 'upkeep') properties.self_upkeep = { hp: 2 };
         if (pattern === 'rewind') properties.rewind = { turns: 1, resources: ['hp', 'mana', 'stamina'], cleanse: true };
         skill.effects.push(Model.makeEffect(skill.id, pattern, applyTo, effectIndex - 1, properties));
@@ -1774,7 +1887,7 @@
         if (!skill || !card) return;
         var effect = skill.effects.find(function (item) { return item.effect_id === card.dataset.effectId; });
         if (!effect) return;
-        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind'].forEach(function (key) { delete effect[key]; });
+        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll'].forEach(function (key) { delete effect[key]; });
         var type = select.value;
         if (type === 'regen') effect.resource_regen = { hp: 15 };
         if (type === 'regen_turn') effect.regen_per_turn = { hp: 10 };
@@ -1798,6 +1911,13 @@
         if (type === 'deferred') effect.deferred_damage = { amount: 12, after_turns: 2 };
         if (type === 'echo') effect.echo = { multiplier: 1 };
         if (type === 'move') effect.move = { who: 'target', to_line: 'rear' };
+        if (type === 'stall') effect.turn_postpone = { slots: 1, condition: { requires_pending: true } };
+        if (type === 'react_move') effect.on_miss_move = { who: 'self', to_line: 'other', break_after: true };
+        if (type === 'weather') effect.weather = { rounds: 3, element_effect_multipliers: { aqua: 1.1 } };
+        if (type === 'sight') effect.projectile_accuracy = { amount: 12 };
+        if (type === 'mark') effect.projectile_mark = { accuracy: 15 };
+        if (type === 'veil') effect.ranged_evasion = 15;
+        if (type === 'reroll') effect.projectile_reroll = { per_turn: 1 };
         if (type === 'upkeep') effect.self_upkeep = { hp: 2 };
         if (type === 'rewind') effect.rewind = { turns: 1, resources: ['hp', 'mana', 'stamina'], cleanse: true };
         // O nome do estado segue a operação, mas só enquanto o autor não o
@@ -1858,11 +1978,14 @@
                     var list = String(field.value || '').split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
                     if (list.length) effect[key] = list;
                     else delete effect[key];
-                } else if (key === 'element_modulation_pairs' || key === 'damage_channel_modulation_pairs' || key === 'upgrade_regen_pairs') {
+                } else if (key === 'element_modulation_pairs' || key === 'damage_channel_modulation_pairs'
+                    || key === 'upgrade_regen_pairs' || key === 'element_power_pairs' || key === 'weather_element_pairs') {
                     // Pares "chave: valor"; cada editor dirige o seu destino.
                     var targetKey = key === 'element_modulation_pairs' ? 'element_modulation'
                         : key === 'damage_channel_modulation_pairs' ? 'damage_channel_modulation'
-                            : 'upgrade_vs_status.extra_regen_per_turn_percent';
+                            : key === 'element_power_pairs' ? 'element_power'
+                                : key === 'weather_element_pairs' ? 'weather.element_effect_multipliers'
+                                    : 'upgrade_vs_status.extra_regen_per_turn_percent';
                     var parsedPairs = {};
                     String(field.value || '').split(',').forEach(function (entry) {
                         var halves = entry.split(':');
@@ -2020,7 +2143,7 @@
                 delete effect.random_buff;
             }
             // Cascas vazias das novas mecânicas também somem.
-            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent']].forEach(function (path) {
+            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent'], ['condition'], ['turn_postpone'], ['turn_postpone', 'condition'], ['on_miss_move'], ['weather'], ['weather', 'element_effect_multipliers'], ['element_power'], ['projectile_accuracy'], ['projectile_mark'], ['projectile_reroll']].forEach(function (path) {
                 var holder = effect;
                 var valid = true;
                 for (var index = 0; index < path.length; index += 1) {
@@ -2077,9 +2200,10 @@
             extra.hidden = false;
             extra.innerHTML = '<label class="field"><span>Força máxima</span><input class="control" name="power_max" type="number" min="0" value="' + escapeHtml(form.elements.power_value.value || 20) + '"></label>';
         } else if (kind === 'attribute') {
-            byId('power-label').textContent = 'Multiplicador';
+            byId('power-label').textContent = 'Poder base';
             extra.hidden = false;
-            extra.innerHTML = '<label class="field"><span>Atributo usado</span><select class="control" name="power_stat"><option value="magical_attack">magical_attack</option><option value="physical_attack">physical_attack</option><option value="strength">strength</option><option value="intelligence">intelligence</option></select></label>';
+            extra.innerHTML = '<label class="field"><span>Ganho por ponto de atributo (per_point)</span><select class="control" name="power_stat"><option value="speed">speed</option><option value="magical_attack">magical_attack</option><option value="physical_attack">physical_attack</option></select></label>'
+                + '<small>O motor soma <code>per_point × atributo</code> ao poder base em cada golpe (campo <code>power_scaling</code>).</small>';
         } else {
             byId('power-label').textContent = 'Poder';
             extra.hidden = true;

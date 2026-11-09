@@ -379,28 +379,41 @@
         var rawPower = readPower(powerSpec);
         var power = rawPower * tier.powerFactor;
 
+        // powerScaling a nível da skill é o que o motor do jogo lê: cada golpe
+        // soma per_point × atributo do atacante ao poder base.
+        var scalingNote = null;
+        var powerScaling = isRecord(skill.power_scaling) ? skill.power_scaling : null;
+        if (powerScaling && String(powerScaling.stat || '').trim()) {
+            var scaledStat = String(powerScaling.stat);
+            var scaleStatValue = scaledStat === 'speed'
+                ? numberOr(options.attackerSpeed, 0)
+                : scaledStat === 'physical_attack' || scaledStat === 'physical_att'
+                    ? numberOr(options.attackerPhysicalAttack, 0)
+                    : numberOr(options.attackerMagicalAttack, 0);
+            var perPoint = numberOr(powerScaling.per_point, 0);
+            power += scaleStatValue * perPoint;
+            rawPower = power;
+            scalingNote = 'Leitura do motor: base ' + Math.round(rawPower - scaleStatValue * perPoint)
+                + ' + ' + perPoint + ' × ' + scaledStat + ' (' + scaleStatValue + ') = ' + Math.round(power) + '.';
+        }
+        // Escala authored dentro do dano (`power.kind: scaling`) não é lida
+        // pelo motor — o simulador usa a leitura pretendida e assinala a lacuna.
+        if (scaling && !powerScaling) {
+            var legacyStatValue = powerSpec.stat === 'physical_attack'
+                ? numberOr(options.attackerPhysicalAttack, 0)
+                : numberOr(options.attackerMagicalAttack, 0);
+            var legacyMultiplier = numberOr(powerSpec.multiplier, 1);
+            power = legacyStatValue * legacyMultiplier * tier.powerFactor;
+            scalingNote = 'Leitura do Forger: ' + (powerSpec.stat || 'magical_attack') + ' × ' + legacyMultiplier
+                + '. O motor não lê `power.kind: scaling` — autoriza a escala via `power_scaling`.';
+        }
+
         var attackValue = damageType === 'physical'
             ? numberOr(options.attackerPhysicalAttack, 0)
             : numberOr(options.attackerMagicalAttack, 0);
         var defenseValue = damageType === 'physical'
             ? numberOr(options.defenderPhysicalDefense, 0)
             : numberOr(options.defenderMagicalDefense, 0);
-
-        // O motor ainda não lê `power: { kind: scaling }` (readPower devolve 0).
-        // O simulador usa a leitura pretendida — atributo x multiplicador — e
-        // assinala a lacuna.
-        var scalingNote = null;
-        if (scaling) {
-            var statValue = powerSpec.stat === 'physical_attack'
-                ? numberOr(options.attackerPhysicalAttack, 0)
-                : powerSpec.stat === 'strength' || powerSpec.stat === 'intelligence'
-                    ? numberOr(options.attackerMagicalAttack, 0)
-                    : numberOr(options.attackerMagicalAttack, 0);
-            var multiplier = numberOr(powerSpec.multiplier, 1);
-            power = statValue * multiplier * tier.powerFactor;
-            scalingNote = 'Leitura do Forger: ' + (powerSpec.stat || 'magical_attack') + ' × ' + multiplier
-                + '. O motor ainda devolve 0 para `power.kind: scaling`.';
-        }
 
         var element = elementMultiplier(skill.element_id, options.defenderElements || []);
         var position = positionDamageModifier(
@@ -440,6 +453,9 @@
             skill.ignore_accuracy === true,
         );
         var crit = critChance(skill, options.attackerCritStat);
+        // Meteor Drop e outras skills podem definir o próprio multiplicador crítico.
+        var critMultiplierValue = Number.isFinite(Number(skill.crit_multiplier)) && Number(skill.crit_multiplier) > 0
+            ? Number(skill.crit_multiplier) : CONSTANTS.CRIT_MULTIPLIER;
         var hitCount = Math.max(1, Math.round(numberOr(skill.hit_count, 1)));
         var hitChance = accuracy.value / 100;
         var expectedHits = hitCount * hitChance;
@@ -485,8 +501,11 @@
             maxDamage: maxDamage,
             accuracy: accuracy,
             critChance: crit,
-            critMultiplier: CONSTANTS.CRIT_MULTIPLIER,
+            critMultiplier: critMultiplierValue,
             guaranteedCrit: skill.guaranteed_crit_vs_status ? skill.guaranteed_crit_vs_status : null,
+            projectileNote: skill.projectile_accuracy || skill.projectile_mark || skill.ranged_evasion || skill.projectile_reroll
+                ? 'Mira/véu de projéteis existem no motor do jogo — o simulador não os aplica.' : null,
+            weatherNote: skill.weather ? 'O clima altera dano e efeitos por elemento no motor do jogo — o simulador não o aplica.' : null,
             hitCount: hitCount,
             hitChance: hitChance,
             expectedHits: expectedHits,

@@ -153,6 +153,35 @@ function applyTurnOffsets(order: string[], units: readonly CombatUnit[]): string
     return result;
 }
 
+/**
+ * Whether the unit has already acted in the current round.
+ *
+ * The queue speaks in slots: every occurrence of the unit's id before the
+ * current slot is a turn it has already taken, repeated turns included.
+ */
+export function hasActedThisRound(state: CombatState, unitId: string): boolean {
+    return state.order.slice(0, state.turnIndex).includes(unitId);
+}
+
+/**
+ * Pushes the unit's next turn this round back through the live queue.
+ *
+ * The unit's first upcoming occurrence after the current slot is lifted out
+ * and reinserted `slots` places later, clamped to the round's end; a unit with
+ * no pending turn stays put. Returns how many places the turn actually moved.
+ */
+export function postponeUnitTurn(state: CombatState, unitId: string, slots: number): number {
+    if (slots <= 0) return 0;
+
+    const index = state.order.findIndex((id, position) => position > state.turnIndex && id === unitId);
+    if (index < 0) return 0;
+
+    state.order.splice(index, 1);
+    const target = Math.min(state.order.length, index - 1 + slots);
+    state.order.splice(target, 0, unitId);
+    return target - (index - 1);
+}
+
 export interface TurnAdvance {
     /** Queue for the round the next unit acts in. */
     order: string[];
