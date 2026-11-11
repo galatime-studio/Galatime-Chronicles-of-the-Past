@@ -191,6 +191,7 @@
         debuff: 'Redução de atributos',
         damage: 'Dano contínuo',
         drain: 'Drenagem',
+        transfer: 'Transferência',
         cleanse: 'Purificação',
         dispel: 'Dissipação',
         deferred: 'Golpe atrasado',
@@ -269,6 +270,10 @@
         {
             id: 'mana_restore', title: 'Recuperar mana', category: 'Recuperação', description: 'O atacante recupera mana.',
             build: function (skillId) { return { targeting: 'self', effects: [makeEffect(skillId, 'regen', 'self', 0, { resource_regen: { mana: 18 } })], costs: { mana: 0, stamina: 0, cooldown: 1 } }; },
+        },
+        {
+            id: 'mana_transfer', title: 'Transferir mana', category: 'Mana (vis)', description: 'Gasta mana própria e entrega-a a um aliado.',
+            build: function (skillId) { return { targeting: 'any_one', effects: [makeEffect(skillId, 'transfer', 'target', 0, { resource_transfer: { resource: 'mana', amount: 10 } })], costs: { mana: 4, stamina: 0, cooldown: 0 } }; },
         },
         {
             id: 'damage_sequence', title: 'Dano por turno', category: 'Efeitos contínuos', description: 'Aplica dano ao longo de vários turnos.',
@@ -461,6 +466,9 @@
             Object.keys(effect.resource_regen).forEach(function (resource) {
                 fragments.push('Recupera ' + effect.resource_regen[resource] + ' de ' + (RESOURCE_NAMES[resource] || resource) + ' ' + where + '.');
             });
+        }
+        if (effect.resource_transfer && typeof effect.resource_transfer === 'object') {
+            fragments.push('Gasta ' + effect.resource_transfer.amount + ' de ' + (RESOURCE_NAMES[effect.resource_transfer.resource] || effect.resource_transfer.resource) + ' própria e entrega-a ' + where + '.');
         }
         if (effect.regen_per_turn && typeof effect.regen_per_turn === 'object') {
             Object.keys(effect.regen_per_turn).forEach(function (resource) {
@@ -770,6 +778,7 @@
         var allowed = [
             'effect_id', 'element_id', 'status_effect', 'apply_to', 'turns', 'effect_hit_chance',
             'apply_chance', 'lower_accuracy', 'buff', 'debuff', 'resource_regen', 'resource_drain',
+            'resource_transfer',
             'damage', 'damage_per_turn', 'damage_variance', 'can_stack', 'regen_variance', 'heal', 'drain',
             'polarity', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status',
             'regen_per_turn', 'status_immunities', 'prevent_actions',
@@ -817,7 +826,8 @@
         }
         // Casca vazia das novas mecânicas: some.
         ['shield', 'cleanse_per_turn', 'spend_trigger', 'upgrade_vs_status', 'charges', 'trip_on_action', 'element_modulation',
-            'condition', 'turn_postpone', 'on_miss_move', 'element_power', 'projectile_accuracy', 'projectile_mark'].forEach(function (key) {
+            'condition', 'turn_postpone', 'on_miss_move', 'element_power', 'projectile_accuracy', 'projectile_mark',
+            'resource_transfer'].forEach(function (key) {
             if (cleaned[key] && typeof cleaned[key] === 'object' && !Object.keys(cleaned[key]).length) {
                 delete cleaned[key];
             }
@@ -860,7 +870,7 @@
         if (source.only_during_day === true || source.only_during_day === 'true') skill.only_during_day = true;
         if (source.only_during_night === true || source.only_during_night === 'true') skill.only_during_night = true;
         if (source.ignore_accuracy === true || source.ignore_accuracy === 'true') skill.ignore_accuracy = true;
-        if (source.kind && typeof source.kind === 'string') skill.kind = source.kind;
+        if (source.kind && typeof source.kind === 'string') skill.kind = source.kind.trim().toLowerCase();
         if (source.power_scaling && typeof source.power_scaling === 'object'
             && source.power_scaling.stat && Number.isFinite(Number(source.power_scaling.per_point))) {
             skill.power_scaling = { stat: String(source.power_scaling.stat), per_point: Number(source.power_scaling.per_point) };
@@ -967,7 +977,7 @@
             else if (skill.element_id === 'inanus') {
                 warnings.push({ path: path + '.element_id', message: '“inanus” não tem relações de elemento: o dano nunca é alterado por tabela.' });
             }
-            if (skill.kind && SKILL_KINDS.indexOf(skill.kind) === -1) {
+            if (skill.kind && SKILL_KINDS.indexOf(String(skill.kind).toLowerCase()) === -1) {
                 errors.push({ path: path + '.kind', message: '“kind” tem de ser um de: ' + SKILL_KINDS.join(', ') + '.' });
             }
             if (skill.damage) {
@@ -1134,6 +1144,7 @@
                 // Mecânicas de água e gelo: saneamento básico.
                 var percentBands = [
                     ['shield.percent_of_max_hp', 0, 100],
+                    ['resource_transfer.amount', 1, 999],
                     ['shield.hit_chance', 0, 1],
                     ['cleanse_per_turn.count', 1, 99],
                     ['heal_percent_of_max', 0, 100],

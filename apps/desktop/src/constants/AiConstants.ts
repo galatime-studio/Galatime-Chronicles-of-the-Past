@@ -32,6 +32,7 @@ export const DEFAULT_AI_WEIGHTS: Record<AiConsiderationId, number> = {
     rest: 0.4,
     reposition: 0.6,
     resource_guard: 0.3,
+    resource_share: 1.0,
     item: 0.0,
 };
 
@@ -98,7 +99,7 @@ export const AI_STYLE_PRESETS: Record<AiStyleId, AiStylePreset> = {
     },
     support: {
         // Triage first, brace when there is nobody to mend.
-        weights: { heal_ally: 2.2, defend: 0.9, rest: 0.6, expected_damage: 0.6 },
+        weights: { heal_ally: 2.2, resource_share: 1.6, defend: 0.9, rest: 0.6, expected_damage: 0.6 },
         thresholds: { restMana: 0.35 },
         targeting: { prefer: ['weakest'] },
     },
@@ -136,11 +137,11 @@ export const AI_DIFFICULTY_TUNING: Record<Difficulty, AiTuning> = {
         noise: 0.04,
         disabled: [],
         topK: 1,
-        thresholds: {},
+        thresholds: { wounded: 0.55, restMana: 0.35 },
         targetNoise: 0,
     },
     hardcore: {
-        noise: 0,
+        noise: 0.04,
         disabled: [],
         topK: 1,
         thresholds: { wounded: 0.55, restMana: 0.35 },

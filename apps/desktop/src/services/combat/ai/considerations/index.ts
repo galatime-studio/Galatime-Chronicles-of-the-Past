@@ -19,6 +19,7 @@ import { itemValue } from './itemValue';
 import { killSecure } from './killSecure';
 import { repositionValue } from './repositionValue';
 import { resourceGuard } from './resourceGuard';
+import { resourceShare } from './resourceShare';
 import { restValue } from './restValue';
 import { survival } from './survival';
 
@@ -36,5 +37,6 @@ export const AI_CONSIDERATIONS: Record<AiConsiderationId, AiConsideration> = {
     rest: restValue,
     reposition: repositionValue,
     resource_guard: resourceGuard,
+    resource_share: resourceShare,
     item: itemValue,
 };

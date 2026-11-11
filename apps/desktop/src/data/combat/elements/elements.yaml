@@ -136,7 +136,7 @@ elements:
     type: natural
     skill_trees: [spatium, corporis, vis, vetus]
     tooltip_visible: true
-    selectable: true
+    selectable: false
     relations:
       immune:       [corporis, vetus]
       super_strong: []

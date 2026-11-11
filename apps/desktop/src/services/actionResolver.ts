@@ -725,6 +725,7 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
                 {
                     healBlocked,
                     drainRecipient: actor,
+                    transferSource: actor,
                     phaseMultiplier,
                     sourceElementId: action.elementId,
                     damageDealt:

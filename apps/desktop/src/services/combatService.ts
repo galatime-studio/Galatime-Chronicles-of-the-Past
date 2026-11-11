@@ -53,8 +53,11 @@ import {
     expireRoundBoundEffects,
     expireTurnEndEffects,
     isActionPrevented,
+    isHealBlocked,
     preventedActionKinds,
     preventedDamageChannels,
+    readResourceTransferSpec,
+    resolveEffectTargets,
     tickUnitEffects,
 } from './combat/effectResolver';
 import { recordTimelineSnapshot } from './combat/rewind';
@@ -70,7 +73,7 @@ import {
     isRangeAllowedFromLine,
     wouldLeaveFrontLineEmpty,
 } from './combat/positionRules';
-import { legalTargetIds, validateTargetRule } from './combat/targetResolver';
+import { legalTargetIds, reachableTargets, validateTargetRule } from './combat/targetResolver';
 import { advanceTurnIndex, planTurnOrder } from './combat/turnOrderService';
 import { effectiveActionCost } from './combat/weaponEffects';
 import { effectiveThresholds, resolveAiTuning } from './combat/ai/aiDifficulty';
@@ -212,7 +215,67 @@ function findUnit(state: CombatState, unitId: string): CombatUnit | null {
  *
  * Does not consider whose turn it is — {@link submitCombatAction} owns that.
  */
-function actionAvailability(state: CombatState, actor: CombatUnit, action: CombatAction): CombatErrorCode | null {
+/** Pool a unit can still absorb of a resource, before its maximum. */
+function missingResource(unit: CombatUnit, resource: 'hp' | 'mana' | 'stamina'): number {
+    const stats = effectiveStats(unit);
+    if (resource === 'hp') return Math.max(0, stats.maxHp - unit.currentHp);
+    if (resource === 'mana') return Math.max(0, stats.maxMana - unit.currentMana);
+    return Math.max(0, stats.maxStamina - unit.currentStamina);
+}
+
+/**
+ * What a skill's `resource_transfer` clauses promise to take from the caster
+ * beyond the skill's own costs, and how many units can still receive them.
+ *
+ * The recipient set mirrors the resolver: an effect with a `target` scope
+ * follows the action's own targeting (a named-target skill pays for the one
+ * unit it names, so it owes a single amount), while the team scopes read the
+ * battlefield directly and pay once per eligible recipient.
+ */
+function transferObligation(
+    state: CombatState,
+    actor: CombatUnit,
+    action: CombatAction,
+): {
+    totals: { hp: number; mana: number; stamina: number };
+    recipients: number;
+    transferEffects: number;
+} {
+    const totals = { hp: 0, mana: 0, stamina: 0 };
+    let recipients = 0;
+    let transferEffects = 0;
+
+    for (const effect of action.effects) {
+        const spec = readResourceTransferSpec(effect.resource_transfer);
+        if (!spec) continue;
+        transferEffects += 1;
+
+        const applyTo = effect.apply_to ?? null;
+        const scope = applyTo === null || applyTo === 'target'
+            ? reachableTargets(state.units, actor, action)
+            : resolveEffectTargets(applyTo, actor, null, state.units);
+
+        const eligible = scope.filter((unit) => (
+            unit.status === 'alive'
+            && unit.id !== actor.id
+            && !(spec.resource === 'hp' && isHealBlocked(unit))
+            && missingResource(unit, spec.resource) > 0
+        ));
+
+        // A named-target action pays for the one unit it names; the team
+        // scopes pay once per eligible recipient.
+        const pays = action.targeting === 'any_one'
+            ? Math.min(1, eligible.length)
+            : eligible.length;
+
+        totals[spec.resource] += spec.amount * pays;
+        recipients += eligible.length;
+    }
+
+    return { totals, recipients, transferEffects };
+}
+
+export function actionAvailability(state: CombatState, actor: CombatUnit, action: CombatAction): CombatErrorCode | null {
     if (actor.status !== 'alive') return 'unit_not_found';
     // A `silenced`-style status forbids the action outright; the reference schema
     // uses `attack` as the umbrella for the offensive kinds.
@@ -240,6 +303,23 @@ function actionAvailability(state: CombatState, actor: CombatUnit, action: Comba
     // A skill that costs blood cannot be paid for with more blood than there is:
     // the price would kill its own user.
     if (costs.hp > 0 && costs.hp >= actor.currentHp) return 'action_unavailable';
+
+    // A transfer skill pays its recipients out of the caster's own pocket: the
+    // promise must be affordable next to the skill's own costs, and a pure
+    // transfer skill needs somebody who can still receive it.
+    const transfer = transferObligation(state, actor, action);
+    if (actor.currentMana < costs.mana + transfer.totals.mana) return 'insufficient_mana';
+    if (actor.currentStamina < costs.stamina + transfer.totals.stamina) return 'insufficient_stamina';
+    if (transfer.totals.hp > 0 && actor.currentHp <= costs.hp + transfer.totals.hp) {
+        return 'action_unavailable';
+    }
+    if (transfer.transferEffects > 0
+        && transfer.transferEffects === action.effects.length
+        && !action.dealsDamage
+        && transfer.recipients === 0) {
+        return 'target_invalid';
+    }
+
     if (!isRangeAllowedFromLine(action.range, actor.line)) return 'out_of_range';
 
     if (action.kind === 'switch_line') {

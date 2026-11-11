@@ -61,6 +61,7 @@ const PUBLIC_EFFECT_FIELDS = [
     'debuff',
     'resource_regen',
     'resource_drain',
+    'resource_transfer',
     'damage',
     'damage_per_turn',
     'damage_variance',

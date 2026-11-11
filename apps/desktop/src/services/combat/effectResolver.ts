@@ -543,6 +543,24 @@ function readShieldSpec(source: unknown): {
     };
 }
 
+/**
+ * Reads a `resource_transfer` clause (the Vis recall family): a fixed amount
+ * the caster pays out of their own pool for the holder to receive.
+ */
+export function readResourceTransferSpec(source: unknown): {
+    resource: CombatResourceId;
+    amount: number;
+} | null {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const resource = readString(record.resource, '');
+    if (resource !== 'hp' && resource !== 'mana' && resource !== 'stamina') return null;
+
+    const amount = Math.round(readNumber(record.amount, 0));
+    return amount > 0 ? { resource, amount } : null;
+}
+
 /** Reads a `charges` spec: the stacking threshold and what a full stack releases. */
 function readChargesSpec(source: unknown): {
     max: number;
@@ -1470,6 +1488,8 @@ export function applyEffectResources(
     options: {
         healBlocked?: boolean;
         drainRecipient?: CombatUnit | null;
+        /** Who a `resource_transfer` clause pays from (the acting caster). */
+        transferSource?: CombatUnit | null;
         phaseMultiplier?: number;
         /** Direct damage the hit dealt, for a `drain_percent_of_damage` effect. */
         damageDealt?: number;
@@ -1583,6 +1603,35 @@ export function applyEffectResources(
         }
     }
 
+    // A `resource_transfer` (the Vis recall family) moves a fixed amount from
+    // the caster's own pool into the holder's. Nothing is conjured: the caster
+    // only pays what the holder can actually absorb, and never more than the
+    // caster has left — the exactness of the amount is the clause's contract,
+    // so no hour, weather or element scaling touches it.
+    const transfer = readResourceTransferSpec(record.resource_transfer);
+    if (transfer && options.transferSource && options.transferSource.id !== unit.id) {
+        // A transferred HP point is an incoming heal like any other.
+        const blocked = transfer.resource === 'hp' && options.healBlocked;
+        if (!blocked) {
+            const stats = effectiveStats(unit);
+            const max = transfer.resource === 'hp' ? stats.maxHp
+                : transfer.resource === 'mana' ? stats.maxMana
+                    : stats.maxStamina;
+            const current = transfer.resource === 'hp' ? unit.currentHp
+                : transfer.resource === 'mana' ? unit.currentMana
+                    : unit.currentStamina;
+            const source = options.transferSource;
+            const sourceCurrent = transfer.resource === 'hp' ? source.currentHp
+                : transfer.resource === 'mana' ? source.currentMana
+                    : source.currentStamina;
+            const received = Math.min(transfer.amount, max - current, sourceCurrent);
+            if (received > 0) {
+                events.push(...changeResource(unit, transfer.resource, received));
+                events.push(...changeResource(source, transfer.resource, -received));
+            }
+        }
+    }
+
     return events;
 }
 
@@ -1597,6 +1646,7 @@ export function effectHeals(effect: AttackEffect): boolean {
     }
     if (readNumber(asRecord(record.random_resource_regen)?.percent, 0) > 0) return true;
     if (readNumber(asRecord(record.random_resource_regen_per_turn)?.percent, 0) > 0) return true;
+    if (readResourceTransferSpec(record.resource_transfer)?.resource === 'hp') return true;
     return false;
 }
 

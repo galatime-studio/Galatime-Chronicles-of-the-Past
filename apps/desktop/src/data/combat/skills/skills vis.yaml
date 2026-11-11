@@ -1,0 +1,615 @@
+skills:
+  - id: arcane_pulse
+    name: Arcane Pulse
+    description: "The caster sends two broad pulses of mana across the enemy group; makes two separate hits for 8 magical damage to all enemies."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - mana_crush
+        - mana_storm
+    targeting: enemies_all
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 8
+    accuracy: 85
+    hit_count: 2
+    costs:
+      mana: 18
+      stamina: 0
+      cooldown: 0
+  - id: deep_mending
+    name: Deep Mending
+    description: "The caster directs a deep current of mana through the target's wounds; restores 22% of the target's max HP."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - restorative_touch
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: deep_mending_effect
+        status_effect: Deep Mending
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 22\
+  - id: efficient_recall
+    name: Efficient Recall
+    description: "The caster guides mana back with less waste; spends 18 MN and restores exactly 18 MN, up to the target's maximum."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - mana_recall
+    targeting: any_one
+    kind: utility
+    costs:
+      mana: 6
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: efficient_recall_effect
+        status_effect: Efficient Recall
+        apply_to: target
+        turns: 1
+        polarity: positive
+        resource_transfer:
+          resource: mana
+          amount: 18
+  - id: focused_bolt
+    name: Focused Bolt
+    description: "The caster steadies a bolt before releasing it; deals 10 magical damage."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - mana_bolt
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 10
+    accuracy: 90
+    hit_count: 1
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+  - id: lasting_ward
+    name: Lasting Ward
+    description: "The caster binds the two forms of their ward into a lasting guard; grants a barrier equal to 18% of max HP for 3 turns."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - mana_aegis
+        - reinforced_shell
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 16
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: lasting_ward_effect
+        status_effect: Lasting Ward
+        apply_to: target
+        turns: 3
+        polarity: positive
+        shield:
+          percent_of_max_hp: 18
+  - id: mana
+    name: Mana
+    description: "The caster releases a small, simple burst of mana; deals 3 magical damage."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids: []
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 3
+    accuracy: 100
+    hit_count: 1
+    costs:
+      mana: 2
+      stamina: 0
+      cooldown: 0
+  - id: mana_aegis
+    name: Mana Aegis
+    description: "The caster braces the veil into a firm ward; grants a barrier equal to 14% of max HP for 3 turns."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - mana_guard
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: mana_aegis_effect
+        status_effect: Mana Aegis
+        apply_to: target
+        turns: 3
+        polarity: positive
+        shield:
+          percent_of_max_hp: 14
+  - id: mana_bolt
+    name: Mana Bolt
+    description: "The caster hurls a concentrated bolt of mana; deals 6 magical damage."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - mana
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 6
+    accuracy: 100
+    hit_count: 1
+    costs:
+      mana: 3
+      stamina: 0
+      cooldown: 0
+  - id: mana_burst
+    name: Mana Burst
+    description: "The caster releases a denser burst of mana; deals 9 magical damage."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - mana_bolt
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 9
+    accuracy: 95
+    hit_count: 1
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+  - id: mana_convergence
+    name: Mana Convergence
+    description: "The caster gathers their mastery into one decisive strike; deals 24 magical damage, then restores 10% HP and 10% MN to the caster."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 8
+    learning_requirements:
+      required_attack_ids:
+        - arcane_pulse
+        - lasting_ward
+        - shared_reserve
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 24
+    accuracy: 85
+    hit_count: 1
+    costs:
+      mana: 22
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: mana_convergence_effect
+        status_effect: Mana Convergence
+        apply_to: self
+        turns: 1
+        polarity: positive
+        resource_regen_percent_of_max:
+          hp: 10
+          mana: 10
+  - id: mana_crush
+    name: Mana Crush
+    description: "The caster compresses mana into a forceful blow; deals 16 magical damage."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - mana_lance
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 16
+    accuracy: 85
+    hit_count: 1
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+  - id: mana_flurry
+    name: Mana Flurry
+    description: "The caster fires two quick mana bolts; makes two separate hits for 4 magical damage each."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - mana_bolt
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 4
+    accuracy: 90
+    hit_count: 2
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+  - id: mana_guard
+    name: Mana Guard
+    description: "The caster thickens the veil around an ally; grants a barrier equal to 10% of max HP for 2 turns."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - mana_veil
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: mana_guard_effect
+        status_effect: Mana Guard
+        apply_to: target
+        turns: 2
+        polarity: positive
+        shield:
+          percent_of_max_hp: 10
+  - id: mana_lance
+    name: Mana Lance
+    description: "The caster drives a narrow lance of mana at the target; deals 12 magical damage."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - mana_burst
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 12
+    accuracy: 90
+    hit_count: 1
+    costs:
+      mana: 7
+      stamina: 0
+      cooldown: 0
+  - id: mana_mend
+    name: Mana Mend
+    description: "The caster eases a small wound with gentle mana; restores 8% of the target's max HP."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - mana
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 3
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: mana_mend_effect
+        status_effect: Mana Mend
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 8
+  - id: mana_recall
+    name: Mana Recall
+    description: "The caster returns a measured amount of mana to the target; spends 10 MN and restores exactly 10 MN, up to the target's maximum."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - mana
+    targeting: any_one
+    kind: utility
+    costs:
+      mana: 4
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: mana_recall_effect
+        status_effect: Mana Recall
+        apply_to: target
+        turns: 1
+        polarity: positive
+        resource_transfer:
+          resource: mana
+          amount: 10
+  - id: mana_shell
+    name: Mana Shell
+    description: "The caster wraps themself in a fragile shell of mana; grants a barrier equal to 9% of max HP for 2 turns."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - mana_veil
+    targeting: self
+    kind: buff
+    costs:
+      mana: 7
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: mana_shell_effect
+        status_effect: Mana Shell
+        apply_to: self
+        turns: 2
+        polarity: positive
+        shield:
+          percent_of_max_hp: 9
+  - id: mana_storm
+    name: Mana Storm
+    description: "The caster overwhelms the target with repeated mana strikes; makes four separate hits for 6 magical damage each."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - mana_volley
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 6
+    accuracy: 85
+    hit_count: 4
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+  - id: mana_veil
+    name: Mana Veil
+    description: "The caster lays a thin veil of mana over an ally; grants a barrier equal to 6% of max HP for 2 turns. This barrier is intentionally less efficient than specialised elemental protection."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - mana
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: mana_veil_effect
+        status_effect: Mana Veil
+        apply_to: target
+        turns: 2
+        polarity: positive
+        shield:
+          percent_of_max_hp: 6
+  - id: mana_volley
+    name: Mana Volley
+    description: "The caster sends a rapid volley of mana; makes three separate hits for 5 magical damage each."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - mana_flurry
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 5
+    accuracy: 90
+    hit_count: 3
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+  - id: overwhelming_bolt
+    name: Overwhelming Bolt
+    description: "The caster pours more mana into a single devastating bolt; deals 19 magical damage and ignores 15% of magical defence."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - piercing_bolt
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 19
+    accuracy: 80
+    hit_count: 1
+    defense_pierce: 0.15
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+  - id: piercing_bolt
+    name: Piercing Bolt
+    description: "The caster sends a tightly focused bolt through the target's guard; deals 14 magical damage and ignores 10% of magical defence."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - focused_bolt
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 14
+    accuracy: 85
+    hit_count: 1
+    defense_pierce: 0.1
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+  - id: reinforced_shell
+    name: Reinforced Shell
+    description: "The caster reinforces their mana shell; grants a barrier equal to 15% of max HP for 3 turns."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - mana_shell
+    targeting: self
+    kind: buff
+    costs:
+      mana: 11
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: reinforced_shell_effect
+        status_effect: Reinforced Shell
+        apply_to: self
+        turns: 3
+        polarity: positive
+        shield:
+          percent_of_max_hp: 15
+  - id: restorative_touch
+    name: Restorative Touch
+    description: "The caster channels a steadier flow of mana into the target; restores 14% of the target's max HP."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - mana_mend
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 6
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: restorative_touch_effect
+        status_effect: Restorative Touch
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 14
+  - id: shared_reserve
+    name: Shared Reserve
+    description: "The caster shares a measured reserve across the group; spends 8 MN and restores exactly 8 MN to each ally with missing MN."
+    element_id: vis
+    sfx: vis
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - efficient_recall
+        - restorative_touch
+    targeting: allies_all
+    kind: utility
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: shared_reserve_effect
+        status_effect: Shared Reserve
+        turns: 1
+        polarity: positive
+        resource_transfer:
+          resource: mana
+          amount: 8

@@ -15,6 +15,18 @@ export type AttackResourceId = 'hp' | 'mana' | 'stamina';
 /** A per-resource amount, as authored by `resource_regen` and friends. */
 export type AttackResourceAmounts = Partial<Record<AttackResourceId, number>>;
 
+/**
+ * A `resource_transfer` clause: the caster pays a fixed amount out of their
+ * own pool and the recipient receives the same — a pure transfer, nothing
+ * conjured (the Vis recall family).
+ */
+export interface AttackResourceTransfer {
+    /** The pool the amount is moved through. */
+    resource: AttackResourceId;
+    /** What moves from the caster to each recipient, before clamping. */
+    amount: number;
+}
+
 /** Where a `move` effect sends its bearer. */
 export interface AttackMoveSpec {
     /** `self` moves the caster, `target` moves whoever the effect landed on. */
@@ -85,6 +97,7 @@ export interface AttackEffect {
     debuff?: Record<string, number>;
     resource_regen?: AttackResourceAmounts;
     resource_drain?: AttackResourceAmounts;
+    resource_transfer?: AttackResourceTransfer;
     /** While the effect lives, its holder cannot switch targets. */
     locks_target?: boolean;
     /** Landing the effect inverts the victim's current buffs into debuffs. */

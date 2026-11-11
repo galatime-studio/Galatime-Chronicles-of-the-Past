@@ -43,6 +43,7 @@ export type AiConsiderationId =
     | 'rest'
     | 'reposition'
     | 'resource_guard'
+    | 'resource_share'
     | 'item';
 
 /** How a profile likes its targets. A bias, never a legality rule. */

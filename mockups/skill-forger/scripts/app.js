@@ -11,6 +11,7 @@
         ['debuff', 'Debuff'],
         ['damage', 'Dano'],
         ['drain', 'Drenar recurso'],
+        ['transfer', 'Transferir recurso'],
         ['cleanse', 'Purificar'],
         ['dispel', 'Dissipar'],
         ['cleanse_turn', 'Purificação contínua'],
@@ -1356,6 +1357,12 @@
             return '<label class="effect-field"><span>Recurso drenado</span><select class="control" data-effect-drain-resource><option value="hp" ' + (resource === 'hp' ? 'selected' : '') + '>Vida</option><option value="mana" ' + (resource === 'mana' ? 'selected' : '') + '>Mana</option><option value="stamina" ' + (resource === 'stamina' ? 'selected' : '') + '>Stamina</option></select></label>'
                 + '<label class="effect-field"><span>Quantidade</span><input class="control" data-effect-drain-amount type="number" min="0" value="' + escapeHtml(drain[resource] ?? 8) + '"></label>';
         }
+        if (pattern === 'transfer') {
+            var transfer = effect.resource_transfer || {};
+            var transferResource = transfer.resource || 'mana';
+            return '<label class="effect-field"><span>Recurso transferido</span><select class="control" data-effect-transfer-resource><option value="hp" ' + (transferResource === 'hp' ? 'selected' : '') + '>Vida</option><option value="mana" ' + (transferResource === 'mana' ? 'selected' : '') + '>Mana</option><option value="stamina" ' + (transferResource === 'stamina' ? 'selected' : '') + '>Stamina</option></select></label>'
+                + '<label class="effect-field"><span>Quantidade</span><input class="control" data-effect-transfer-amount type="number" min="1" value="' + escapeHtml(transfer.amount ?? 10) + '"><small>O atacante paga este valor por destinatário; cada um recebe exatamente a mesma quantidade.</small></label>';
+        }
         if (pattern === 'cleanse') {
             return '<label class="effect-field"><span>Quantidade</span><input class="control" data-effect-field="cleanse" type="number" min="0" value="' + escapeHtml(effect.cleanse ?? 1) + '"><small>Remove até N estados negativos (os mais antigos primeiro).</small></label>'
                 + '<label class="effect-stack"><input type="checkbox" data-effect-field="cleanse_all" ' + (effect.cleanse_all ? 'checked' : '') + '> Remover todos</label>';
@@ -1739,6 +1746,7 @@
         if (effect.rewind) return 'rewind';
         if (effect.self_upkeep) return 'upkeep';
         if (effect.regen_per_turn) return 'regen_turn';
+        if (effect.resource_transfer) return 'transfer';
         if (effect.resource_regen) return 'regen';
         if (effect.buff) return 'buff';
         if (effect.debuff) return 'debuff';
@@ -1833,6 +1841,7 @@
         if (pattern === 'debuff') properties.debuff = { physical_attack: 10 };
         if (pattern === 'damage') properties.damage_per_turn = 5;
         if (pattern === 'drain') properties.resource_drain = { hp: 8 };
+        if (pattern === 'transfer') properties.resource_transfer = { resource: 'mana', amount: 10 };
         if (pattern === 'cleanse') properties.cleanse = 1;
         if (pattern === 'dispel') properties.dispel = 1;
         if (pattern === 'deferred') properties.deferred_damage = { amount: 12, after_turns: 2 };
@@ -1887,7 +1896,7 @@
         if (!skill || !card) return;
         var effect = skill.effects.find(function (item) { return item.effect_id === card.dataset.effectId; });
         if (!effect) return;
-        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll'].forEach(function (key) { delete effect[key]; });
+        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll'].forEach(function (key) { delete effect[key]; });
         var type = select.value;
         if (type === 'regen') effect.resource_regen = { hp: 15 };
         if (type === 'regen_turn') effect.regen_per_turn = { hp: 10 };
@@ -1906,6 +1915,7 @@
         if (type === 'debuff') effect.debuff = { physical_attack: 10 };
         if (type === 'damage') effect.damage_per_turn = 5;
         if (type === 'drain') effect.resource_drain = { hp: 8 };
+        if (type === 'transfer') effect.resource_transfer = { resource: 'mana', amount: 10 };
         if (type === 'cleanse') effect.cleanse = 1;
         if (type === 'dispel') effect.dispel = 1;
         if (type === 'deferred') effect.deferred_damage = { amount: 12, after_turns: 2 };
@@ -2127,6 +2137,13 @@
             var drainResource = card.querySelector('[data-effect-drain-resource]');
             var drainAmount = card.querySelector('[data-effect-drain-amount]');
             if (drainResource && drainAmount) effect.resource_drain = { [drainResource.value]: numberValue(drainAmount.value, 0) };
+            var transferResource = card.querySelector('[data-effect-transfer-resource]');
+            var transferAmount = card.querySelector('[data-effect-transfer-amount]');
+            if (transferResource && transferAmount) {
+                var transferAmountValue = numberValue(transferAmount.value, 0);
+                if (transferAmountValue > 0) effect.resource_transfer = { resource: transferResource.value, amount: transferAmountValue };
+                else delete effect.resource_transfer;
+            }
             var immunityChecks = Array.from(card.querySelectorAll('[data-effect-immunity]'));
             if (immunityChecks.length) {
                 var damageChannels = immunityChecks.filter(function (check) { return check.checked; })
