@@ -99,7 +99,7 @@ que a skill possa ser composta já no formato final:
 | **Caeli** (vento, céu, tempo) | `power_scaling`, `condition`, `turn_postpone`, `lane_change_free`, `on_miss_move`, `expires`, `weather`, `element_power`, `projectile_accuracy`, `projectile_mark`, `ranged_evasion`, `projectile_reroll`, `crit_multiplier`, `move`, de buffs de `speed` / `evasion` / `accuracy` |
 | **Umbra** (noite, escuridão) | `lunar`, `crit_chance`, `evasion` (buff), `heal_block`, `guaranteed_crit_vs_status`, `bonus_vs_hp_below`, `drain_to` |
 | **Spatium** (tempo, espaço) | `turn_offset`, `cooldown_tick`, `move`, `deferred_damage`, `echo`, `untargetable`, `ignore_accuracy`, `prevent_actions` |
-| **Vetus** (poder antigo) | `costs.hp`, `deferred_cost`, `self_upkeep`, `prevent_skills`, `defense_pierce`, `cleanse`, `dispel` |
+| **Vetus** (poder antigo) | `costs.hp`, `costs.hp_percent_max`, `deferred_cost`, `self_upkeep`, `prevent_skills`, `defense_pierce`, `cleanse`, `dispel`, `resurrect`, `rune_fate`, `ignore_rescue`, `rescue_rune`, `rune_store`, `rune_return`, `chant`, `fate_link`, `damage_reduction` |
 | **Lux** (dia, luz) | `solar`, `bonus_vs_elements`, `dispel`, `cleanse`, `regen_per_turn`, `status_immunities` |
 
 ### Simulador

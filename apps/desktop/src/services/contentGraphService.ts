@@ -69,6 +69,9 @@ const PUBLIC_SKILL_FIELDS = [
     'consume_stacks',
     'aftershock',
     'shuffle_positions',
+    'resurrect',
+    'ignore_rescue',
+    'rune_fate',
     'sfx',
 ] as const;
 
@@ -223,6 +226,11 @@ const PUBLIC_EFFECT_FIELDS = [
     'petrify_class',
     'fossilize_on_expiry',
     'on_expiry_damage',
+    'rescue_rune',
+    'rune_store',
+    'rune_return',
+    'chant',
+    'fate_link',
 ] as const;
 
 function clone(value: unknown): unknown {
@@ -259,7 +267,7 @@ export function toPublicAttack(skill: AttackSkill): PublicAttack {
             } else if (field === 'learning_cost') {
                 result.learning_cost = { experience_points: skill.learning_cost?.experience_points ?? 0 };
             } else if (field === 'costs') {
-                result.costs = pickFields(skill.costs ?? {}, ['mana', 'stamina', 'cooldown', 'hp']);
+                result.costs = pickFields(skill.costs ?? {}, ['mana', 'stamina', 'cooldown', 'hp', 'hp_percent_max']);
             } else if (field === 'collateral') {
                 result.collateral = pickFields(skill.collateral ?? {}, [
                     'chance', 'apply_to', 'include_primary_targets', 'include_primary_target',

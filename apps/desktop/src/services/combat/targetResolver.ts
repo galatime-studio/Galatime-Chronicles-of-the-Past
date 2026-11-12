@@ -26,7 +26,9 @@ export function candidateTargets(
     actor: CombatUnit,
     action: CombatAction,
 ): CombatUnit[] {
-    const alive = units.filter((unit) => unit.status === 'alive');
+    const alive = action.resurrect
+        ? units.filter((unit) => unit.status === 'defeated' && unit.side === actor.side)
+        : units.filter((unit) => unit.status === 'alive');
 
     const reachable = (() => {
         switch (action.targeting) {
@@ -204,11 +206,18 @@ export function validateTargetRule(
         }
 
         const target = state.units.find((unit) => unit.id === targetId) ?? null;
+        // A resurrection is the one action that deliberately aims at a fallen ally.
+        const resurrectionTarget = Boolean(action.resurrect)
+            && target !== null
+            && target.side === actor.side
+            && target.status === 'defeated'
+            && target.flags.resurrectionBlocked !== true;
         // The actor may always target itself; every other unit must be alive and
         // not hiding behind an `untargetable` status.
         if (
             !target
-            || target.status !== 'alive'
+            || (target.status !== 'alive' && !resurrectionTarget)
+            || (action.resurrect && !resurrectionTarget)
             || (target.id !== actor.id && isUntargetable(target))
             || (target.id !== actor.id && untargetableRangesFor(target).includes(action.range))
             || (target.id !== actor.id && untargetableElementsFor(target).includes(action.elementId))

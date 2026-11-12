@@ -18,6 +18,9 @@
 		"weaponBroken": "Broken",
 		"cancelSelection": "Deselect",
 		"escKey": "ESC",
+		"fateChoice": "Choose a technique for {{action}}",
+		"fateBurst": "Burst rune",
+		"fateReversal": "Reversal rune",
 		"outcome": {
 			"victory": "Victory",
 			"defeat": "Defeat",

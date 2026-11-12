@@ -256,6 +256,12 @@
         impulse: 'Impulso',
         gravity_zone: 'Zona de gravidade',
         rift_mark: 'Marca de fenda',
+        // Vetus: runas, cânticos e juramentos.
+        rescue_rune: 'Runa de resgate',
+        rune_store: 'Runa de memória',
+        rune_return: 'Runa de retorno',
+        chant: 'Cântico',
+        fate_link: 'Elo do destino',
     };
 
     function patternStatusName(pattern) { return PATTERN_STATUS_NAMES[pattern] || 'Efeito'; }
@@ -939,6 +945,28 @@
             fragments.push('Só aplica se a linha ' + (condition.requires_no_space === 'front' ? 'da frente' : 'de trás')
                 + ' estiver cheia.');
         }
+        if (effect.rescue_rune && typeof effect.rescue_rune === 'object') {
+            fragments.push('Runa de resgate: a primeira derrota deixa o portador a 1 de vida e restaura '
+                + (effect.rescue_rune.mana_percent ?? 8) + '% de mana e ' + (effect.rescue_rune.stamina_percent ?? 8)
+                + '% de stamina.');
+        }
+        if (effect.rune_store && typeof effect.rune_store === 'object') {
+            var runeStoreMode = effect.rune_store.mode === 'convert' ? 'converte o dano guardado' : 'guarda o dano recebido';
+            fragments.push('Runa de memória: ' + runeStoreMode + ' até ' + (effect.rune_store.cap_percent ?? 10)
+                + '% da vida máxima' + (effect.rune_store.mode === 'convert'
+                    ? ' e liberta-o a ' + (effect.rune_store.conversion_percent ?? 100) + '%.' : '.'));
+        }
+        if (effect.rune_return && typeof effect.rune_return === 'object') {
+            fragments.push('Runa de retorno: guarda o primeiro golpe e devolve-o a '
+                + (effect.rune_return.percent ?? 100) + '% por ' + (effect.rune_return.mana_payment ?? 0)
+                + ' mana e ' + (effect.rune_return.stamina_payment ?? 0) + ' stamina.');
+        }
+        if (effect.chant && typeof effect.chant === 'object') {
+            fragments.push('Cântico: até ' + (effect.chant.max_charges ?? 1) + ' carga(s), ' + (effect.chant.damage_per_charge ?? 0)
+                + ' de dano por carga; ' + Math.round(Number(effect.chant.interrupt_chance ?? 0) * 100)
+                + '% de interrupção por golpe recebido.');
+        }
+        if (effect.fate_link) fragments.push('Elo do destino: se o lançador cair, o portador cai também.');
         return fragments.join(' ');
     }
 
@@ -1020,6 +1048,8 @@
             // Spatium: duração, fadiga, suspensão, âncora, ecos, impulso e zonas.
             'rewind_each_turn', 'shift_other_effects', 'fatigue_recovery_delay', 'suspend', 'anchor',
             'echo_mark', 'next_action_bonus', 'gravity_zone', 'rift_mark',
+            // Vetus: runas de resgate/memória/retorno, cânticos e elo do destino.
+            'rescue_rune', 'rune_store', 'rune_return', 'chant', 'fate_link',
         ];
         var cleaned = {};
         allowed.forEach(function (key) {
@@ -1049,7 +1079,8 @@
             'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction',
             'drain_percent_of_max_hp', 'drain_per_turn', 'barrier', 'intercept', 'shatter_on_damage_type',
             'fossilize_on_expiry', 'on_expiry_damage', 'rewind_each_turn', 'shift_other_effects',
-            'suspend', 'anchor', 'echo_mark', 'next_action_bonus', 'gravity_zone', 'rift_mark'].forEach(function (key) {
+            'suspend', 'anchor', 'echo_mark', 'next_action_bonus', 'gravity_zone', 'rift_mark',
+            'rescue_rune', 'rune_store', 'rune_return', 'chant', 'fate_link'].forEach(function (key) {
             if (cleaned[key] && typeof cleaned[key] === 'object' && !Object.keys(cleaned[key]).length) {
                 delete cleaned[key];
             }
@@ -1074,6 +1105,7 @@
                 stamina: Number(source.costs?.stamina ?? source.stamina_cost ?? 0),
                 cooldown: Number(source.costs?.cooldown ?? source.cooldown ?? 0),
                 hp: Number(source.costs?.hp ?? source.hp_cost ?? 0),
+                hp_percent_max: Number(source.costs?.hp_percent_max ?? 0),
             },
             effects: Array.isArray(source.effects) ? source.effects.map(cleanEffect).filter(Boolean) : [],
         };
@@ -1140,10 +1172,10 @@
         ['recoil', 'friendly_fire', 'backlane_splash', 'no_space_recoil', 'chain', 'shrapnel',
             'instability', 'on_kill_detonation', 'cooldown_reset', 'damage_taken_scaling',
             'element_effectiveness', 'consume_stacks', 'aftershock', 'shuffle_positions',
-            'distance_scaling', 'lane_cascade', 'echo_burst'].forEach(function (key) {
+            'distance_scaling', 'lane_cascade', 'echo_burst', 'resurrect'].forEach(function (key) {
             if (source[key] && typeof source[key] === 'object') skill[key] = clone(source[key]);
         });
-        ['ignore_evasion', 'cannot_crit', 'fail_if_target_moves'].forEach(function (key) {
+        ['ignore_evasion', 'cannot_crit', 'fail_if_target_moves', 'ignore_rescue', 'rune_fate'].forEach(function (key) {
             if (source[key] === true || source[key] === 'true') skill[key] = true;
         });
         ['fail_cost_fraction', 'front_lane_bonus', 'bonus_vs_immobile'].forEach(function (key) {

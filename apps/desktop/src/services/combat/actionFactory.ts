@@ -91,6 +91,7 @@ function readCosts(source: Record<string, unknown> | null, fallbackStamina: numb
         mana: readNumber(source?.mana, 0),
         stamina: readNumber(source?.stamina, fallbackStamina),
         hp: Math.max(0, readNumber(source?.hp, 0)),
+        hpPercentMax: Math.max(0, readNumber(source?.hp_percent_max, 0)),
         cooldown: readNumber(source?.cooldown, 0),
     };
 }
@@ -417,6 +418,7 @@ function defaultTraits(): Pick<
     | 'shufflePositions'
     | 'ignoreEvasion' | 'cannotCrit' | 'failIfTargetMoves' | 'failCostFraction'
     | 'frontLaneBonus' | 'distanceScaling' | 'laneCascade' | 'bonusVsImmobile' | 'echoBurst'
+    | 'resurrect' | 'ignoreRescue' | 'runeFate'
 > {
     return {
         solar: false,
@@ -463,6 +465,9 @@ function defaultTraits(): Pick<
         laneCascade: null,
         bonusVsImmobile: 0,
         echoBurst: null,
+        resurrect: null,
+        ignoreRescue: false,
+        runeFate: false,
     };
 }
 
@@ -471,6 +476,17 @@ function readScatterHits(raw: unknown): number | null {
     const value = readNumber(raw, Number.NaN);
     if (!Number.isFinite(value)) return null;
     return Math.max(1, Math.round(value));
+}
+
+/** Reads a resurrection spec (`oath_of_return` and its upgrades). */
+function readResurrect(raw: unknown): CombatAction['resurrect'] {
+    const record = asRecord(raw);
+    if (!record) return null;
+    return {
+        hpPercent: clamp(readNumber(record.hp_percent, 10), 1, 100),
+        manaPercent: clamp(readNumber(record.mana_percent, 0), 0, 100),
+        staminaPercent: clamp(readNumber(record.stamina_percent, 0), 0, 100),
+    };
 }
 
 /** Builds an action from one catalogue skill. */
@@ -560,6 +576,9 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
             const percent = record ? Math.max(0, readNumber(record.percent, 0)) : 0;
             return percent > 0 ? { percent } : null;
         })(),
+        resurrect: readResurrect(raw.resurrect),
+        ignoreRescue: readBoolean(raw.ignore_rescue, false),
+        runeFate: readBoolean(raw.rune_fate, false),
     };
 }
 

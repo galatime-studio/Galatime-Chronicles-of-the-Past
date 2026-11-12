@@ -1,0 +1,695 @@
+skills:
+  # ── Rune ──────────────────────────────────────────────────────────────────
+  - id: rune_of_life
+    name: Rune of Life
+    description: "Wards an ally: the next damage instance it takes is reduced by 10%, then the ward is consumed. It cannot prevent defeat."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_cost:
+      experience_points: 1
+    targeting: any_one
+    costs:
+      mana: 3
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: rune_of_life_ward
+        status_effect: Rune of Life
+        apply_to: target
+        turns: 1
+        polarity: positive
+        damage_reduction:
+          percent: 0.10
+          charges: 1
+
+  - id: rune_of_survival
+    name: Rune of Survival
+    description: "Marks an ally for 2 turns. When the bearer would be defeated, the mark is consumed: it survives at 1 HP and recovers 8% of its max mana and stamina. Only one rescue rune can stand per team."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_requirements:
+      required_attack_ids: [rune_of_life]
+    learning_cost:
+      experience_points: 2
+    targeting: any_one
+    costs:
+      mana: 5
+      stamina: 0
+      hp: 8
+      cooldown: 0
+    effects:
+      - effect_id: rune_of_survival_mark
+        status_effect: Rune of Survival
+        apply_to: target
+        turns: 2
+        polarity: positive
+        rescue_rune:
+          hp_percent: 1
+          mana_percent: 8
+          stamina_percent: 8
+
+  - id: rune_of_endurance
+    name: Rune of Endurance
+    description: "A stronger rescue rune: for 3 turns, the first defeat instead leaves the bearer at 1 HP and restores 12% of its max mana and stamina."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_requirements:
+      required_attack_ids: [rune_of_survival]
+    learning_cost:
+      experience_points: 3
+    targeting: any_one
+    costs:
+      mana: 8
+      stamina: 0
+      hp: 12
+      cooldown: 0
+    effects:
+      - effect_id: rune_of_endurance_mark
+        status_effect: Rune of Endurance
+        apply_to: target
+        turns: 3
+        polarity: positive
+        rescue_rune:
+          hp_percent: 1
+          mana_percent: 12
+          stamina_percent: 12
+
+  - id: rune_of_memory
+    name: Rune of Memory
+    description: "Seals an entity for 2 turns and records the damage it receives, up to 10% of its max HP. The stored energy is lost if the bearer falls before the rune is read."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_requirements:
+      required_attack_ids: [rune_of_life]
+    learning_cost:
+      experience_points: 2
+    targeting: any_one
+    costs:
+      mana: 6
+      stamina: 0
+      hp: 6
+      cooldown: 0
+    effects:
+      - effect_id: rune_of_memory_seal
+        status_effect: Rune of Memory
+        apply_to: target
+        turns: 2
+        polarity: positive
+        rune_store:
+          mode: memory
+          cap_percent: 10
+          conversion_percent: 0
+          heal_or_damage: false
+
+  - id: rune_of_restoration
+    name: Rune of Restoration
+    description: "Reads the memory rune after 3 turns, converting the stored damage at 100%: it heals the most wounded ally or, when nobody needs healing, burns the healthiest enemy."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_requirements:
+      required_attack_ids: [rune_of_memory]
+    learning_cost:
+      experience_points: 3
+    targeting: any_one
+    costs:
+      mana: 10
+      stamina: 0
+      hp: 10
+      cooldown: 0
+    effects:
+      - effect_id: rune_of_restoration_seal
+        status_effect: Rune of Restoration
+        apply_to: target
+        turns: 3
+        polarity: positive
+        rune_store:
+          mode: convert
+          cap_percent: 10
+          conversion_percent: 100
+          heal_or_damage: true
+
+  - id: rune_of_strength
+    name: Rune of Strength
+    description: "As Rune of Restoration, but the stored damage is released at 150% and capped at 20% of the original bearer's max HP."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_requirements:
+      required_attack_ids: [rune_of_restoration]
+    learning_cost:
+      experience_points: 5
+    targeting: any_one
+    costs:
+      mana: 15
+      stamina: 0
+      hp: 14
+      cooldown: 0
+    effects:
+      - effect_id: rune_of_strength_seal
+        status_effect: Rune of Strength
+        apply_to: target
+        turns: 3
+        polarity: positive
+        rune_store:
+          mode: convert
+          cap_percent: 10
+          conversion_percent: 150
+          output_cap_percent: 20
+          heal_or_damage: true
+
+  - id: rune_of_return
+    name: Rune of Return
+    description: "For 2 turns, stores the first damage or healing that would reach the caster. At expiry, pay 20 mana and 10 stamina to send it back to its source at 125%; if the price cannot be paid, the original effect resolves on the caster."
+    element_id: vetus
+    sfx: vetus
+    kind: control
+    learning_requirements:
+      required_attack_ids: [rune_of_memory]
+    learning_cost:
+      experience_points: 4
+    targeting: self
+    costs:
+      mana: 12
+      stamina: 6
+      hp: 10
+      cooldown: 0
+    effects:
+      - effect_id: rune_of_return_seal
+        status_effect: Rune of Return
+        apply_to: self
+        turns: 2
+        polarity: positive
+        rune_return:
+          percent: 125
+          mana_payment: 20
+          stamina_payment: 10
+
+  - id: rune_of_retribution
+    name: Rune of Retribution
+    description: "A stronger return rune: the stored swing is sent back at 150% after 2 turns for the same 20 mana and 10 stamina price."
+    element_id: vetus
+    sfx: vetus
+    kind: control
+    learning_requirements:
+      required_attack_ids: [rune_of_return]
+    learning_cost:
+      experience_points: 5
+    targeting: self
+    costs:
+      mana: 16
+      stamina: 8
+      hp: 14
+      cooldown: 0
+    effects:
+      - effect_id: rune_of_retribution_seal
+        status_effect: Rune of Retribution
+        apply_to: self
+        turns: 2
+        polarity: positive
+        rune_return:
+          percent: 150
+          mana_payment: 20
+          stamina_payment: 10
+
+  - id: rune_of_fate
+    name: Rune of Fate
+    description: "Chooses between the two rune lines at cast: a burst rune (restoration/strength) or a reversal rune (return/retribution). The chosen technique resolves at 175% stored output and pays its own price."
+    element_id: vetus
+    sfx: vetus
+    kind: utility
+    learning_requirements:
+      required_attack_ids: [rune_of_restoration, rune_of_retribution]
+    learning_cost:
+      experience_points: 7
+    targeting: self
+    rune_fate: true
+    costs:
+      mana: 22
+      stamina: 8
+      hp: 18
+      cooldown: 0
+
+  # ── Chant ─────────────────────────────────────────────────────────────────
+  - id: chant_of_echoes
+    name: Chant of Echoes
+    description: "Channels for 1 turn and gains 1 charge. When the chant completes, it releases a small magical burst for 6 damage at one enemy."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_cost:
+      experience_points: 1
+    targeting: self
+    costs:
+      mana: 2
+      stamina: 0
+      hp: 4
+      cooldown: 0
+    effects:
+      - effect_id: chant_of_echoes_channel
+        status_effect: Chant of Echoes
+        apply_to: self
+        turns: 1
+        polarity: positive
+        chant:
+          max_charges: 1
+          damage_per_charge: 6
+          element_mode: fixed
+          interrupt_chance: 0
+          scope: one
+
+  - id: chant_of_gathering
+    name: Chant of Gathering
+    description: "Channels for up to 2 turns, gaining 1 charge each turn. On release it deals 8 magical damage per charge to one enemy. Taking damage has a 20% chance to interrupt it and consume every charge."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_requirements:
+      required_attack_ids: [chant_of_echoes]
+    learning_cost:
+      experience_points: 2
+    targeting: self
+    costs:
+      mana: 3
+      stamina: 0
+      hp: 5
+      cooldown: 0
+    effects:
+      - effect_id: chant_of_gathering_channel
+        status_effect: Chant of Gathering
+        apply_to: self
+        turns: 2
+        polarity: positive
+        chant:
+          max_charges: 2
+          damage_per_charge: 8
+          element_mode: fixed
+          interrupt_chance: 0.20
+          scope: one
+
+  - id: chant_of_sacrifice
+    name: Chant of Sacrifice
+    description: "Channels for up to 2 turns, paying 6 mana each turn to gain 1 charge. On release it deals 10 magical damage per charge to one enemy; each hit taken has a 20% chance to interrupt it."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_requirements:
+      required_attack_ids: [chant_of_echoes]
+    learning_cost:
+      experience_points: 2
+    targeting: self
+    costs:
+      mana: 2
+      stamina: 0
+      hp: 8
+      cooldown: 0
+    effects:
+      - effect_id: chant_of_sacrifice_channel
+        status_effect: Chant of Sacrifice
+        apply_to: self
+        turns: 2
+        polarity: positive
+        chant:
+          max_charges: 2
+          damage_per_charge: 10
+          element_mode: fixed
+          interrupt_chance: 0.20
+          pay_mana: 6
+          scope: one
+
+  - id: chant_of_endurance
+    name: Chant of Endurance
+    description: "Channels for up to 3 turns and gains 1 charge each turn. On release it deals 9 magical damage per charge to one enemy. Taking damage has a 15% chance per instance to interrupt it."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_requirements:
+      required_attack_ids: [chant_of_gathering]
+    learning_cost:
+      experience_points: 3
+    targeting: self
+    costs:
+      mana: 5
+      stamina: 0
+      hp: 7
+      cooldown: 0
+    effects:
+      - effect_id: chant_of_endurance_channel
+        status_effect: Chant of Endurance
+        apply_to: self
+        turns: 3
+        polarity: positive
+        chant:
+          max_charges: 3
+          damage_per_charge: 9
+          element_mode: fixed
+          interrupt_chance: 0.15
+          scope: one
+
+  - id: chant_of_ruin
+    name: Chant of Ruin
+    description: "Strikes one enemy for 8 magical damage and channels for up to 2 turns. Each charge adds 10 magical damage on release; each hit taken has a 20% chance to interrupt and consume the charges."
+    element_id: vetus
+    sfx: vetus
+    kind: attack
+    learning_requirements:
+      required_attack_ids: [chant_of_gathering]
+    learning_cost:
+      experience_points: 3
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 8
+    accuracy: 95
+    hit_count: 1
+    costs:
+      mana: 8
+      stamina: 0
+      hp: 10
+      cooldown: 0
+    effects:
+      - effect_id: chant_of_ruin_channel
+        status_effect: Chant of Ruin
+        apply_to: self
+        turns: 2
+        polarity: positive
+        chant:
+          max_charges: 2
+          damage_per_charge: 10
+          element_mode: fixed
+          interrupt_chance: 0.20
+          scope: one
+
+  - id: chant_of_heroes
+    name: Chant of Heroes
+    description: "Strikes one enemy for 12 magical damage and channels for up to 3 turns. Each charge adds 12 magical damage of one randomly chosen element (Aqua, Ignis or Florere) on release; 15% chance to interrupt per hit."
+    element_id: vetus
+    sfx: vetus
+    kind: attack
+    learning_requirements:
+      required_attack_ids: [chant_of_endurance]
+    learning_cost:
+      experience_points: 4
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 12
+    accuracy: 90
+    hit_count: 1
+    costs:
+      mana: 12
+      stamina: 0
+      hp: 12
+      cooldown: 0
+    effects:
+      - effect_id: chant_of_heroes_channel
+        status_effect: Chant of Heroes
+        apply_to: self
+        turns: 3
+        polarity: positive
+        chant:
+          max_charges: 3
+          damage_per_charge: 12
+          element_mode: random
+          random_elements: [aqua, ignis, florere]
+          interrupt_chance: 0.15
+          scope: one
+
+  - id: chant_of_unity
+    name: Chant of Unity
+    description: "Strikes an enemy lane for 10 magical damage and channels for up to 3 turns. On release, each charge adds 10 magical damage of one random element to the whole lane; 15% chance to interrupt per hit."
+    element_id: vetus
+    sfx: vetus
+    kind: attack
+    learning_requirements:
+      required_attack_ids: [chant_of_heroes, chant_of_sacrifice]
+    learning_cost:
+      experience_points: 6
+    targeting: enemies_lane
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 10
+    accuracy: 85
+    hit_count: 1
+    costs:
+      mana: 18
+      stamina: 0
+      hp: 16
+      cooldown: 0
+    effects:
+      - effect_id: chant_of_unity_channel
+        status_effect: Chant of Unity
+        apply_to: self
+        turns: 3
+        polarity: positive
+        chant:
+          max_charges: 3
+          damage_per_charge: 10
+          element_mode: random
+          random_elements: [aqua, ignis, florere]
+          interrupt_chance: 0.15
+          scope: lane
+
+  - id: chant_of_ancients
+    name: Chant of Ancients
+    description: "Strikes every enemy for 14 magical damage and channels for up to 3 turns. On release, each charge adds 14 magical damage of one random element to all enemies; 10% chance to interrupt per hit."
+    element_id: vetus
+    sfx: vetus
+    kind: attack
+    learning_requirements:
+      required_attack_ids: [chant_of_unity]
+    learning_cost:
+      experience_points: 8
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 14
+    accuracy: 80
+    hit_count: 1
+    costs:
+      mana: 25
+      stamina: 0
+      hp: 22
+      cooldown: 0
+    effects:
+      - effect_id: chant_of_ancients_channel
+        status_effect: Chant of Ancients
+        apply_to: self
+        turns: 3
+        polarity: positive
+        chant:
+          max_charges: 3
+          damage_per_charge: 14
+          element_mode: random
+          random_elements: [aqua, ignis, florere]
+          interrupt_chance: 0.10
+          scope: all
+
+  # ── Oath ──────────────────────────────────────────────────────────────────
+  - id: oath_of_life
+    name: Oath of Life
+    description: "Swears a short oath: for 2 turns the caster gains +4 magical attack."
+    element_id: vetus
+    sfx: vetus
+    kind: buff
+    learning_cost:
+      experience_points: 1
+    targeting: self
+    costs:
+      mana: 2
+      stamina: 0
+      hp: 5
+      cooldown: 0
+    effects:
+      - effect_id: oath_of_life_buff
+        status_effect: Oath of Life
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff:
+          magical_attack: 4
+
+  - id: oath_of_mercy
+    name: Oath of Mercy
+    description: "Restores 10% of a living ally's maximum HP. It cannot target the defeated."
+    element_id: vetus
+    sfx: vetus
+    kind: heal
+    learning_requirements:
+      required_attack_ids: [oath_of_life]
+    learning_cost:
+      experience_points: 2
+    targeting: any_one
+    costs:
+      mana: 5
+      stamina: 0
+      hp: 12
+      cooldown: 0
+    effects:
+      - effect_id: oath_of_mercy_heal
+        status_effect: Oath of Mercy
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 10
+
+  - id: oath_of_return
+    name: Oath of Return
+    description: "Brings one defeated ally back at 10% of its max HP. The ally is fate-linked until the battle ends or it falls again: if the caster falls while the link stands, the ally falls too. It cannot revive a unit forbidden from returning."
+    element_id: vetus
+    sfx: vetus
+    kind: utility
+    learning_requirements:
+      required_attack_ids: [oath_of_life]
+    learning_cost:
+      experience_points: 3
+    targeting: any_one
+    resurrect:
+      hp_percent: 10
+      mana_percent: 0
+      stamina_percent: 0
+    costs:
+      mana: 10
+      stamina: 0
+      hp: 20
+      cooldown: 0
+
+  - id: oath_of_rebirth
+    name: Oath of Rebirth
+    description: "Brings one defeated ally back at 20% max HP and restores 10% of its max mana and stamina. The revived ally remains fate-linked to the caster."
+    element_id: vetus
+    sfx: vetus
+    kind: utility
+    learning_requirements:
+      required_attack_ids: [oath_of_return]
+    learning_cost:
+      experience_points: 4
+    targeting: any_one
+    resurrect:
+      hp_percent: 20
+      mana_percent: 10
+      stamina_percent: 10
+    costs:
+      mana: 14
+      stamina: 0
+      hp: 28
+      cooldown: 0
+
+  - id: oath_of_life_link
+    name: Oath of Life Link
+    description: "Brings one defeated ally back at 35% max HP and restores 20% of its max mana and stamina. The fate link still drags the ally down if the caster falls."
+    element_id: vetus
+    sfx: vetus
+    kind: utility
+    learning_requirements:
+      required_attack_ids: [oath_of_rebirth]
+    learning_cost:
+      experience_points: 6
+    targeting: any_one
+    resurrect:
+      hp_percent: 35
+      mana_percent: 20
+      stamina_percent: 20
+    costs:
+      mana: 20
+      stamina: 0
+      hp: 35
+      cooldown: 0
+
+  - id: oath_of_sacrifice
+    name: Oath of Sacrifice
+    description: "Pays 50% of the caster's maximum HP, then deals 30 magical damage to one enemy at 90% accuracy. The oath fails if the blood price would defeat the caster."
+    element_id: vetus
+    sfx: vetus
+    kind: attack
+    learning_requirements:
+      required_attack_ids: [oath_of_life]
+    learning_cost:
+      experience_points: 3
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 30
+    accuracy: 90
+    hit_count: 1
+    costs:
+      mana: 8
+      stamina: 0
+      hp_percent_max: 50
+      cooldown: 0
+
+  - id: oath_of_destruction
+    name: Oath of Destruction
+    description: "Pays 50% of the caster's maximum HP, then deals 24 magical damage to an enemy lane at 85% accuracy. It cannot be cast if the price would defeat the caster."
+    element_id: vetus
+    sfx: vetus
+    kind: attack
+    learning_requirements:
+      required_attack_ids: [oath_of_sacrifice]
+    learning_cost:
+      experience_points: 5
+    targeting: enemies_lane
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 24
+    accuracy: 85
+    hit_count: 1
+    costs:
+      mana: 14
+      stamina: 0
+      hp_percent_max: 50
+      cooldown: 0
+
+  - id: oath_of_finality
+    name: Oath of Finality
+    description: "Pays 50% of the caster's maximum HP, deals 45 magical damage to one enemy at 90% accuracy and restores 8% of the maximum HP of every living ally."
+    element_id: vetus
+    sfx: vetus
+    kind: attack
+    learning_requirements:
+      required_attack_ids: [oath_of_destruction, oath_of_life_link]
+    learning_cost:
+      experience_points: 8
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 45
+    accuracy: 90
+    hit_count: 1
+    costs:
+      mana: 25
+      stamina: 0
+      hp_percent_max: 50
+      cooldown: 0
+    effects:
+      - effect_id: oath_of_finality_ally_heal
+        status_effect: Oath of Finality
+        apply_to: allies_all
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 8

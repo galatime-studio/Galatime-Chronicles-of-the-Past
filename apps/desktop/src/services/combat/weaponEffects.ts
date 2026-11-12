@@ -18,6 +18,7 @@ import type {
     CombatUnit,
 } from '../../types/CombatType';
 import { WeaponFlag } from '../../types/WeaponType';
+import { effectiveStats } from './effectResolver';
 
 /** The stats `amplify_best` ranks. Pools are excluded — they are not "attributes". */
 const AMPLIFY_STATS: ReadonlyArray<keyof CombatStats> = [
@@ -69,11 +70,19 @@ export function effectiveActionCost(unit: CombatUnit, action: CombatAction): Com
         1,
     );
     const applyStatusCosts = (costs: CombatActionCost): CombatActionCost => {
-        if (statusMana === 1 && statusStamina === 1) return costs;
+        const withBlood = (action.costs.hpPercentMax ?? 0) > 0
+            ? {
+                ...costs,
+                hp: costs.hp + Math.round(
+                    effectiveStats(unit).maxHp * Math.max(0, action.costs.hpPercentMax ?? 0) / 100,
+                ),
+            }
+            : costs;
+        if (statusMana === 1 && statusStamina === 1) return withBlood;
         return {
-            ...costs,
-            mana: Math.max(0, Math.ceil(costs.mana * statusMana)),
-            stamina: Math.max(0, Math.ceil(costs.stamina * statusStamina)),
+            ...withBlood,
+            mana: Math.max(0, Math.ceil(withBlood.mana * statusMana)),
+            stamina: Math.max(0, Math.ceil(withBlood.stamina * statusStamina)),
         };
     };
 

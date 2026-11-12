@@ -792,6 +792,85 @@ function readOnDeathBlast(source: unknown): CombatEffectInstance['onDeathBlast']
     return power > 0 ? { power } : null;
 }
 
+/** Reads a rescue-rune payload (`rune_of_survival`, `rune_of_endurance`). */
+function readRescueRune(source: unknown): CombatEffectInstance['rescueRune'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    return {
+        hpPercent: 1,
+        manaPercent: clamp(readNumber(record.mana_percent, 8), 0, 100),
+        staminaPercent: clamp(readNumber(record.stamina_percent, 8), 0, 100),
+    };
+}
+
+/** Reads a rune-store payload (`rune_of_memory`, restoration, strength, fate burst). */
+function readRuneStore(source: unknown): CombatEffectInstance['runeStore'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const mode = readString(record.mode, 'memory') === 'convert' ? 'convert' : 'memory';
+    return {
+        mode,
+        capPercent: clamp(readNumber(record.cap_percent, 10), 0, 100),
+        conversionPercent: Math.max(0, readNumber(record.conversion_percent, mode === 'convert' ? 100 : 0)),
+        outputCapPercent: readBoolean(record.heal_or_damage, true) && record.output_cap_percent !== undefined
+            ? clamp(readNumber(record.output_cap_percent, 20), 0, 100)
+            : null,
+        healOrDamage: readBoolean(record.heal_or_damage, true),
+        stored: 0,
+    };
+}
+
+/** Reads a rune-return payload (`rune_of_return`, retribution, fate reversal). */
+function readRuneReturn(source: unknown): CombatEffectInstance['runeReturn'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    return {
+        percent: Math.max(1, readNumber(record.percent, 100)),
+        payment: {
+            mana: Math.max(0, readNumber(record.mana_payment, 0)),
+            stamina: Math.max(0, readNumber(record.stamina_payment, 0)),
+        },
+        stored: 0,
+        storedKind: null,
+        storedSourceId: null,
+        storedElement: null,
+        storedEffect: null,
+    };
+}
+
+/** Reads a chant payload (`chant_of_echoes` and its branch). */
+function readChant(source: unknown, random: CombatRandom): CombatEffectInstance['chant'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const elementMode = readString(record.element_mode, 'fixed') === 'random' ? 'random' : 'fixed';
+    const randomElements = readTrimmedStringList(record.random_elements) ?? ['aqua', 'ignis', 'florere'];
+    const chosen = elementMode === 'random' && randomElements.length > 0
+        ? randomElements[Math.min(randomElements.length - 1, Math.floor(random() * randomElements.length))]
+        : null;
+    return {
+        maxCharges: Math.max(1, Math.round(readNumber(record.max_charges, 1))),
+        damagePerCharge: Math.max(0, readNumber(record.damage_per_charge, 6)),
+        elementMode,
+        randomElements,
+        interruptChance: clamp(readNumber(record.interrupt_chance, 0), 0, 1),
+        payHp: Math.max(0, readNumber(record.pay_hp, 0)),
+        payMana: Math.max(0, readNumber(record.pay_mana, 0)),
+        scope: readString(record.scope, 'one') === 'lane'
+            ? 'lane'
+            : readString(record.scope, 'one') === 'all' ? 'all' : 'one',
+        charges: 1,
+        targetId: null,
+        element: chosen,
+    };
+}
+
+/** Reads a fate link; a bare `true` links to whoever applied it. */
+function readFateLink(source: unknown, sourceId: string): CombatEffectInstance['fateLink'] {
+    if (!source) return null;
+    const record = asRecord(source);
+    return { casterId: readString(record?.caster_id, sourceId) };
+}
+
 /** Reads the chance a mud seal refuses any new status. */
 function readStatusResistChance(source: unknown): number | undefined {
     const value = clamp(readNumber(source, 0), 0, 1);
@@ -1337,6 +1416,11 @@ export function createEffectInstance(
         costMultiplier: readCostMultiplier(record.cost_multiplier),
         endCost: readEndCost(record.end_cost),
         onDeathBlast: readOnDeathBlast(record.on_death_blast),
+        rescueRune: readRescueRune(record.rescue_rune),
+        runeStore: readRuneStore(record.rune_store),
+        runeReturn: readRuneReturn(record.rune_return),
+        chant: readChant(record.chant, random),
+        fateLink: readFateLink(record.fate_link, sourceId),
         statusResistChance: readStatusResistChance(record.status_resist_chance),
         effectMagnitudeMultiplier: readEffectMagnitudeMultiplier(record.effect_magnitude_multiplier),
         preventRanges: readRangeList(record.prevent_ranges),
@@ -1576,6 +1660,11 @@ function carriesStatusPayload(instance: CombatEffectInstance): boolean {
         || instance.costMultiplier
         || instance.endCost
         || instance.onDeathBlast
+        || instance.rescueRune
+        || instance.runeStore
+        || instance.runeReturn
+        || instance.chant
+        || instance.fateLink
         || instance.mergeOnApply
         || instance.damageTiming === 'turn_end'
         || (instance.turnEndStacks ?? 0) > 0
@@ -1646,6 +1735,18 @@ export function applyEffectToUnit(
     const chance = effectChance(effect);
     if (chance < 1 && random() >= chance) return null;
 
+    // A return rune swallows the first incoming status as well as damage/healing.
+    const statusPayload = Boolean(effect.status_effect || effect.buff || effect.debuff);
+    if (statusPayload && captureRuneStatus(unit, effect, sourceId, elementId)) {
+        return {
+            type: 'effect_resisted',
+            unitId: unit.id,
+            effectId: readString(effect.effect_id, `${sourceId}_effect`),
+            statusEffect: readString(effect.status_effect, '') || null,
+            captured: true,
+        };
+    }
+
     // A modulation the target already carries (Wet vs ignis) scales the whole
     // landing — buffs, debuffs, heals and the like lose or gain strength here.
     const modulation = elementModulationFor(unit, elementId);
@@ -1655,6 +1756,16 @@ export function applyEffectToUnit(
     // Detonations scale from the bearer's own turn count, so stamp the landing
     // turn while the target is still in hand.
     instance.appliedTurnCount = unit.turnCount;
+
+    // A conversion rune reads and consumes the charge already banked by a memory rune.
+    if (instance.runeStore?.mode === 'convert') {
+        const memory = unit.effects.find((active) => active.runeStore?.mode === 'memory'
+            && (active.runeStore.stored ?? 0) > 0);
+        if (memory?.runeStore) {
+            instance.runeStore.stored = memory.runeStore.stored;
+            unit.effects = unit.effects.filter((active) => active !== memory);
+        }
+    }
 
     // Time suspension either refuses the status outright (`stasis`) or banks it
     // until the suspension ends (`time_lock`).
@@ -1944,6 +2055,259 @@ function applyFossilizeOnExpiry(
     if (applied) events.push(applied);
 }
 
+/** Records health damage into a live rune-store (`rune_of_memory` family). */
+export function recordRuneDamage(unit: CombatUnit, amount: number): void {
+    if (amount <= 0) return;
+    const holder = unit.effects.find((effect) => effect.runeStore?.mode === 'convert')
+        ?? unit.effects.find((effect) => effect.runeStore);
+    if (!holder?.runeStore) return;
+    const cap = effectiveStats(unit).maxHp * holder.runeStore.capPercent / 100;
+    holder.runeStore.stored = Math.min(cap, holder.runeStore.stored + amount);
+}
+
+/**
+ * Banks the first incoming swing in a return rune (`rune_of_return`).
+ *
+ * Returns `true` when the swing was swallowed and must not resolve on the
+ * bearer; the stored value is paid back when the rune expires.
+ */
+export function captureRuneReturn(
+    unit: CombatUnit,
+    amount: number,
+    kind: 'damage' | 'heal',
+    sourceId: string,
+    element: string | null,
+): boolean {
+    if (amount <= 0) return false;
+    const holder = unit.effects.find((effect) => effect.runeReturn && effect.runeReturn.stored <= 0);
+    if (!holder?.runeReturn) return false;
+
+    holder.runeReturn.stored = amount;
+    holder.runeReturn.storedKind = kind;
+    holder.runeReturn.storedSourceId = sourceId;
+    holder.runeReturn.storedElement = element;
+    holder.runeReturn.storedEffect = null;
+    return true;
+}
+
+/** Banks an incoming status payload in a return rune. */
+function captureRuneStatus(
+    unit: CombatUnit,
+    effect: AttackEffect,
+    sourceId: string,
+    element: string | null,
+): boolean {
+    const holder = unit.effects.find((entry) => entry.runeReturn && entry.runeReturn.stored <= 0);
+    if (!holder?.runeReturn) return false;
+
+    holder.runeReturn.stored = 1;
+    holder.runeReturn.storedKind = 'status';
+    holder.runeReturn.storedSourceId = sourceId;
+    holder.runeReturn.storedElement = element;
+    holder.runeReturn.storedEffect = { ...effect };
+    return true;
+}
+
+/** Rolls a chant's interruption chance after one damage instance. */
+export function interruptChantOnDamage(unit: CombatUnit, random: CombatRandom): CombatEvent[] {
+    const events: CombatEvent[] = [];
+    for (const effect of [...unit.effects]) {
+        if (!effect.chant || effect.chant.charges <= 0) continue;
+        if (random() >= effect.chant.interruptChance) continue;
+
+        unit.effects = unit.effects.filter((entry) => entry !== effect);
+        events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+        events.push({
+            type: 'action_interrupted',
+            unitId: unit.id,
+            actionId: 'chant',
+            effectId: effect.effectId,
+            statusEffect: effect.statusEffect,
+        });
+    }
+    return events;
+}
+
+/** Builds the target list a chant releases into. */
+function chantTargets(unit: CombatUnit, effect: CombatEffectInstance, state?: Pick<CombatState, 'units'>): CombatUnit[] {
+    const chant = effect.chant;
+    if (!chant || !state) return [];
+
+    const enemySide = unit.side === 'allies' ? 'enemies' : 'allies';
+    const stored = chant.targetId
+        ? state.units.find((candidate) => candidate.id === chant.targetId && candidate.status === 'alive')
+        : null;
+
+    if (chant.scope === 'all') {
+        return state.units.filter((candidate) => candidate.status === 'alive' && candidate.side === enemySide);
+    }
+    if (chant.scope === 'lane') {
+        const line = stored?.line ?? unit.line;
+        return state.units.filter((candidate) => candidate.status === 'alive'
+            && candidate.side === enemySide
+            && candidate.line === line);
+    }
+    if (stored) return [stored];
+
+    return state.units
+        .filter((candidate) => candidate.status === 'alive' && candidate.side === enemySide)
+        .sort((a, b) => a.currentHp - b.currentHp)
+        .slice(0, 1);
+}
+
+/** Pays a chant's per-turn price and adds one charge. */
+function tickChant(
+    unit: CombatUnit,
+    effect: CombatEffectInstance,
+    events: CombatEvent[],
+    random: CombatRandom,
+): void {
+    const chant = effect.chant;
+    if (!chant) return;
+    if (chant.charges <= 0) return;
+
+    // The turn the chant would expire is its release turn: no further payment
+    // and no further charge.
+    if (effect.turns !== null && effect.turns - 1 <= 0) return;
+
+    const cannotPayHp = chant.payHp > 0 && unit.currentHp <= chant.payHp;
+    const cannotPayMana = chant.payMana > 0 && unit.currentMana < chant.payMana;
+    if (cannotPayHp || cannotPayMana) {
+        // A failed payment consumes the chant and every charge it held.
+        effect.turns = 1;
+        chant.charges = 0;
+        return;
+    }
+
+    if (chant.payMana > 0) events.push(...changeResource(unit, 'mana', -chant.payMana));
+    if (chant.payHp > 0) events.push(...changeResource(unit, 'hp', -chant.payHp));
+    chant.charges = Math.min(chant.maxCharges, chant.charges + 1);
+    // Unused random source kept for parity with other per-turn statuses.
+    void random;
+}
+
+/** Releases a chant's stored charges into its targets. */
+function releaseChant(
+    unit: CombatUnit,
+    effect: CombatEffectInstance,
+    events: CombatEvent[],
+    state?: Pick<CombatState, 'units'>,
+    random: CombatRandom = Math.random,
+): void {
+    const chant = effect.chant;
+    if (!chant || chant.charges <= 0 || chant.damagePerCharge <= 0) return;
+
+    const power = Math.round(chant.damagePerCharge * chant.charges);
+    for (const target of chantTargets(unit, effect, state)) {
+        if (captureRuneReturn(target, power, 'damage', unit.id, chant.element ?? effect.elementId)) {
+            continue;
+        }
+        events.push(...changeResource(target, 'hp', -power));
+        recordRuneDamage(target, power);
+        events.push(...interruptChantOnDamage(target, random));
+    }
+    chant.charges = 0;
+}
+
+/** Resolves a rune-store on expiry (`rune_of_restoration`, `rune_of_strength`). */
+function resolveRuneStoreOnExpiry(
+    unit: CombatUnit,
+    effect: CombatEffectInstance,
+    events: CombatEvent[],
+    state?: Pick<CombatState, 'units'>,
+): void {
+    const store = effect.runeStore;
+    if (!store || store.mode !== 'convert' || unit.status !== 'alive' || store.stored <= 0) return;
+
+    const source = state?.units.find((candidate) => candidate.id === effect.sourceId);
+    const side = source?.side ?? unit.side;
+    let amount = Math.round(store.stored * store.conversionPercent / 100);
+    if (store.outputCapPercent !== null) {
+        amount = Math.min(amount, Math.round(effectiveStats(unit).maxHp * store.outputCapPercent / 100));
+    }
+    if (amount <= 0) return;
+
+    if (store.healOrDamage && state) {
+        const wounded = state.units
+            .filter((candidate) => candidate.status === 'alive'
+                && candidate.side === side
+                && candidate.currentHp < effectiveStats(candidate).maxHp)
+            .sort((a, b) => a.currentHp / Math.max(1, effectiveStats(a).maxHp)
+                - b.currentHp / Math.max(1, effectiveStats(b).maxHp))[0];
+        if (wounded) {
+            events.push(...changeResource(wounded, 'hp', amount));
+            return;
+        }
+    }
+
+    const enemies = state
+        ? state.units.filter((candidate) => candidate.status === 'alive' && candidate.side !== side)
+        : [];
+    const victim = enemies.sort((a, b) => a.currentHp - b.currentHp)[0];
+    if (victim) events.push(...changeResource(victim, 'hp', -amount));
+}
+
+/** Pays and returns a stored swing when a return rune expires. */
+function resolveRuneReturnOnExpiry(
+    unit: CombatUnit,
+    effect: CombatEffectInstance,
+    events: CombatEvent[],
+    state?: Pick<CombatState, 'units'>,
+    random: CombatRandom = Math.random,
+): void {
+    const rune = effect.runeReturn;
+    if (!rune || rune.stored <= 0) return;
+
+    const { mana, stamina } = rune.payment;
+    const canPay = unit.currentMana >= mana && unit.currentStamina >= stamina;
+    const source = state?.units.find((candidate) => candidate.id === rune.storedSourceId) ?? null;
+    const amount = Math.round(rune.stored * rune.percent / 100);
+
+    if (rune.storedKind === 'status' && rune.storedEffect) {
+        if (!canPay) {
+            const applied = applyEffectToUnit(
+                unit,
+                rune.storedEffect,
+                rune.storedSourceId ?? unit.id,
+                rune.storedElement,
+                random,
+            );
+            if (applied) events.push(applied);
+            rune.stored = 0;
+            return;
+        }
+        if (mana > 0) events.push(...changeResource(unit, 'mana', -mana));
+        if (stamina > 0) events.push(...changeResource(unit, 'stamina', -stamina));
+        const recipient = source?.status === 'alive' ? source : unit;
+        const applied = applyEffectToUnit(
+            recipient,
+            rune.storedEffect,
+            rune.storedSourceId ?? unit.id,
+            rune.storedElement,
+            random,
+            rune.percent / 100,
+        );
+        if (applied) events.push(applied);
+        rune.stored = 0;
+        return;
+    }
+
+    if (!canPay) {
+        // The caster could not afford the return: the original effect resolves
+        // on them instead, at its original magnitude.
+        events.push(...changeResource(unit, 'hp', rune.storedKind === 'heal' ? rune.stored : -rune.stored));
+        rune.stored = 0;
+        return;
+    }
+
+    if (mana > 0) events.push(...changeResource(unit, 'mana', -mana));
+    if (stamina > 0) events.push(...changeResource(unit, 'stamina', -stamina));
+
+    const recipient = source?.status === 'alive' ? source : unit;
+    events.push(...changeResource(recipient, 'hp', rune.storedKind === 'heal' ? amount : -amount));
+    rune.stored = 0;
+}
+
 /**
  * Decrements every timed effect on a unit, expiring the finished ones.
  *
@@ -2044,6 +2408,10 @@ export function tickUnitEffects(
             }
         }
 
+        if (effect.chant) {
+            tickChant(unit, effect, events, random);
+        }
+
         if (effect.selfUpkeep) {
             events.push(...payResourceDelta(unit, effect.selfUpkeep, -1));
         }
@@ -2079,6 +2447,11 @@ export function tickUnitEffects(
         }
 
         events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+
+        // Vetus runes and chants resolve their stored payload as they end.
+        if (effect.chant) releaseChant(unit, effect, events, state, random);
+        resolveRuneStoreOnExpiry(unit, effect, events, state);
+        resolveRuneReturnOnExpiry(unit, effect, events, state, random);
 
         // A status with a final price (`adrenaline`) pays it when it ends.
         events.push(...applyEndCost(unit, effect));
@@ -2556,7 +2929,18 @@ export function applyEffectResources(
         const amount = Math.max(1, Math.round(
             flatDamage * phase * elementScale * (variance[0] + random() * (variance[1] - variance[0])),
         ));
-        events.push(...changeResource(unit, 'hp', -amount));
+        const sourceId = options.transferSource?.id ?? effect.effect_id;
+        if (!captureRuneReturn(
+            unit,
+            amount,
+            'damage',
+            sourceId,
+            readString(effect.element_id, '') || options.sourceElementId || null,
+        )) {
+            events.push(...changeResource(unit, 'hp', -amount));
+            recordRuneDamage(unit, amount);
+            events.push(...interruptChantOnDamage(unit, random));
+        }
     }
 
     // A percentage drain pays the caster back out of the hit it just landed.
@@ -2587,7 +2971,15 @@ export function applyEffectResources(
     if (heal > 0 && !options.healBlocked) {
         const amount = Math.round(heal * outputMultiplier * phase * elementScale);
         if (amount > 0) {
-            events.push(...changeResource(unit, 'hp', amount));
+            if (!captureRuneReturn(
+                unit,
+                amount,
+                'heal',
+                options.transferSource?.id ?? unit.id,
+                readString(effect.element_id, '') || options.sourceElementId || null,
+            )) {
+                events.push(...changeResource(unit, 'hp', amount));
+            }
             healed = true;
         }
     }
@@ -2598,7 +2990,15 @@ export function applyEffectResources(
     if (healPercentOfMax > 0 && !options.healBlocked) {
         const maxHp = effectiveStats(unit).maxHp;
         const amount = Math.round(maxHp * healPercentOfMax / 100 * outputMultiplier * phase * elementScale);
-        if (amount > 0) events.push(...changeResource(unit, 'hp', amount));
+        if (amount > 0 && !captureRuneReturn(
+            unit,
+            amount,
+            'heal',
+            options.transferSource?.id ?? unit.id,
+            readString(effect.element_id, '') || options.sourceElementId || null,
+        )) {
+            events.push(...changeResource(unit, 'hp', amount));
+        }
         if (amount > 0) healed = true;
     }
 

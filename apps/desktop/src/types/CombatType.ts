@@ -519,6 +519,47 @@ export interface CombatEffectInstance {
     } | null;
     /** A delayed cascading strike through the bearer's lane. */
     riftMark?: { power: number; cascade: number } | null;
+    /** A rescue rune: the next defeat leaves the bearer at 1 HP (`rune_of_survival`). */
+    rescueRune?: {
+        hpPercent: number;
+        manaPercent: number;
+        staminaPercent: number;
+    } | null;
+    /** A rune that banks incoming damage and converts it when it expires. */
+    runeStore?: {
+        mode: 'memory' | 'convert';
+        capPercent: number;
+        conversionPercent: number;
+        outputCapPercent: number | null;
+        healOrDamage: boolean;
+        stored: number;
+    } | null;
+    /** A rune that stores the first incoming swing and returns it at expiry. */
+    runeReturn?: {
+        percent: number;
+        payment: { mana: number; stamina: number };
+        stored: number;
+        storedKind: 'damage' | 'heal' | 'status' | null;
+        storedSourceId: string | null;
+        storedElement: string | null;
+        storedEffect: AttackEffect | null;
+    } | null;
+    /** A channeled chant: charges build each turn and release on expiry. */
+    chant?: {
+        maxCharges: number;
+        damagePerCharge: number;
+        elementMode: 'fixed' | 'random';
+        randomElements: string[];
+        interruptChance: number;
+        payHp: number;
+        payMana: number;
+        scope: 'one' | 'lane' | 'all';
+        charges: number;
+        targetId: string | null;
+        element: string | null;
+    } | null;
+    /** A resurrection link: when the caster falls, the bearer falls too. */
+    fateLink?: { casterId: string } | null;
     /** Turn count when the status landed, used by detonations to scale. */
     appliedTurnCount?: number;
 }
@@ -799,6 +840,8 @@ export interface CombatActionCost {
     stamina: number;
     /** Health the action takes from its own user. */
     hp: number;
+    /** Extra health cost as a percent of the user's maximum HP (blood prices). */
+    hpPercentMax?: number;
     /** Turns the action stays unavailable after use. */
     cooldown: number;
 }
@@ -962,6 +1005,16 @@ export interface CombatAction {
     bonusVsImmobile?: number;
     /** Share of the hit added to a pending echo. */
     echoBurst?: { percent: number } | null;
+    /** Restores a defeated ally instead of resolving an ordinary attack (`oath_of_return`). */
+    resurrect?: {
+        hpPercent: number;
+        manaPercent: number;
+        staminaPercent: number;
+    } | null;
+    /** The action's damage cannot be saved by a rescue rune. */
+    ignoreRescue?: boolean;
+    /** The action opens the two-mode `rune_of_fate` choice. */
+    runeFate?: boolean;
 }
 
 /**Damage-channel modifiers folded from a defender's passive abilities.
@@ -1115,7 +1168,7 @@ export type CombatEvent =
     }
     | { type: 'effect_expired'; unitId: string; effectId: string }
     /** A status the target could not suffer, because it is immune to it. */
-    | { type: 'effect_resisted'; unitId: string; effectId: string; statusEffect: string | null }
+    | { type: 'effect_resisted'; unitId: string; effectId: string; statusEffect: string | null; captured?: boolean }
     /**
      * A unit was rewound: its resources went back to what they were, and the
      * statuses of the rewound turns were undone.
@@ -1140,6 +1193,7 @@ export type CombatEvent =
         next: number;
     }
     | { type: 'unit_defeated'; unitId: string }
+    | { type: 'unit_revived'; unitId: string; casterId: string }
     /** A living rear-line unit stepped into its side's emptied front line. */
     | { type: 'unit_line_changed'; unitId: string; line: CombatLine; slot: number }
     /** A skill pushed the unit's next turn back through the queue mid-round. */
@@ -1421,6 +1475,8 @@ export interface CombatActionRequest {
     targetId?: string;
     /** Item id when the action is `inventory`. */
     itemId?: string;
+    /** Optional cast mode for actions that offer a choice (`rune_of_fate`). */
+    mode?: string;
 }
 
 /**

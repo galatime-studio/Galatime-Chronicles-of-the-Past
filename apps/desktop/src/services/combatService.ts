@@ -1253,6 +1253,7 @@ export function submitCombatAction(
             target: validation.target,
             elementIndex,
             random,
+            mode: request.mode,
             // Ammo is spent against the actor's live inventory, so arrows shot in
             // this fight leave the quiver when it is flushed back to the store.
             unitInventory: getUnitInventory(session, actor),

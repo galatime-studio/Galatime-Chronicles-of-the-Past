@@ -13,7 +13,7 @@
  */
 
 import { MAX_UNITS_PER_LINE } from '../../constants/CombatConstants';
-import type { CombatEvent, CombatRandom, CombatSide, CombatState } from '../../types/CombatType';
+import type { CombatEvent, CombatRandom, CombatSide, CombatState, CombatUnit } from '../../types/CombatType';
 import { passiveTriggerContext } from './abilityContext';
 import { resolveAbilityEvent } from './abilityTriggers';
 import { changeResource, effectiveStats } from './effectResolver';
@@ -35,9 +35,23 @@ export function reapDefeated(state: CombatState, events: CombatEvent[], random: 
         const fallen = state.units.filter((unit) => unit.status === 'alive' && unit.currentHp <= 0);
         if (fallen.length === 0) break;
 
-        reaped = true;
+        const defeatedNow: CombatUnit[] = [];
 
         for (const unit of fallen) {
+            // A rescue rune answers the first defeat and leaves its bearer at 1 HP.
+            if (unit.flags.rescueIgnored !== true && tryRescueRune(unit, events)) {
+                continue;
+            }
+            delete unit.flags.rescueIgnored;
+
+            // A resurrection link drags the linked ally down with its caster.
+            for (const linked of state.units) {
+                if (linked.status !== 'alive' || linked.id === unit.id) continue;
+                if (!linked.effects.some((effect) => effect.fateLink?.casterId === unit.id)) continue;
+                linked.flags.rescueIgnored = true;
+                linked.currentHp = 0;
+            }
+
             unit.status = 'defeated';
             unit.currentHp = 0;
             unit.effects = [];
@@ -46,13 +60,17 @@ export function reapDefeated(state: CombatState, events: CombatEvent[], random: 
             unit.lockedTargetId = null;
             unit.lockedByEffectId = null;
             events.push({ type: 'unit_defeated', unitId: unit.id });
+            defeatedNow.push(unit);
         }
+
+        if (defeatedNow.length === 0) break;
+        reaped = true;
 
         // A `heal_on_kill` status (Blood Moon) pays every holder for each death
         // on the battlefield, whoever landed the blow.
-        for (const unit of fallen) payKillHeals(state, unit.id, events);
+        for (const unit of defeatedNow) payKillHeals(state, unit.id, events);
 
-        for (const unit of fallen) {
+        for (const unit of defeatedNow) {
             events.push(...resolveAbilityEvent(state, unit, 'on_death', passiveTriggerContext(random, state.units)));
         }
     }
@@ -60,6 +78,31 @@ export function reapDefeated(state: CombatState, events: CombatEvent[], random: 
     // A death can empty a side's front line, and an empty front line cannot hold
     // the fight: the rear steps up as part of the same sweep.
     if (reaped) promoteRearLines(state, events);
+}
+
+/** Consumes a rescue rune and leaves its bearer standing at 1 HP. */
+function tryRescueRune(unit: CombatUnit, events: CombatEvent[]): boolean {
+    const rune = unit.effects.find((effect) => effect.rescueRune);
+    if (!rune?.rescueRune) return false;
+
+    unit.effects = unit.effects.filter((effect) => effect !== rune);
+    unit.currentHp = 0;
+    const stats = effectiveStats(unit);
+
+    events.push({ type: 'effect_expired', unitId: unit.id, effectId: rune.effectId });
+    events.push(...changeResource(unit, 'hp', 1));
+    events.push(...changeResource(
+        unit,
+        'mana',
+        Math.round(stats.maxMana * rune.rescueRune.manaPercent / 100),
+    ));
+    events.push(...changeResource(
+        unit,
+        'stamina',
+        Math.round(stats.maxStamina * rune.rescueRune.staminaPercent / 100),
+    ));
+
+    return true;
 }
 
 /**

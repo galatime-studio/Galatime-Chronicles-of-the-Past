@@ -236,6 +236,12 @@ function scaleEffect(effect: AttackEffect, factor: number): AttackEffect {
             power: scaleRounded(effect.rift_mark.power, factor),
         };
     }
+    if (effect.chant) {
+        next.chant = {
+            ...effect.chant,
+            damage_per_charge: scaleRounded(effect.chant.damage_per_charge ?? 0, factor),
+        };
+    }
 
     return next;
 }
@@ -283,7 +289,10 @@ export function applySkillLevel(skill: PublicAttack, level: number): PublicAttac
     next.costs = {
         mana: scaleRounded(authoredCosts.mana, costFactor),
         stamina: scaleRounded(authoredCosts.stamina, costFactor),
-        hp: scaleRounded(authoredCosts.hp, costFactor),
+        // Blood prices are paid in health, not mastery: they never grow with a tier.
+        hp: Math.round(readNumber(authoredCosts.hp, 0)),
+        // Blood prices are a share of max HP: mastery never inflates them.
+        hp_percent_max: readNumber(authoredCosts.hp_percent_max, 0),
         cooldown: Math.round(readNumber(authoredCosts.cooldown, 0)) + extraCooldown,
     };
 

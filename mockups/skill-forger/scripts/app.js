@@ -81,6 +81,11 @@
         ['impulse', 'Impulso para a próxima ação'],
         ['gravity_zone', 'Zona de gravidade'],
         ['rift_mark', 'Marca de fenda'],
+        ['rescue_rune', 'Runa de resgate'],
+        ['rune_store', 'Runa de memória'],
+        ['rune_return', 'Runa de retorno'],
+        ['chant', 'Cântico'],
+        ['fate_link', 'Elo do destino'],
     ];
     var TARGET_LABELS = {
         any_one: 'qualquer personagem', enemies_all: 'todos os inimigos',
@@ -444,7 +449,14 @@
         form.elements.mana_cost.value = skill.costs?.mana ?? 0;
         form.elements.stamina_cost.value = skill.costs?.stamina ?? 0;
         form.elements.hp_cost.value = skill.costs?.hp ?? 0;
+        form.elements.hp_percent_max.value = skill.costs?.hp_percent_max ?? 0;
         form.elements.cooldown.value = skill.costs?.cooldown ?? 0;
+        form.elements.resurrect_enabled.checked = Boolean(skill.resurrect);
+        form.elements.resurrect_hp.value = skill.resurrect?.hp_percent ?? 10;
+        form.elements.resurrect_mana.value = skill.resurrect?.mana_percent ?? 0;
+        form.elements.resurrect_stamina.value = skill.resurrect?.stamina_percent ?? 0;
+        form.elements.rune_fate.checked = Boolean(skill.rune_fate);
+        form.elements.ignore_rescue.checked = Boolean(skill.ignore_rescue);
         form.elements.solar.checked = Boolean(skill.solar);
         form.elements.lunar.checked = Boolean(skill.lunar);
         form.elements.only_during_day.checked = Boolean(skill.only_during_day);
@@ -961,7 +973,7 @@
             + '</div>'
             + '<div class="sim-meta">'
             + blockedNote
-            + '<div><span>Custo</span><strong>' + (sim.costs.mana ? sim.costs.mana + ' MP' : 'sem mana') + (sim.costs.stamina ? ' · ' + sim.costs.stamina + ' ST' : '') + (sim.costs.hp ? ' · ' + sim.costs.hp + ' HP' : '') + (sim.costs.cooldown ? ' · ' + sim.costs.cooldown + ' turnos' : '') + '</strong></div>'
+            + '<div><span>Custo</span><strong>' + (sim.costs.mana ? sim.costs.mana + ' MP' : 'sem mana') + (sim.costs.stamina ? ' · ' + sim.costs.stamina + ' ST' : '') + (sim.costs.hp ? ' · ' + sim.costs.hp + ' HP' : '') + (sim.costs.hpPercentMax ? ' · ' + sim.costs.hpPercentMax + '% HP' : '') + (sim.costs.cooldown ? ' · ' + sim.costs.cooldown + ' turnos' : '') + '</strong></div>'
             + (sim.manaPerDamage !== null ? '<div><span>Mana por ponto de dano</span><strong>' + round(sim.manaPerDamage, 2) + '</strong></div>' : '')
             + '<div><span>Precisão</span><strong>' + Math.round(sim.accuracy.authored) + '% + ' + Math.round(sim.accuracy.modifier) + (sim.accuracy.evasion ? ' − ' + Math.round(sim.accuracy.evasion) + ' esquiva' : '') + ' = ' + Math.round(sim.accuracy.value) + '%</strong></div>'
             + critNote + guaranteed + flee
@@ -1181,8 +1193,22 @@
             mana: numberValue(form.elements.mana_cost.value, 0),
             stamina: numberValue(form.elements.stamina_cost.value, 0),
             hp: numberValue(form.elements.hp_cost.value, 0),
+            hp_percent_max: numberValue(form.elements.hp_percent_max.value, 0),
             cooldown: numberValue(form.elements.cooldown.value, 0),
         };
+        if (form.elements.resurrect_enabled.checked) {
+            skill.resurrect = {
+                hp_percent: numberValue(form.elements.resurrect_hp.value, 10),
+                mana_percent: numberValue(form.elements.resurrect_mana.value, 0),
+                stamina_percent: numberValue(form.elements.resurrect_stamina.value, 0),
+            };
+        } else {
+            delete skill.resurrect;
+        }
+        ['rune_fate', 'ignore_rescue'].forEach(function (key) {
+            if (form.elements[key].checked) skill[key] = true;
+            else delete skill[key];
+        });
         if (form.elements.solar.checked) skill.solar = true;
         else delete skill.solar;
         if (form.elements.lunar.checked) skill.lunar = true;
@@ -2090,6 +2116,46 @@
                 + '<label class="effect-stack"><input type="checkbox" data-effect-field="rewind.resources.stamina" ' + (rewindResources.indexOf('stamina') !== -1 ? 'checked' : '') + '> Recuperar stamina</label>'
                 + '<label class="effect-stack"><input type="checkbox" data-effect-field="rewind.cleanse" ' + (rewind.cleanse !== false ? 'checked' : '') + '> Remover os estados</label>';
         }
+        if (pattern === 'rescue_rune') {
+            var rescue = effect.rescue_rune || {};
+            return '<label class="effect-field"><span>Mana restaurada</span><div class="input-suffix"><input class="control" data-effect-field="rescue_rune.mana_percent" type="number" min="0" max="100" value="' + escapeHtml(rescue.mana_percent ?? 8) + '"><span>%</span></div><small>A primeira derrota deixa o portador a 1 de vida.</small></label>'
+                + '<label class="effect-field"><span>Stamina restaurada</span><div class="input-suffix"><input class="control" data-effect-field="rescue_rune.stamina_percent" type="number" min="0" max="100" value="' + escapeHtml(rescue.stamina_percent ?? 8) + '"><span>%</span></div></label>';
+        }
+        if (pattern === 'rune_store') {
+            var store = effect.rune_store || {};
+            return '<label class="effect-field"><span>Modo</span><select class="control" data-effect-field="rune_store.mode">'
+                + optionMarkup('memory', 'Só guardar', (store.mode || 'memory') === 'memory')
+                + optionMarkup('convert', 'Guardar e converter', store.mode === 'convert') + '</select><small>Só guardar alimenta a runa seguinte; converter liberta o dano ao expirar.</small></label>'
+                + '<label class="effect-field"><span>Teto guardado</span><div class="input-suffix"><input class="control" data-effect-field="rune_store.cap_percent" type="number" min="0" max="100" value="' + escapeHtml(store.cap_percent ?? 10) + '"><span>% vida</span></div></label>'
+                + '<label class="effect-field"><span>Conversão</span><div class="input-suffix"><input class="control" data-effect-field="rune_store.conversion_percent" type="number" min="0" value="' + escapeHtml(store.conversion_percent ?? 100) + '"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Teto de saída</span><div class="input-suffix"><input class="control" data-effect-field="rune_store.output_cap_percent" type="number" min="0" max="100" value="' + escapeHtml(store.output_cap_percent ?? '') + '" placeholder="sem teto"><span>% vida</span></div></label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="rune_store.heal_or_damage" ' + (store.heal_or_damage !== false ? 'checked' : '') + '> Cura aliado ferido; senão fere inimigo</label>';
+        }
+        if (pattern === 'rune_return') {
+            var runeReturn = effect.rune_return || {};
+            return '<label class="effect-field"><span>Devolução</span><div class="input-suffix"><input class="control" data-effect-field="rune_return.percent" type="number" min="0" value="' + escapeHtml(runeReturn.percent ?? 125) + '"><span>%</span></div><small>O primeiro golpe recebido é guardado e devolvido ao expirar.</small></label>'
+                + '<label class="effect-field"><span>Preço em mana</span><input class="control" data-effect-field="rune_return.mana_payment" type="number" min="0" value="' + escapeHtml(runeReturn.mana_payment ?? 20) + '"></label>'
+                + '<label class="effect-field"><span>Preço em stamina</span><input class="control" data-effect-field="rune_return.stamina_payment" type="number" min="0" value="' + escapeHtml(runeReturn.stamina_payment ?? 10) + '"></label>';
+        }
+        if (pattern === 'chant') {
+            var chant = effect.chant || {};
+            return '<label class="effect-field"><span>Cargas máximas</span><input class="control" data-effect-field="chant.max_charges" type="number" min="1" value="' + escapeHtml(chant.max_charges ?? 2) + '"></label>'
+                + '<label class="effect-field"><span>Dano por carga</span><input class="control" data-effect-field="chant.damage_per_charge" type="number" min="0" value="' + escapeHtml(chant.damage_per_charge ?? 8) + '"></label>'
+                + '<label class="effect-field"><span>Elemento</span><select class="control" data-effect-field="chant.element_mode">'
+                + optionMarkup('fixed', 'Elemento da skill', (chant.element_mode || 'fixed') === 'fixed')
+                + optionMarkup('random', 'Aleatório da lista', chant.element_mode === 'random') + '</select></label>'
+                + '<label class="effect-field"><span>Elementos aleatórios</span><input class="control" data-effect-field="chant.random_elements" value="' + escapeHtml(listValue(chant.random_elements)) + '" placeholder="aqua, ignis, florere"><small>Lista separada por vírgulas.</small></label>'
+                + '<label class="effect-field"><span>Interrupção por golpe</span><div class="input-suffix"><input class="control" data-effect-field="chant.interrupt_chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(chant.interrupt_chance)) + '"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Preço em vida</span><input class="control" data-effect-field="chant.pay_hp" type="number" min="0" value="' + escapeHtml(chant.pay_hp ?? '') + '" placeholder="0"></label>'
+                + '<label class="effect-field"><span>Preço em mana</span><input class="control" data-effect-field="chant.pay_mana" type="number" min="0" value="' + escapeHtml(chant.pay_mana ?? '') + '" placeholder="0"></label>'
+                + '<label class="effect-field"><span>Alcance da libertação</span><select class="control" data-effect-field="chant.scope">'
+                + optionMarkup('one', 'Um inimigo', (chant.scope || 'one') === 'one')
+                + optionMarkup('lane', 'A linha do alvo', chant.scope === 'lane')
+                + optionMarkup('all', 'Todos os inimigos', chant.scope === 'all') + '</select></label>';
+        }
+        if (pattern === 'fate_link') {
+            return '<label class="effect-stack"><input type="checkbox" data-effect-field="fate_link" ' + (effect.fate_link ? 'checked' : '') + '> Se o lançador cair, o portador cai também</label><small>O elo dura até a batalha acabar ou o portador cair outra vez.</small>';
+        }
         return '';
     }
 
@@ -2284,6 +2350,11 @@
     }
 
     function detectPattern(effect) {
+        if (effect.rescue_rune) return 'rescue_rune';
+        if (effect.rune_store) return 'rune_store';
+        if (effect.rune_return) return 'rune_return';
+        if (effect.chant) return 'chant';
+        if (effect.fate_link) return 'fate_link';
         if (effect.status_resist_chance !== undefined) return 'status_resist';
         if (effect.effect_magnitude_multiplier !== undefined) return 'effect_magnitude';
         if (effect.intercept) return 'intercept';
@@ -2486,6 +2557,11 @@
         if (pattern === 'cost_multiplier') properties.cost_multiplier = { mana: 0.5, stamina: 0.5 };
         if (pattern === 'end_cost') properties.end_cost = { resource: 'stamina', percent_of_max: 50, shortfall: 'hp' };
         if (pattern === 'on_death_blast') properties.on_death_blast = { power: 40 };
+        if (pattern === 'rescue_rune') properties.rescue_rune = { hp_percent: 1, mana_percent: 8, stamina_percent: 8 };
+        if (pattern === 'rune_store') properties.rune_store = { mode: 'memory', cap_percent: 10, conversion_percent: 100, heal_or_damage: true };
+        if (pattern === 'rune_return') properties.rune_return = { percent: 125, mana_payment: 20, stamina_payment: 10 };
+        if (pattern === 'chant') properties.chant = { max_charges: 2, damage_per_charge: 8, element_mode: 'fixed', interrupt_chance: 0.2, scope: 'one' };
+        if (pattern === 'fate_link') properties.fate_link = true;
         if (pattern === 'status_resist') properties.status_resist_chance = 0.35;
         if (pattern === 'effect_magnitude') properties.effect_magnitude_multiplier = 0.6;
         if (pattern === 'intercept') properties.intercept = { hits: 1, break_chance: 0.35 };
@@ -2565,7 +2641,7 @@
         if (!skill || !card) return;
         var effect = skill.effects.find(function (item) { return item.effect_id === card.dataset.effectId; });
         if (!effect) return;
-        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent', 'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction', 'drain_percent_of_max_hp', 'drain_per_turn', 'movement_immunity', 'stat_multipliers', 'status_resist_chance', 'effect_magnitude_multiplier', 'intercept', 'barrier', 'taunt', 'untargetable_ranges', 'untargetable_elements', 'shatter_on_damage_type', 'fossilize_on_expiry', 'on_expiry_damage', 'shift_other_effects', 'fatigue_recovery_delay', 'suspend', 'anchor', 'echo_mark', 'next_action_bonus', 'gravity_zone', 'rift_mark'].forEach(function (key) { delete effect[key]; });
+        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent', 'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction', 'drain_percent_of_max_hp', 'drain_per_turn', 'movement_immunity', 'stat_multipliers', 'status_resist_chance', 'effect_magnitude_multiplier', 'intercept', 'barrier', 'taunt', 'untargetable_ranges', 'untargetable_elements', 'shatter_on_damage_type', 'fossilize_on_expiry', 'on_expiry_damage', 'shift_other_effects', 'fatigue_recovery_delay', 'suspend', 'anchor', 'echo_mark', 'next_action_bonus', 'gravity_zone', 'rift_mark', 'rescue_rune', 'rune_store', 'rune_return', 'chant', 'fate_link'].forEach(function (key) { delete effect[key]; });
         var type = select.value;
         if (type === 'regen') effect.resource_regen = { hp: 15 };
         if (type === 'regen_turn') effect.regen_per_turn = { hp: 10 };
@@ -2610,6 +2686,11 @@
         if (type === 'cost_multiplier') effect.cost_multiplier = { mana: 0.5, stamina: 0.5 };
         if (type === 'end_cost') effect.end_cost = { resource: 'stamina', percent_of_max: 50, shortfall: 'hp' };
         if (type === 'on_death_blast') effect.on_death_blast = { power: 40 };
+        if (type === 'rescue_rune') effect.rescue_rune = { hp_percent: 1, mana_percent: 8, stamina_percent: 8 };
+        if (type === 'rune_store') effect.rune_store = { mode: 'memory', cap_percent: 10, conversion_percent: 100, heal_or_damage: true };
+        if (type === 'rune_return') effect.rune_return = { percent: 125, mana_payment: 20, stamina_payment: 10 };
+        if (type === 'chant') effect.chant = { max_charges: 2, damage_per_charge: 8, element_mode: 'fixed', interrupt_chance: 0.2, scope: 'one' };
+        if (type === 'fate_link') effect.fate_link = true;
         if (type === 'status_resist') effect.status_resist_chance = 0.35;
         if (type === 'effect_magnitude') effect.effect_magnitude_multiplier = 0.6;
         if (type === 'intercept') effect.intercept = { hits: 1, break_chance: 0.35 };
@@ -2736,7 +2817,8 @@
                     || key === 'refund_spent.percent' || key === 'damage_reduction.percent'
                     || key === 'drain_per_turn.chance' || key === 'ignite_attacker_on_hit.chance'
                     || key === 'turn_end_burn.chance' || key === 'status_resist_chance'
-                    || key === 'intercept.break_chance' || key === 'detonate_on_turn.splash_chance') {
+                    || key === 'intercept.break_chance' || key === 'detonate_on_turn.splash_chance'
+                    || key === 'chant.interrupt_chance') {
                     // Mostram-se em percentagem mas guardam-se como fração.
                     var fractionLeaf = key.split('.');
                     var fractionParent = readNested(effect, fractionLeaf.slice(0, -1).join('.')) || {};
@@ -2759,7 +2841,8 @@
                     || key === 'untargetable_ranges' || key === 'untargetable_elements'
                     || key === 'fossilize_on_expiry.prevent_actions'
                     || key === 'fossilize_on_expiry.prevent_ranges'
-                    || key === 'fossilize_on_expiry.prevent_elements') {
+                    || key === 'fossilize_on_expiry.prevent_elements'
+                    || key === 'chant.random_elements') {
                     var commaLeaf = key.split('.');
                     var commaName = commaLeaf[commaLeaf.length - 1];
                     var commaList = String(field.value || '').split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
@@ -2820,6 +2903,9 @@
                 } else if (key === 'rewind.cleanse') {
                     effect.rewind = effect.rewind || {};
                     effect.rewind.cleanse = field.checked;
+                } else if (key === 'rune_store.heal_or_damage') {
+                    effect.rune_store = effect.rune_store || {};
+                    effect.rune_store.heal_or_damage = field.checked;
                 } else if (key.indexOf('.') !== -1) {
                     // Campos aninhados: move.who, deferred_damage.amount, …
                     var nestedValue;
@@ -3311,6 +3397,9 @@
         if (skill.consume_stacks) result.consume_stacks = Model.clone(skill.consume_stacks);
         if (skill.aftershock) result.aftershock = Model.clone(skill.aftershock);
         if (skill.shuffle_positions) result.shuffle_positions = Model.clone(skill.shuffle_positions);
+        if (skill.resurrect) result.resurrect = Model.clone(skill.resurrect);
+        if (skill.rune_fate) result.rune_fate = true;
+        if (skill.ignore_rescue) result.ignore_rescue = true;
         ['ignore_evasion', 'cannot_crit', 'fail_if_target_moves'].forEach(function (key) {
             if (skill[key]) result[key] = true;
         });
@@ -3329,6 +3418,7 @@
             cooldown: Number(skill.costs?.cooldown) || 0,
         };
         if (Number(skill.costs?.hp)) result.costs.hp = Number(skill.costs.hp);
+        if (Number(skill.costs?.hp_percent_max)) result.costs.hp_percent_max = Number(skill.costs.hp_percent_max);
         if (skill.effects?.length) result.effects = skill.effects.map(Model.cleanEffect).filter(Boolean);
         if (skill.collateral) result.collateral = Model.clone(skill.collateral);
         return result;

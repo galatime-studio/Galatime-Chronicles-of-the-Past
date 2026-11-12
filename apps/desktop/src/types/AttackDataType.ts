@@ -727,6 +727,39 @@ export interface AttackEffect {
     counter_chance?: number;
     /** Elements the counter refuses to reflect, letting the hit through. */
     counter_except_elements?: string[];
+    /** A rescue rune: the next defeat leaves the bearer at 1 HP. */
+    rescue_rune?: {
+        hp_percent?: number;
+        mana_percent?: number;
+        stamina_percent?: number;
+    };
+    /** A rune that banks incoming damage and converts it when it expires. */
+    rune_store?: {
+        mode?: 'memory' | 'convert';
+        cap_percent?: number;
+        conversion_percent?: number;
+        output_cap_percent?: number;
+        heal_or_damage?: boolean;
+    };
+    /** A rune that stores the first incoming swing and returns it at expiry. */
+    rune_return?: {
+        percent?: number;
+        mana_payment?: number;
+        stamina_payment?: number;
+    };
+    /** A channeled chant: charges build each turn and release on expiry. */
+    chant?: {
+        max_charges?: number;
+        damage_per_charge?: number;
+        element_mode?: 'fixed' | 'random';
+        random_elements?: string[];
+        interrupt_chance?: number;
+        pay_hp?: number;
+        pay_mana?: number;
+        scope?: 'one' | 'lane' | 'all';
+    };
+    /** A resurrection link: when the caster falls, the bearer falls too. */
+    fate_link?: boolean | { caster_id?: string };
     [key: string]: unknown;
 }
 
@@ -861,6 +894,16 @@ export interface AttackSkill {
     aftershock?: { power: number; min_turns?: number; max_turns?: number };
     /** Shuffles the positions of hit entities, sometimes across lanes (`earthquake`). */
     shuffle_positions?: { chance?: number; lane_chance?: number };
+    /** Restores a defeated ally instead of resolving an ordinary attack. */
+    resurrect?: {
+        hp_percent?: number;
+        mana_percent?: number;
+        stamina_percent?: number;
+    };
+    /** The action's damage cannot be saved by a rescue rune. */
+    ignore_rescue?: boolean;
+    /** The action opens the two-mode `rune_of_fate` choice. */
+    rune_fate?: boolean;
     /**
      * SFX track id played when the skill is used.
      *
@@ -937,6 +980,9 @@ export type PublicAttack = Pick<AttackSkill,
     | 'consume_stacks'
     | 'aftershock'
     | 'shuffle_positions'
+    | 'resurrect'
+    | 'ignore_rescue'
+    | 'rune_fate'
     | 'sfx'
 >;
 

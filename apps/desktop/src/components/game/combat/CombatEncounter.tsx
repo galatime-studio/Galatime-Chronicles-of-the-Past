@@ -351,6 +351,7 @@ export function CombatEncounter({
     const [inventoryTab, setInventoryTab] = useState<'items' | 'weapons'>('items');
     /** An item chosen from the picker that still needs a target on the board. */
     const [pendingItem, setPendingItem] = useState<{ itemId: string; name: string; targetIds: string[] } | null>(null);
+    const [pendingFate, setPendingFate] = useState<{ actionId: string; name: string } | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     /**
      * The step being narrated, or `null` when the board is ready for the next turn.
@@ -601,6 +602,8 @@ export function CombatEncounter({
         // Same for an item whose target is being picked on the board.
         if (pendingItem) return;
 
+        setPendingFate(null);
+
         // The inventory is not an attack: the picker chooses the item, and — for a
         // single-target item — the board then chooses who it lands on.
         if (action.kind === 'inventory') {
@@ -624,6 +627,13 @@ export function CombatEncounter({
             setWeaponChoices(weapons.data);
             setInventoryTab('items');
             setInventoryChoices(result.data);
+            return;
+        }
+
+        // Rune of Fate offers its two techniques before the cast is submitted.
+        if (action.runeFate) {
+            setPending(null);
+            setPendingFate({ actionId: action.id, name: action.name });
             return;
         }
 
@@ -678,13 +688,14 @@ export function CombatEncounter({
      * picker itself. The picker stays open when only an item target was cancelled.
      */
     const cancelSelection = useCallback(() => {
-        if (pending || pendingItem) {
+        if (pending || pendingItem || pendingFate) {
             setPending(null);
             setPendingItem(null);
+            setPendingFate(null);
             return;
         }
         setInventoryChoices(null);
-    }, [pending, pendingItem]);
+    }, [pending, pendingItem, pendingFate]);
 
     /**
      * Escape cancels the selection in progress, the same as the ESC button.
@@ -694,7 +705,7 @@ export function CombatEncounter({
      * only gets Escape once nothing here is left to cancel.
      */
     useEffect(() => {
-        if (!pending && !pendingItem && !inventoryChoices) return undefined;
+        if (!pending && !pendingItem && !pendingFate && !inventoryChoices) return undefined;
 
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key !== 'Escape') return;
@@ -705,7 +716,7 @@ export function CombatEncounter({
 
         window.addEventListener('keydown', onKeyDown, true);
         return () => window.removeEventListener('keydown', onKeyDown, true);
-    }, [pending, pendingItem, inventoryChoices, cancelSelection]);
+    }, [pending, pendingItem, pendingFate, inventoryChoices, cancelSelection]);
 
     /** A sprite was clicked: it is a target only while one is being chosen. */
     const handleEntitySelect = useCallback((unitId: string) => {
@@ -739,7 +750,9 @@ export function CombatEncounter({
                 ? (sequence.actorName
                     ? t('combat.acting', { actor: sequence.actorName, action: sequence.actionName })
                     : sequence.actionName)
-                : pendingItem
+                : pendingFate
+                    ? t('combat.fateChoice', { action: pendingFate.name })
+                    : pendingItem
                     ? t('combat.pickTarget', { action: pendingItem.name })
                     : pending
                         ? t('combat.pickTarget', { action: pending.action.name })
@@ -778,9 +791,32 @@ export function CombatEncounter({
                     </div>
                 )}
             </div>
+            {/* Rune of Fate asks which half of the rune line to open. */}
+            {pendingFate && (
+                <div className="absolute inset-x-0 bottom-4 z-40 flex justify-center gap-2">
+                    <CommonButton
+                        variant="primary"
+                        onPress={() => {
+                            submit({ actionId: pendingFate.actionId, mode: 'burst' });
+                            setPendingFate(null);
+                        }}
+                    >
+                        {t('combat.fateBurst')}
+                    </CommonButton>
+                    <CommonButton
+                        variant="outline"
+                        onPress={() => {
+                            submit({ actionId: pendingFate.actionId, mode: 'reversal' });
+                            setPendingFate(null);
+                        }}
+                    >
+                        {t('combat.fateReversal')}
+                    </CommonButton>
+                </div>
+            )}
             {/* Cancel affordance: shows how to back out of a pending attack or item.
                 Clicking it does the same as pressing Escape. */}
-            {(pending || pendingItem) && (
+            {(pending || pendingItem || pendingFate) && (
                 <div className="absolute right-2 top-2 z-40">
                     <button
                         type="button"

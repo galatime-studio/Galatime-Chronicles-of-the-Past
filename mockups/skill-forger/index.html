@@ -117,7 +117,20 @@
                                 <label class="field"><span>Mana</span><div class="input-suffix"><input class="control" name="mana_cost" type="number" min="0" step="1" value="0"><span>MP</span></div></label>
                                 <label class="field"><span>Stamina</span><div class="input-suffix"><input class="control" name="stamina_cost" type="number" min="0" step="1" value="0"><span>ST</span></div></label>
                                 <label class="field"><span>Vida<span class="info-tip" tabindex="0" role="note" data-tip="Some da vida de quem usa a skill. Se não tiver vida suficiente, a skill não é usada — nunca se mata o próprio utilizador.">i</span></span><div class="input-suffix"><input class="control" name="hp_cost" type="number" min="0" step="1" value="0"><span>HP</span></div></label>
+                                <label class="field"><span>Vida % máxima<span class="info-tip" tabindex="0" role="note" data-tip="Preço de sangue calculado sobre a vida máxima. Não cresce com a mestria e a skill falha se o preço for igual ou superior à vida atual.">i</span></span><div class="input-suffix"><input class="control" name="hp_percent_max" type="number" min="0" max="100" step="1" value="0"><span>%</span></div></label>
                                 <label class="field"><span>Cooldown<span class="info-tip" tabindex="0" role="note" data-tip="Turnos que a skill precisa de esperar antes de voltar a ser usada. A escada de níveis acrescenta turnos de cooldown a partir do nível III.">i</span></span><div class="input-suffix"><input class="control" name="cooldown" type="number" min="0" step="1" value="0"><span>turnos</span></div></label>
+                            </div>
+                        </div>
+
+                        <div class="combat-step">
+                            <div class="step-copy"><span class="mini-step">3b</span><div><h3>Runa, ressurreição ou juramento</h3><p>Opções de Vetus que mudam a resolução da skill.</p></div></div>
+                            <div class="form-grid cost-grid">
+                                <label class="field"><span>Ressuscitar: vida</span><div class="input-suffix"><input class="control" name="resurrect_hp" type="number" min="1" max="100" step="1" value="10"><span>%</span></div></label>
+                                <label class="field"><span>Ressuscitar: mana</span><div class="input-suffix"><input class="control" name="resurrect_mana" type="number" min="0" max="100" step="1" value="0"><span>%</span></div></label>
+                                <label class="field"><span>Ressuscitar: stamina</span><div class="input-suffix"><input class="control" name="resurrect_stamina" type="number" min="0" max="100" step="1" value="0"><span>%</span></div></label>
+                                <label class="toggle-row"><input type="checkbox" name="resurrect_enabled"><span class="toggle-track"></span><span>Ressuscita um aliado caído</span></label>
+                                <label class="toggle-row"><input type="checkbox" name="rune_fate"><span class="toggle-track"></span><span>Abre a escolha Runa do Destino</span></label>
+                                <label class="toggle-row"><input type="checkbox" name="ignore_rescue"><span class="toggle-track"></span><span>Ignora runas de resgate</span></label>
                             </div>
                         </div>
 

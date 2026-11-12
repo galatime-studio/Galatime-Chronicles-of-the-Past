@@ -40,15 +40,19 @@ import {
     applyEffectResources,
     applyEffectToUnit,
     bonusVsHpBelowFromEffects,
+    captureRuneReturn,
     changeResource,
     claimTargetLock,
     confusionChance,
     effectiveStats,
     expireStatusesOnElementHit,
+    interruptChantOnDamage,
     isHealBlocked,
     invertBuffsOn,
     liftLuxCurses,
+    recordRuneDamage,
     resolveEffectTargets,
+    reviveUnit,
 } from './combat/effectResolver';
 import {
     applyCleanse,
@@ -95,6 +99,10 @@ export interface ActionResolutionContext {
      * leave the quiver at the end of the fight.
      */
     unitInventory?: Record<string, number>;
+    /** Optional cast mode for actions that offer a choice (`rune_of_fate`). */
+    mode?: string;
+    /** Internal event sink for hooks that fire inside damage resolution. */
+    events?: CombatEvent[];
 }
 
 export interface ActionResolution {
@@ -212,6 +220,14 @@ export function resolveCombatAction(context: ActionResolutionContext): ActionRes
             break;
         case 'skill':
         case 'weapon': {
+            if (action.resurrect) {
+                events.push(...resolveResurrectionAction(context));
+                break;
+            }
+            if (action.runeFate) {
+                events.push(...resolveFateAction(context));
+                break;
+            }
             const attackContext = attackAbilityContext(context, resolveActionTargets(context)[0] ?? null);
             events.push(...resolveAbilityEvent(state, actor, 'before_attack', attackContext));
 
@@ -264,6 +280,95 @@ function resolveSwitchLine(context: ActionResolutionContext): CombatEvent[] {
     if (!moveUnitToLine(state.units, actor, targetLine)) return [];
 
     return [{ type: 'unit_line_changed', unitId: actor.id, line: actor.line, slot: actor.slot }];
+}
+
+/** Revives one defeated ally and links its life to the caster (`oath_of_return`). */
+function resolveResurrectionAction(context: ActionResolutionContext): CombatEvent[] {
+    const { actor, action, target, random } = context;
+    const spec = action.resurrect;
+    if (!spec || !target || target.side !== actor.side || target.status !== 'defeated') return [];
+    if (target.flags.resurrectionBlocked === true) {
+        return [{
+            type: 'action_interrupted',
+            unitId: actor.id,
+            actionId: action.id,
+            effectId: 'resurrection_blocked',
+            statusEffect: null,
+        }];
+    }
+
+    const events = reviveUnit(target, spec.hpPercent);
+    const stats = effectiveStats(target);
+
+    // The oath restores a share of the ally's pools alongside its health.
+    const manaFloor = Math.round(stats.maxMana * spec.manaPercent / 100);
+    if (target.currentMana < manaFloor) {
+        events.push(...changeResource(target, 'mana', manaFloor - target.currentMana));
+    }
+    const staminaFloor = Math.round(stats.maxStamina * spec.staminaPercent / 100);
+    if (target.currentStamina < staminaFloor) {
+        events.push(...changeResource(target, 'stamina', staminaFloor - target.currentStamina));
+    }
+
+    // The revived ally is fate-linked: if the caster falls, so does it.
+    const link: AttackEffect = {
+        effect_id: 'oath_fate_link',
+        status_effect: 'Fate Link',
+        polarity: 'neutral',
+        fate_link: { caster_id: actor.id },
+    };
+    const applied = applyEffectToUnit(target, link, actor.id, 'vetus', random);
+    if (applied) events.push(applied);
+
+    events.push({ type: 'unit_revived', unitId: target.id, casterId: actor.id });
+    return events;
+}
+
+/**
+ * Opens the two-mode `rune_of_fate` choice.
+ *
+ * `mode: 'burst'` grows a late conversion rune (the restoration/strength line);
+ * `mode: 'reversal'` grows a return rune (the return/retribution line). Without
+ * an explicit mode an ally target bursts and an enemy target reverses.
+ */
+function resolveFateAction(context: ActionResolutionContext): CombatEvent[] {
+    const { actor, action, random } = context;
+    const target = context.target ?? actor;
+    if (target.status !== 'alive') return [];
+
+    const explicit = context.mode === 'burst' || context.mode === 'reversal'
+        ? context.mode
+        : null;
+    const mode = explicit ?? (target.side === actor.side ? 'burst' : 'reversal');
+
+    const effect: AttackEffect = mode === 'burst'
+        ? {
+            effect_id: 'rune_of_fate_burst',
+            status_effect: 'Rune of Fate',
+            turns: 3,
+            polarity: 'positive',
+            rune_store: {
+                mode: 'convert',
+                cap_percent: 20,
+                conversion_percent: 175,
+                output_cap_percent: 20,
+                heal_or_damage: true,
+            },
+        }
+        : {
+            effect_id: 'rune_of_fate_reversal',
+            status_effect: 'Rune of Fate',
+            turns: 2,
+            polarity: 'positive',
+            rune_return: {
+                percent: 175,
+                mana_payment: 20,
+                stamina_payment: 10,
+            },
+        };
+
+    const applied = applyEffectToUnit(target, effect, actor.id, action.elementId, random);
+    return applied ? [applied] : [];
 }
 
 function resolveRest(context: ActionResolutionContext): CombatEvent[] {
@@ -465,10 +570,25 @@ function buildResolution(
     if (healthDamage > 0 && deferSuspendedDamage(recipient, healthDamage)) {
         healthDamage = 0;
     }
+    if (healthDamage > 0 && captureRuneReturn(
+        recipient,
+        healthDamage,
+        'damage',
+        actor.id,
+        action.elementId,
+    )) {
+        // `rune_of_return` swallows the first swing; it is paid back on expiry.
+        healthDamage = 0;
+    }
     if (healthDamage > 0) {
         recipient.currentHp = Math.max(0, recipient.currentHp - healthDamage);
         recipient.eventCounts.damage_taken = (recipient.eventCounts.damage_taken ?? 0) + healthDamage;
         recordEchoDamage(recipient, healthDamage, action.echoBurst?.percent ?? 0);
+        recordRuneDamage(recipient, healthDamage);
+        context.events?.push(...interruptChantOnDamage(recipient, random));
+        if (recipient.currentHp <= 0 && action.ignoreRescue) {
+            recipient.flags.rescueIgnored = true;
+        }
     }
 
     return {
@@ -708,6 +828,8 @@ function pickRandomTargets(
 function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
     const { state, actor, action, random } = context;
     const events: CombatEvent[] = [];
+    // Damage resolution fires Vetus hooks (rune stores, chants) into this sink.
+    context.events = events;
     // A scatter action does not aim: every ray draws its own target from the
     // pool. The rest of the resolver still works off the units the action hit.
     const scatter = action.dealsDamage && action.scatterTargets;
@@ -847,6 +969,32 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
             const applied = applyEffectToUnit(scopeTarget, effect, action.id, action.elementId, random, outputBoost, phaseMultiplier);
             if (applied) {
                 events.push(applied);
+                const appliedRecord = asRecord(effect) ?? {};
+
+                // A team keeps at most one rescue rune: a new one replaces the old.
+                if (appliedRecord.rescue_rune) {
+                    for (const ally of state.units) {
+                        if (ally.side !== scopeTarget.side) continue;
+                        const removed = ally.effects.filter((active) => active.rescueRune
+                            && !(ally.id === scopeTarget.id && active.effectId === applied.effectId));
+                        if (removed.length === 0) continue;
+                        ally.effects = ally.effects.filter((active) => !removed.includes(active));
+                        for (const old of removed) {
+                            events.push({ type: 'effect_expired', unitId: ally.id, effectId: old.effectId });
+                        }
+                    }
+                }
+
+                // The chant remembers the aimed target so its release can find it.
+                if (appliedRecord.chant) {
+                    const instance = scopeTarget.effects.find((active) => active.effectId === applied.effectId);
+                    if (instance?.chant) {
+                        instance.chant.targetId = primaryTarget && primaryTarget.side !== scopeTarget.side
+                            ? primaryTarget.id
+                            : null;
+                    }
+                }
+
                 if (applied.type === 'effect_applied') {
                     const list = appliedByUnit.get(scopeTarget.id) ?? [];
                     list.push(applied.effectId);
@@ -861,7 +1009,9 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
                         units: state.units,
                         random,
                     }));
-                } else if ((action.controlImmuneDamage ?? 0) > 0 && !controlImmunePaid.has(scopeTarget.id)) {
+                } else if ((action.controlImmuneDamage ?? 0) > 0
+                    && !controlImmunePaid.has(scopeTarget.id)
+                    && !(applied?.type === 'effect_resisted' && applied.captured === true)) {
                     controlImmunePaid.add(scopeTarget.id);
                     dealFlatDamage(
                         events,
@@ -879,42 +1029,47 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
             // healing still works.
             const healBlocked = isHealBlocked(scopeTarget) && scopeTarget.id !== actor.id;
 
-            events.push(...applyEffectResources(
-                scopeTarget,
-                effect,
-                random,
-                outputBoost,
-                {
-                    healBlocked,
-                    drainRecipient: actor,
-                    transferSource: actor,
-                    phaseMultiplier,
-                    sourceElementId: action.elementId,
-                    damageDealt:
-                        (resolutions.get(scopeTarget.id)?.finalDamage ?? 0)
-                        + (splashDamage.get(scopeTarget.id) ?? 0),
-                },
-            ));
-
-            // The effects that change the battlefield rather than a number.
-            events.push(...applyCleanse(scopeTarget, effect));
-            events.push(...applyDispel(scopeTarget, effect));
-            // An `invert_buffs` landing turns the gifts the target still holds
-            // into curses of the same size (Solar Exorcism).
-            if (readBoolean((asRecord(effect) ?? {}).invert_buffs, false)) {
-                events.push(...invertBuffsOn(scopeTarget));
+            const capturedStatus = applied?.type === 'effect_resisted' && applied.captured === true;
+            if (!capturedStatus) {
+                events.push(...applyEffectResources(
+                    scopeTarget,
+                    effect,
+                    random,
+                    outputBoost,
+                    {
+                        healBlocked,
+                        drainRecipient: actor,
+                        transferSource: actor,
+                        phaseMultiplier,
+                        sourceElementId: action.elementId,
+                        damageDealt:
+                            (resolutions.get(scopeTarget.id)?.finalDamage ?? 0)
+                            + (splashDamage.get(scopeTarget.id) ?? 0),
+                    },
+                ));
             }
-            events.push(...applyMove(state, actor, scopeTarget, effect));
-            events.push(...applyTurnPostpone(state, actor, scopeTarget, effect));
-            events.push(...applyRewind(scopeTarget, effect));
 
-            // A cooldown tick takes turns off the target's waiting actions.
-            const cooldownTick = readNumber(asRecord(effect)?.cooldown_tick, 0);
-            if (cooldownTick > 0) {
-                for (const actionId of Object.keys(scopeTarget.cooldowns)) {
-                    const remaining = scopeTarget.cooldowns[actionId] - Math.round(cooldownTick);
-                    if (remaining <= 0) delete scopeTarget.cooldowns[actionId];
-                    else scopeTarget.cooldowns[actionId] = remaining;
+            if (!capturedStatus) {
+                // The effects that change the battlefield rather than a number.
+                events.push(...applyCleanse(scopeTarget, effect));
+                events.push(...applyDispel(scopeTarget, effect));
+                // An `invert_buffs` landing turns the gifts the target still holds
+                // into curses of the same size (Solar Exorcism).
+                if (readBoolean((asRecord(effect) ?? {}).invert_buffs, false)) {
+                    events.push(...invertBuffsOn(scopeTarget));
+                }
+                events.push(...applyMove(state, actor, scopeTarget, effect));
+                events.push(...applyTurnPostpone(state, actor, scopeTarget, effect));
+                events.push(...applyRewind(scopeTarget, effect));
+
+                // A cooldown tick takes turns off the target's waiting actions.
+                const cooldownTick = readNumber(asRecord(effect)?.cooldown_tick, 0);
+                if (cooldownTick > 0) {
+                    for (const actionId of Object.keys(scopeTarget.cooldowns)) {
+                        const remaining = scopeTarget.cooldowns[actionId] - Math.round(cooldownTick);
+                        if (remaining <= 0) delete scopeTarget.cooldowns[actionId];
+                        else scopeTarget.cooldowns[actionId] = remaining;
+                    }
                 }
             }
         }
@@ -941,6 +1096,9 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
     ]);
     for (const unit of state.units) {
         if (!recipients.has(unit.id) || unit.currentHp > 0) continue;
+        // A rescue rune keeps the bearer alive, so the last-stand blast must wait
+        // until the reap has actually marked the unit defeated.
+        if (unit.effects.some((effect) => effect.rescueRune) && unit.flags.rescueIgnored !== true) continue;
         const lastStand = unit.effects.find((effect) => effect.onDeathBlast);
         if (!lastStand?.onDeathBlast) continue;
         dealFlatDamage(events, unit, actor, lastStand.onDeathBlast.power, action.id, 'physical', random);

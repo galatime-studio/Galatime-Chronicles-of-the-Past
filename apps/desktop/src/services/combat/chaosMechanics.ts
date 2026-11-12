@@ -28,8 +28,11 @@ import type {
 import {
     absorbShieldDamage,
     applyEffectToUnit,
+    captureRuneReturn,
     carriesStatusNamed,
     changeResource,
+    interruptChantOnDamage,
+    recordRuneDamage,
 } from './effectResolver';
 
 /** Normalises a status id/label for comparisons. */
@@ -85,9 +88,15 @@ export function dealFlatDamage(
     events.push(...absorbed.events);
 
     const healthDamage = Math.max(0, Math.round(absorbed.leftover));
-    target.currentHp = Math.max(0, target.currentHp - healthDamage);
-    if (healthDamage > 0) {
-        target.eventCounts.damage_taken = (target.eventCounts.damage_taken ?? 0) + healthDamage;
+    let resolvedDamage = healthDamage;
+    if (resolvedDamage > 0 && captureRuneReturn(target, resolvedDamage, 'damage', source.id, null)) {
+        resolvedDamage = 0;
+    }
+    target.currentHp = Math.max(0, target.currentHp - resolvedDamage);
+    if (resolvedDamage > 0) {
+        target.eventCounts.damage_taken = (target.eventCounts.damage_taken ?? 0) + resolvedDamage;
+        recordRuneDamage(target, resolvedDamage);
+        events.push(...interruptChantOnDamage(target, random));
     }
 
     const resolution: AttackResolution = {
@@ -107,8 +116,8 @@ export function dealFlatDamage(
         positionModifier: 1,
         defenseReduction: 0,
         baseDamage: power,
-        finalDamage: healthDamage,
-        shielded: power - healthDamage,
+        finalDamage: resolvedDamage,
+        shielded: power - resolvedDamage,
         critChance: 0,
         isCrit: false,
         hitChance: 100,
