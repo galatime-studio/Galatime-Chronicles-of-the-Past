@@ -70,6 +70,10 @@ export function effectConditionSatisfied(
         // fallback fires because the caster's rear row has no free slot.
         return false;
     }
+    if (condition.min_negative_statuses !== undefined) {
+        const negatives = unit.effects.filter((effect) => effect.polarity === 'negative').length;
+        if (negatives < condition.min_negative_statuses) return false;
+    }
     return true;
 }
 
@@ -82,9 +86,11 @@ export function applyCleanse(unit: CombatUnit, effect: AttackEffect): CombatEven
     const record = asRecord(effect) ?? {};
     const all = readBoolean(record.cleanse_all, false);
     const count = readNumber(record.cleanse, 0);
+    const dotCount = readNumber(record.cleanse_dot, 0);
 
-    if (!all && count <= 0) return [];
+    if (!all && count <= 0 && dotCount <= 0) return [];
 
+    if (dotCount > 0) return cleanseEffects(unit, { count: dotCount, damageOverTimeOnly: true });
     return cleanseEffects(unit, { count, all });
 }
 
@@ -141,6 +147,7 @@ export function applyMoveSpec(
 ): CombatEvent[] {
     const mover = spec.who === 'self' ? actor : unit;
     if (mover.status !== 'alive') return [];
+    if (mover.effects.some((effect) => effect.movementImmunity)) return [];
 
     const destination = spec.toLine === 'other'
         ? (mover.line === 'front' ? 'rear' : 'front')

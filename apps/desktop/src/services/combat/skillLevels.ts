@@ -132,6 +132,35 @@ function scaleEffect(effect: AttackEffect, factor: number): AttackEffect {
     if (effect.deferred_cost) next.deferred_cost = scaleNumericRecord(effect.deferred_cost, factor);
     if (effect.heal !== undefined) next.heal = scaleRounded(effect.heal, factor);
     if (effect.damage_per_turn !== undefined) next.damage_per_turn = scaleRounded(effect.damage_per_turn, factor);
+    // Percent heals and regenerators are output too; their caps ride the same
+    // tier curve as flat healing.
+    if (effect.heal_percent_of_max !== undefined) {
+        next.heal_percent_of_max = scaleRounded(effect.heal_percent_of_max, factor);
+    }
+    if (effect.regen_per_turn_percent) {
+        next.regen_per_turn_percent = scaleNumericRecord(effect.regen_per_turn_percent, factor);
+    }
+    if (effect.regen_lowest_percent !== undefined) {
+        next.regen_lowest_percent = scaleRounded(effect.regen_lowest_percent, factor);
+    }
+    if (effect.regen_bonus_per_negative !== undefined) {
+        next.regen_bonus_per_negative = scaleRounded(effect.regen_bonus_per_negative, factor);
+    }
+    if (effect.regen_bonus_per_dot_percent !== undefined) {
+        next.regen_bonus_per_dot_percent = scaleRounded(effect.regen_bonus_per_dot_percent, factor);
+    }
+    if (effect.drain_percent_of_max_hp) {
+        next.drain_percent_of_max_hp = {
+            ...effect.drain_percent_of_max_hp,
+            percent: scaleRounded(effect.drain_percent_of_max_hp.percent, factor),
+        };
+    }
+    if (effect.drain_per_turn) {
+        next.drain_per_turn = {
+            ...effect.drain_per_turn,
+            percent_of_max: scaleRounded(effect.drain_per_turn.percent_of_max, factor),
+        };
+    }
     // Randomized curse/gift magnitudes and flat on-kill heals are output too.
     if (effect.random_debuff?.amount !== undefined) {
         next.random_debuff = { ...effect.random_debuff, amount: scaleRounded(effect.random_debuff.amount, factor) };

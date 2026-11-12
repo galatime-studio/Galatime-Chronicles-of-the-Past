@@ -1,0 +1,1078 @@
+
+skills:
+  - id: bloom
+    name: Bloom
+    description: "The caster grows a healing bloom over an ally, restoring 22 HP at the start of each of the next 3 turns."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: bloom_hot
+        status_effect: Bloom
+        apply_to: target
+        turns: 3
+        polarity: positive
+        regen_per_turn: { hp: 22 }
+
+  - id: cleansing_pollen
+    name: Cleansing Pollen
+    description: "The caster covers an ally in cleansing pollen, removing every damage-over-time effect from the target."
+    element_id: florere
+    sfx: florere
+    kind: utility
+    learning_requirements: { required_attack_ids: [bloom] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: cleansing_pollen
+        status_effect: Cleansing Pollen
+        apply_to: target
+        turns: 1
+        polarity: positive
+        cleanse_dot: 99
+
+  - id: regrowth
+    name: Regrowth
+    description: "The caster restores 14% of an ally's max HP immediately and removes 1 negative effect."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [cleansing_pollen] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: regrowth_heal
+        status_effect: Regrowth
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 14
+        cleanse: 1
+
+  - id: mending_bloom
+    name: Mending Bloom
+    description: "Plants a HoT for 3 turns restoring 8% max HP per turn, plus 2% more for each negative effect the target carries."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [regrowth] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: mending_bloom
+        status_effect: Mending Bloom
+        apply_to: target
+        turns: 3
+        polarity: positive
+        regen_per_turn_percent: { hp: 8 }
+        regen_bonus_per_negative: 2
+
+  - id: deep_rooted_remedy
+    name: Deep Rooted Remedy
+    description: "A HoT for 3 turns restoring 6% max HP per turn, plus 4% more for every 10% of max HP currently drained by DoTs."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [mending_bloom] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: deep_rooted_remedy
+        status_effect: Deep Rooted Remedy
+        apply_to: target
+        turns: 3
+        polarity: positive
+        regen_per_turn_percent: { hp: 6 }
+        regen_bonus_per_dot_percent: 4
+
+  - id: enduring_bloom
+    name: Enduring Bloom
+    description: "A long-lasting HoT for 5 turns restoring 8% max HP per turn."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [mending_bloom] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: enduring_bloom
+        status_effect: Enduring Bloom
+        apply_to: target
+        turns: 5
+        polarity: positive
+        regen_per_turn_percent: { hp: 8 }
+
+  - id: flore
+    name: Flore
+    description: "Restores 18% max HP immediately, then a 3-turn bloom restoring 6% per turn. Each Florere heal received while it lives removes 1 negative effect, up to 3."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [regrowth] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: flore_heal
+        status_effect: Flore
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 18
+      - effect_id: flore_bloom
+        status_effect: Flore
+        apply_to: target
+        turns: 3
+        polarity: positive
+        regen_per_turn_percent: { hp: 6 }
+        cleanse_on_heal: { count: 1, element: florere, max_triggers: 3 }
+
+  - id: pollen_ward
+    name: Pollen Ward
+    description: "Removes 1 negative effect and grants 2 pollen charges for 2 turns. Each charge reduces incoming damage by 15% and lightly heals an adjacent ally."
+    element_id: florere
+    sfx: florere
+    kind: utility
+    learning_requirements: { required_attack_ids: [cleansing_pollen] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: pollen_ward
+        status_effect: Pollen Ward
+        apply_to: target
+        turns: 2
+        polarity: positive
+        cleanse: 1
+        damage_reduction: { percent: 0.15, charges: 2, heal_adjacent_percent: 6 }
+
+  - id: garden_of_renewal
+    name: Garden of Renewal
+    description: "Restores 12% max HP to every ally, removes 1 negative effect from each, and applies a 2-turn HoT restoring 5% per turn."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [flore, pollen_ward] }
+    learning_cost: { experience_points: 7 }
+    targeting: allies_all
+    costs: { mana: 28, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: garden_heal
+        status_effect: Garden of Renewal
+        apply_to: allies_all
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 12
+        cleanse: 1
+      - effect_id: garden_hot
+        status_effect: Garden of Renewal
+        apply_to: allies_all
+        turns: 2
+        polarity: positive
+        regen_per_turn_percent: { hp: 5 }
+
+  - id: life_from_decay
+    name: Life From Decay
+    description: "Restores 10% max HP and removes 1 negative effect. If the target carries 2 or more negative effects, also restores 5% and removes 1 more."
+    element_id: florere
+    sfx: florere
+    kind: utility
+    learning_requirements: { required_attack_ids: [regrowth] }
+    learning_cost: { experience_points: 6 }
+    targeting: any_one
+    costs: { mana: 18, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: life_from_decay_extra
+        status_effect: Life From Decay
+        apply_to: target
+        turns: 1
+        polarity: positive
+        condition: { min_negative_statuses: 2 }
+        heal_percent_of_max: 5
+        cleanse: 1
+      - effect_id: life_from_decay
+        status_effect: Life From Decay
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 10
+        cleanse: 1
+
+  # Bloom — Vine
+  - id: vine_whip
+    name: Vine Whip
+    description: "The caster strikes an enemy with a thorned vine for 6 physical damage at 95% accuracy."
+    element_id: florere
+    sfx: florere
+    kind: attack
+    learning_requirements: { required_attack_ids: [bloom] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 6 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 3, stamina: 0, cooldown: 0 }
+
+  - id: spreading_whip
+    name: Spreading Whip
+    description: "Deals 6 physical damage and may strike adjacent enemies with the spreading vine."
+    element_id: florere
+    sfx: florere
+    kind: attack
+    learning_requirements: { required_attack_ids: [vine_whip] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 6 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    collateral: { damage_multiplier: 0.5, chance: 1, include_primary_targets: false }
+
+  - id: binding_vine
+    name: Binding Vine
+    description: "Binds an enemy, reducing SPD by 6 and Evasion by 6 for 2 turns."
+    element_id: florere
+    sfx: florere
+    kind: control
+    learning_requirements: { required_attack_ids: [bloom] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: binding_vine
+        status_effect: Bound
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { speed: 6, evasion: 6 }
+
+  - id: strangling_vine
+    name: Strangling Vine
+    description: "Reduces SPD by 10 and Evasion by 10 for 3 turns, and the target cannot change lines."
+    element_id: florere
+    sfx: florere
+    kind: control
+    learning_requirements: { required_attack_ids: [binding_vine] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: strangling_vine
+        status_effect: Strangled
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff: { speed: 10, evasion: 10 }
+        prevent_actions: [switch_line]
+
+  - id: rooted_bind
+    name: Rooted Bind
+    description: "Roots the target for 4 turns: it cannot change lines or be moved, and its movement is punished. Ignis attacks destroy the bind."
+    element_id: florere
+    sfx: florere
+    kind: control
+    learning_requirements: { required_attack_ids: [strangling_vine] }
+    learning_cost: { experience_points: 6 }
+    targeting: any_one
+    costs: { mana: 18, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: rooted_bind
+        status_effect: Rooted
+        apply_to: target
+        turns: 4
+        polarity: negative
+        prevent_actions: [switch_line]
+        movement_immunity: true
+        expire_on_elements: [ignis]
+        trip_on_action:
+          actions: [switch_line]
+          chance: 1
+          damage: 8
+          max_triggers: 1
+
+  # Bloom — Photosynthesis
+  - id: photosynthesis
+    name: Photosynthesis
+    description: "For 3 turns the caster stores part of their natural regeneration as a Reserve, later spent to reduce a Florere cost or empower its effect. Approximated here as regeneration while active."
+    element_id: florere
+    sfx: florere
+    kind: buff
+    learning_requirements: { required_attack_ids: [bloom] }
+    learning_cost: { experience_points: 2 }
+    targeting: self
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: photosynthesis
+        status_effect: Photosynthesis
+        apply_to: self
+        turns: 3
+        polarity: positive
+        regen_per_turn_percent: { mana: 4, stamina: 4 }
+
+  - id: radiant_reserve
+    name: Radiant Reserve
+    description: "A larger Reserve for 4 turns, built from natural regeneration. Approximated here as stronger regeneration while active."
+    element_id: florere
+    sfx: florere
+    kind: buff
+    learning_requirements: { required_attack_ids: [photosynthesis] }
+    learning_cost: { experience_points: 4 }
+    targeting: self
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: radiant_reserve
+        status_effect: Radiant Reserve
+        apply_to: self
+        turns: 4
+        polarity: positive
+        regen_per_turn_percent: { mana: 6, stamina: 6 }
+
+  - id: sunlight_sap
+    name: Sunlight Sap
+    description: "Restores 6% of whichever of the ally's mana or stamina is at the lower percentage."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [photosynthesis] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: sunlight_sap
+        status_effect: Sunlight Sap
+        apply_to: target
+        turns: 1
+        polarity: positive
+        regen_lowest_percent: 6
+
+  - id: richer_sap
+    name: Richer Sap
+    description: "Restores 12% of whichever of the ally's mana or stamina is at the lower percentage."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [sunlight_sap] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: richer_sap
+        status_effect: Richer Sap
+        apply_to: target
+        turns: 1
+        polarity: positive
+        regen_lowest_percent: 12
+
+  - id: lane_sap
+    name: Lane Sap
+    description: "Restores 8% of the lower-percentage resource to every ally in the target lane."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [sunlight_sap] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: lane_sap
+        status_effect: Lane Sap
+        apply_to: allies_lane
+        turns: 1
+        polarity: positive
+        regen_lowest_percent: 8
+
+  - id: group_sap
+    name: Group Sap
+    description: "Restores 10% of the lower-percentage resource to every ally."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [lane_sap, richer_sap] }
+    learning_cost: { experience_points: 5 }
+    targeting: allies_all
+    costs: { mana: 18, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: group_sap
+        status_effect: Group Sap
+        apply_to: allies_all
+        turns: 1
+        polarity: positive
+        regen_lowest_percent: 10
+
+  - id: greenfire_focus
+    name: Greenfire Focus
+    description: "Grants +15% PATK/MATK for 3 turns and refunds 25% of the mana and stamina spent while it lasts."
+    element_id: florere
+    sfx: florere
+    kind: buff
+    learning_requirements: { required_attack_ids: [photosynthesis] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: greenfire_focus
+        status_effect: Greenfire Focus
+        apply_to: target
+        turns: 3
+        polarity: positive
+        stat_multipliers: { physical_attack: 1.15, magical_attack: 1.15 }
+        refund_spent: { percent: 0.25, resources: [mana, stamina] }
+
+  - id: verdant_rite
+    name: Verdant Rite
+    description: "Grants +12% PATK and +12% MATK for 3 turns and refunds 40% of the mana and stamina spent while it lasts."
+    element_id: florere
+    sfx: florere
+    kind: buff
+    learning_requirements: { required_attack_ids: [greenfire_focus] }
+    learning_cost: { experience_points: 6 }
+    targeting: any_one
+    costs: { mana: 22, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: verdant_rite
+        status_effect: Verdant Rite
+        apply_to: target
+        turns: 3
+        polarity: positive
+        stat_multipliers: { physical_attack: 1.12, magical_attack: 1.12 }
+        refund_spent: { percent: 0.4, resources: [mana, stamina] }
+
+  # Bloom — Petal
+  - id: petal_breeze
+    name: Petal Breeze
+    description: "A petal-filled breeze restores 8% of max HP to every ally."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [bloom] }
+    learning_cost: { experience_points: 2 }
+    targeting: allies_all
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: petal_breeze
+        status_effect: Petal Breeze
+        apply_to: allies_all
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 8
+
+  - id: cleansing_breeze
+    name: Cleansing Breeze
+    description: "Removes 1 negative effect from every ally."
+    element_id: florere
+    sfx: florere
+    kind: utility
+    learning_requirements: { required_attack_ids: [petal_breeze] }
+    learning_cost: { experience_points: 3 }
+    targeting: allies_all
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: cleansing_breeze
+        status_effect: Cleansing Breeze
+        apply_to: allies_all
+        turns: 1
+        polarity: positive
+        cleanse: 1
+
+  - id: shower_of_blooms
+    name: Shower of Blooms
+    description: "Applies a HoT for 3 turns restoring 6% max HP per turn to every ally."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [cleansing_breeze] }
+    learning_cost: { experience_points: 5 }
+    targeting: allies_all
+    costs: { mana: 20, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: shower_of_blooms
+        status_effect: Shower of Blooms
+        apply_to: allies_all
+        turns: 3
+        polarity: positive
+        regen_per_turn_percent: { hp: 6 }
+
+  - id: world_bloom
+    name: World Bloom
+    description: "Heals every ally for 18%, removes 1 negative effect, applies a 3-turn HoT of 8% per turn, and grants a barrier of 8% max HP."
+    element_id: florere
+    sfx: florere
+    kind: heal
+    learning_requirements: { required_attack_ids: [garden_of_renewal, shower_of_blooms] }
+    learning_cost: { experience_points: 8 }
+    targeting: allies_all
+    costs: { mana: 34, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: world_bloom_heal
+        status_effect: World Bloom
+        apply_to: allies_all
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 18
+        cleanse: 1
+      - effect_id: world_bloom_hot
+        status_effect: World Bloom
+        apply_to: allies_all
+        turns: 3
+        polarity: positive
+        regen_per_turn_percent: { hp: 8 }
+      - effect_id: world_bloom_shield
+        status_effect: World Bloom
+        apply_to: allies_all
+        turns: 3
+        polarity: positive
+        shield: { percent_of_max_hp: 8 }
+
+  - id: rot
+    name: Rot
+    description: "Deals light damage and applies Poison for 3 turns, dealing 6 damage at the start of each turn."
+    element_id: florere
+    sfx: florere
+    kind: attack
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 4 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: rot_poison
+        status_effect: Poison
+        apply_to: target
+        turns: 3
+        polarity: negative
+        damage_per_turn: 6
+
+  - id: venom
+    name: Venom
+    description: "Applies Poison for 5 turns, dealing 5 damage at the start of each turn."
+    element_id: florere
+    sfx: florere
+    kind: debuff
+    learning_requirements: { required_attack_ids: [rot] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: venom
+        status_effect: Poison
+        apply_to: target
+        turns: 5
+        polarity: negative
+        damage_per_turn: 5
+
+  - id: eternal_venom
+    name: Eternal Venom
+    description: "Poisons the target for the rest of the battle, dealing 5 damage at the start of each turn."
+    element_id: florere
+    sfx: florere
+    kind: debuff
+    learning_requirements: { required_attack_ids: [venom] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: eternal_venom
+        status_effect: Poison
+        apply_to: target
+        polarity: negative
+        damage_per_turn: 5
+
+  - id: corrosive_venom
+    name: Corrosive Venom
+    description: "Poisons for 3 turns, dealing 5 damage per turn, and erodes 4 PDEF and MDEF while the poison lasts."
+    element_id: florere
+    sfx: florere
+    kind: debuff
+    learning_requirements: { required_attack_ids: [venom] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: corrosive_venom
+        status_effect: Corrosive Poison
+        apply_to: target
+        turns: 3
+        polarity: negative
+        damage_per_turn: 5
+        debuff: { physical_defense: 4, magical_defense: 4 }
+
+  - id: erosion
+    name: Erosion
+    description: "Reduces PDEF and MDEF by 8 for 4 turns."
+    element_id: florere
+    sfx: florere
+    kind: debuff
+    learning_requirements: { required_attack_ids: [rot] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: erosion
+        status_effect: Eroded
+        apply_to: target
+        turns: 4
+        polarity: negative
+        debuff: { physical_defense: 8, magical_defense: 8 }
+
+  - id: deep_erosion
+    name: Deep Erosion
+    description: "Reduces PDEF and MDEF by 12 for 5 turns."
+    element_id: florere
+    sfx: florere
+    kind: debuff
+    learning_requirements: { required_attack_ids: [erosion] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: deep_erosion
+        status_effect: Deep Erosion
+        apply_to: target
+        turns: 5
+        polarity: negative
+        debuff: { physical_defense: 12, magical_defense: 12 }
+
+  - id: endless_erosion
+    name: Endless Erosion
+    description: "Reduces PDEF and MDEF by 10 for the rest of the battle."
+    element_id: florere
+    sfx: florere
+    kind: debuff
+    learning_requirements: { required_attack_ids: [deep_erosion] }
+    learning_cost: { experience_points: 6 }
+    targeting: any_one
+    costs: { mana: 18, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: endless_erosion
+        status_effect: Endless Erosion
+        apply_to: target
+        polarity: negative
+        debuff: { physical_defense: 10, magical_defense: 10 }
+
+  # Blight — Thorns
+  - id: thornskin
+    name: Thornskin
+    description: "Grants +10 PDEF for 3 turns. Melee attackers suffer 8 physical damage; the coat has 2 reflection charges."
+    element_id: florere
+    sfx: florere
+    kind: buff
+    learning_requirements: { required_attack_ids: [rot] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: thornskin
+        status_effect: Thornskin
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 10 }
+        reflect: { power: 8, chance: 1, consume: false, charges: 2 }
+
+  - id: briar_barrier
+    name: Briar Barrier
+    description: "Raises a 2-turn briar barrier over an allied lane: 4 charges reduce damage by 10% and reflect 6 PWR."
+    element_id: florere
+    sfx: florere
+    kind: control
+    learning_requirements: { required_attack_ids: [thornskin] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 18, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: briar_barrier
+        status_effect: Briar Barrier
+        apply_to: allies_lane
+        turns: 2
+        polarity: positive
+        damage_reduction: { percent: 0.1, charges: 4 }
+        reflect: { power: 6, chance: 1, consume: false, charges: 4 }
+
+  - id: ironbark
+    name: Ironbark
+    description: "Grants +16 PDEF and +10 MDEF for 3 turns."
+    element_id: florere
+    sfx: florere
+    kind: buff
+    learning_requirements: { required_attack_ids: [thornskin] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: ironbark
+        status_effect: Ironbark
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 16, magical_defense: 10 }
+
+  - id: thorn_volley
+    name: Thorn Volley
+    description: "Deals 8 physical damage to every enemy in the target lane; each hit has a 25% chance to reduce PDEF by 6 for 2 turns."
+    element_id: florere
+    sfx: florere
+    kind: attack
+    learning_requirements: { required_attack_ids: [briar_barrier] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_lane
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 8 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: thorn_volley_pdef
+        status_effect: Pricked
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.25
+        debuff: { physical_defense: 6 }
+
+  - id: rose_mirror
+    name: Rose Mirror
+    description: "For 2 turns physical damage is halved, and the next non-Ignis attack is reflected back at its source."
+    element_id: florere
+    sfx: florere
+    kind: buff
+    learning_requirements: { required_attack_ids: [thornskin] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: rose_mirror
+        status_effect: Rose Mirror
+        apply_to: target
+        turns: 2
+        polarity: positive
+        damage_channel_modulation: { physical: 0.5 }
+        counter: true
+        counter_except_elements: [ignis]
+
+  - id: briar_wall
+    name: Briar Wall
+    description: "A 3-turn briar wall over an allied lane: 6 charges reduce damage by 15%, reflect 10 PWR, and punish melee attackers."
+    element_id: florere
+    sfx: florere
+    kind: control
+    learning_requirements: { required_attack_ids: [briar_barrier] }
+    learning_cost: { experience_points: 6 }
+    targeting: any_one
+    costs: { mana: 22, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: briar_wall
+        status_effect: Briar Wall
+        apply_to: allies_lane
+        turns: 3
+        polarity: positive
+        damage_reduction: { percent: 0.15, charges: 6 }
+        reflect: { power: 10, chance: 1, consume: false, charges: 6 }
+
+  - id: bark_aegis
+    name: Bark Aegis
+    description: "Grants +20 PDEF, +12 MDEF and a barrier of 12% max HP for 3 turns, and reflects the next physical hit."
+    element_id: florere
+    sfx: florere
+    kind: buff
+    learning_requirements: { required_attack_ids: [ironbark, rose_mirror] }
+    learning_cost: { experience_points: 7 }
+    targeting: any_one
+    costs: { mana: 24, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: bark_aegis
+        status_effect: Bark Aegis
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 20, magical_defense: 12 }
+        shield: { percent_of_max_hp: 12 }
+        counter: true
+        counter_except_elements: [ignis]
+
+  # Blight — Drain
+  - id: life_drain
+    name: Life Drain
+    description: "Deals 6 magical damage and drains 8% of the target's max HP, healing the caster for the same amount."
+    element_id: florere
+    sfx: florere
+    kind: attack
+    learning_requirements: { required_attack_ids: [rot] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 6 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: life_drain
+        status_effect: Life Drained
+        apply_to: target
+        turns: 1
+        polarity: negative
+        drain_percent_of_max_hp: { percent: 8, resource: hp, to: caster }
+
+  - id: greater_life_drain
+    name: Greater Life Drain
+    description: "Deals 10 magical damage and drains 16% of the target's max HP, healing the caster for the same amount."
+    element_id: florere
+    sfx: florere
+    kind: attack
+    learning_requirements: { required_attack_ids: [life_drain] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 10 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: greater_life_drain
+        status_effect: Life Drained
+        apply_to: target
+        turns: 1
+        polarity: negative
+        drain_percent_of_max_hp: { percent: 16, resource: hp, to: caster }
+
+  - id: blood_seed
+    name: Blood Seed
+    description: "For 5 turns, each enemy in the lane has a 30% chance at the start of its turn to lose 6% max HP, healing the caster."
+    element_id: florere
+    sfx: florere
+    kind: utility
+    learning_requirements: { required_attack_ids: [life_drain] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_lane
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: blood_seed
+        status_effect: Blood Seed
+        apply_to: target
+        turns: 5
+        polarity: negative
+        drain_per_turn: { resource: hp, percent_of_max: 6, chance: 0.3, heal_to_source: true }
+
+  - id: devouring_blood_seed
+    name: Devouring Blood Seed
+    description: "For 5 turns, each enemy in the lane has a 60% chance at the start of its turn to lose 8% max HP, healing the caster."
+    element_id: florere
+    sfx: florere
+    kind: utility
+    learning_requirements: { required_attack_ids: [blood_seed] }
+    learning_cost: { experience_points: 6 }
+    targeting: enemies_lane
+    costs: { mana: 24, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: devouring_blood_seed
+        status_effect: Blood Seed
+        apply_to: target
+        turns: 5
+        polarity: negative
+        drain_per_turn: { resource: hp, percent_of_max: 8, chance: 0.6, heal_to_source: true }
+
+  - id: mana_drain
+    name: Mana Drain
+    description: "Deals 6 magical damage and drains 8% of the target's max mana, restoring it to the caster."
+    element_id: florere
+    sfx: florere
+    kind: attack
+    learning_requirements: { required_attack_ids: [rot] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 6 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: mana_drain
+        status_effect: Mana Drained
+        apply_to: target
+        turns: 1
+        polarity: negative
+        drain_percent_of_max_hp: { percent: 8, resource: mana, to: caster }
+
+  - id: greater_mana_drain
+    name: Greater Mana Drain
+    description: "Deals 10 magical damage and drains 16% of the target's max mana, restoring it to the caster."
+    element_id: florere
+    sfx: florere
+    kind: attack
+    learning_requirements: { required_attack_ids: [mana_drain] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 10 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: greater_mana_drain
+        status_effect: Mana Drained
+        apply_to: target
+        turns: 1
+        polarity: negative
+        drain_percent_of_max_hp: { percent: 16, resource: mana, to: caster }
+
+  - id: mana_seed
+    name: Mana Seed
+    description: "For 5 turns, each enemy in the lane has a 30% chance at the start of its turn to lose 6% max mana, restored to the caster."
+    element_id: florere
+    sfx: florere
+    kind: utility
+    learning_requirements: { required_attack_ids: [mana_drain] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_lane
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: mana_seed
+        status_effect: Mana Seed
+        apply_to: target
+        turns: 5
+        polarity: negative
+        drain_per_turn: { resource: mana, percent_of_max: 6, chance: 0.3, heal_to_source: true }
+
+  - id: devouring_mana_seed
+    name: Devouring Mana Seed
+    description: "For 5 turns, each enemy in the lane has a 60% chance at the start of its turn to lose 8% max mana, restored to the caster."
+    element_id: florere
+    sfx: florere
+    kind: utility
+    learning_requirements: { required_attack_ids: [mana_seed] }
+    learning_cost: { experience_points: 6 }
+    targeting: enemies_lane
+    costs: { mana: 24, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: devouring_mana_seed
+        status_effect: Mana Seed
+        apply_to: target
+        turns: 5
+        polarity: negative
+        drain_per_turn: { resource: mana, percent_of_max: 8, chance: 0.6, heal_to_source: true }
+
+  # Blight — Spore
+  - id: spore_cloud
+    name: Spore Cloud
+    description: "Poisons every enemy for 3 turns, dealing 4 damage at the start of each turn."
+    element_id: florere
+    sfx: florere
+    kind: debuff
+    learning_requirements: { required_attack_ids: [rot] }
+    learning_cost: { experience_points: 3 }
+    targeting: enemies_all
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: spore_cloud
+        status_effect: Spore Poison
+        apply_to: target
+        turns: 3
+        polarity: negative
+        damage_per_turn: 4
+
+  - id: spore_erosion
+    name: Spore Erosion
+    description: "Reduces PDEF and MDEF by 6 for 3 turns on every enemy."
+    element_id: florere
+    sfx: florere
+    kind: debuff
+    learning_requirements: { required_attack_ids: [erosion, spore_cloud] }
+    learning_cost: { experience_points: 5 }
+    targeting: enemies_all
+    costs: { mana: 18, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: spore_erosion
+        status_effect: Spore Erosion
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff: { physical_defense: 6, magical_defense: 6 }
+
+  - id: spore_drain
+    name: Spore Drain
+    description: "For 3 turns, each enemy has a 40% chance to lose 4% max HP and 4% max mana at the start of its turn, restoring both to the caster."
+    element_id: florere
+    sfx: florere
+    kind: utility
+    learning_requirements: { required_attack_ids: [life_drain, mana_drain, spore_cloud] }
+    learning_cost: { experience_points: 7 }
+    targeting: enemies_all
+    costs: { mana: 26, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: spore_drain_hp
+        status_effect: Spore Drain
+        apply_to: target
+        turns: 3
+        polarity: negative
+        drain_per_turn: { resource: hp, percent_of_max: 4, chance: 0.4, heal_to_source: true }
+      - effect_id: spore_drain_mana
+        status_effect: Spore Drain
+        apply_to: target
+        turns: 3
+        polarity: negative
+        drain_per_turn: { resource: mana, percent_of_max: 4, chance: 0.4, heal_to_source: true }
+
+  - id: blightfall
+    name: Blightfall
+    description: "Deals 12 damage to every enemy, poisons for 4 turns dealing 6 per turn, reduces PDEF/MDEF by 8 for 4 turns, and heals the caster for 10% of damage dealt."
+    element_id: florere
+    sfx: florere
+    kind: attack
+    learning_requirements: { required_attack_ids: [spore_erosion, spore_drain, endless_erosion] }
+    learning_cost: { experience_points: 8 }
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 12 }
+    accuracy: 85
+    hit_count: 1
+    costs: { mana: 34, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: blightfall_poison
+        status_effect: Blight Poison
+        apply_to: target
+        turns: 4
+        polarity: negative
+        damage_per_turn: 6
+      - effect_id: blightfall_erosion
+        status_effect: Blight Erosion
+        apply_to: target
+        turns: 4
+        polarity: negative
+        debuff: { physical_defense: 8, magical_defense: 8 }
+      - effect_id: blightfall_drain
+        status_effect: Blightfall
+        apply_to: target
+        turns: 1
+        polarity: neutral
+        drain_percent_of_damage: 0.1

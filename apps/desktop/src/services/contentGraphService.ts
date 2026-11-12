@@ -160,6 +160,17 @@ const PUBLIC_EFFECT_FIELDS = [
     'cost_multiplier',
     'end_cost',
     'on_death_blast',
+    'stat_multipliers',
+    'cleanse_dot',
+    'regen_bonus_per_negative',
+    'regen_bonus_per_dot_percent',
+    'regen_lowest_percent',
+    'refund_spent',
+    'cleanse_on_heal',
+    'damage_reduction',
+    'drain_percent_of_max_hp',
+    'drain_per_turn',
+    'movement_immunity',
 ] as const;
 
 function clone(value: unknown): unknown {

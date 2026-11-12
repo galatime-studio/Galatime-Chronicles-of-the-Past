@@ -47,6 +47,8 @@ export interface AttackEffectCondition {
     target_line?: 'front' | 'rear';
     /** Only units that cannot be placed in the named line (it is full). */
     requires_no_space?: 'front' | 'rear';
+    /** Only units carrying at least this many negative statuses. */
+    min_negative_statuses?: number;
 }
 
 /** A `weather` clause: it forces a battlefield-wide weather state. */
@@ -232,6 +234,8 @@ export interface AttackReflectSpec {
     chance?: number;
     /** The status is spent by a successful reflection. */
     consume?: boolean;
+    /** Reflections the status can throw before falling; omitted means unlimited. */
+    charges?: number;
 }
 
 /** A portion of the bearer's next resource spend goes to the status source. */
@@ -473,6 +477,33 @@ export interface AttackEffect {
     end_cost?: { resource?: 'mana' | 'stamina'; percent_of_max: number; shortfall?: 'hp' };
     /** A direct-damage retaliation when the bearer falls. */
     on_death_blast?: { power: number };
+    /** Multiplicative stat changes while the status lives (`1.15` = +15%). */
+    stat_multipliers?: Record<string, number>;
+    /** Removes only damage-over-time effects. */
+    cleanse_dot?: number;
+    /** Extra HoT per negative status on the bearer. */
+    regen_bonus_per_negative?: number;
+    /** Extra HoT per 10% of max HP currently drained by DoTs. */
+    regen_bonus_per_dot_percent?: number;
+    /** One-shot healing of the lower of mana/stamina, as a percent. */
+    regen_lowest_percent?: number;
+    /** Refunds part of the resources spent while the status was live. */
+    refund_spent?: { percent: number; resources?: string[] };
+    /** Cleanse on receiving a heal of the named element. */
+    cleanse_on_heal?: { count?: number; element?: string; max_triggers?: number };
+    /** Flat damage reduction with charges (`pollen_ward`). */
+    damage_reduction?: { percent: number; charges: number; heal_adjacent_percent?: number };
+    /** Drains a percent of a max pool on hit (`life_drain`, `mana_drain`). */
+    drain_percent_of_max_hp?: { percent: number; resource?: 'hp' | 'mana'; to?: 'caster' };
+    /** Drains a percent of a max pool at the start of each turn (`blood_seed`). */
+    drain_per_turn?: {
+        resource: 'hp' | 'mana';
+        percent_of_max: number;
+        chance?: number;
+        heal_to_source?: boolean;
+    };
+    /** The bearer cannot be moved by forced movement (`rooted_bind`). */
+    movement_immunity?: boolean;
     /** Stat fields the holder cannot gain buffs to while the status lives. */
     block_stat_buffs?: string[];
     /** Incoming damage multipliers per channel (`frost_mirror` halves physical). */

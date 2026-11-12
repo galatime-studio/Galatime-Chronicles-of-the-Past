@@ -384,7 +384,7 @@ function beginUnitTurn(state: CombatState, unit: CombatUnit, random: CombatRando
         else unit.cooldowns[actionId] = remaining;
     }
 
-    const ticked = tickUnitEffects(unit, random);
+    const ticked = tickUnitEffects(unit, random, state);
     events.push(...ticked);
 
     // Marks that detonate when their bearer's turn arrives resolve here, after

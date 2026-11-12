@@ -47,6 +47,16 @@
         ['cost_multiplier', 'Desconto de custo'],
         ['end_cost', 'Custo ao terminar'],
         ['on_death_blast', 'Explosão ao cair'],
+        ['cleanse_dot', 'Limpar dano contínuo'],
+        ['regen_bonus', 'Bónus de regeneração'],
+        ['regen_lowest', 'Restaurar recurso mais baixo'],
+        ['refund_spent', 'Devolver recurso gasto'],
+        ['cleanse_on_heal', 'Limpar ao receber cura'],
+        ['damage_reduction', 'Redução de dano'],
+        ['drain_max', 'Drenar % do máximo'],
+        ['drain_turn', 'Drenar % por turno'],
+        ['movement_immune', 'Imune a movimento'],
+        ['stat_multipliers', 'Multiplicadores de atributos'],
     ];
     var TARGET_LABELS = {
         any_one: 'qualquer personagem', enemies_all: 'todos os inimigos',
@@ -1675,6 +1685,56 @@
             var deathBlast = effect.on_death_blast || {};
             return '<label class="effect-field"><span>Poder da explosão</span><input class="control" data-effect-field="on_death_blast.power" type="number" min="0" value="' + escapeHtml(deathBlast.power ?? 40) + '"><small>Dano físico fixo a quem desferiu o golpe direto que derrubou o portador.</small></label>';
         }
+        if (pattern === 'cleanse_dot') {
+            return '<label class="effect-field"><span>Remover DoTs</span><input class="control" data-effect-field="cleanse_dot" type="number" min="1" value="' + escapeHtml(effect.cleanse_dot ?? 1) + '"><small>Remove apenas efeitos de dano contínuo.</small></label>';
+        }
+        if (pattern === 'regen_bonus') {
+            return '<label class="effect-field"><span>Bónus por estado negativo</span><div class="input-suffix"><input class="control" data-effect-field="regen_bonus_per_negative" type="number" min="0" value="' + escapeHtml(effect.regen_bonus_per_negative ?? '') + '" placeholder="2"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Bónus por 10% de DoT</span><div class="input-suffix"><input class="control" data-effect-field="regen_bonus_per_dot_percent" type="number" min="0" value="' + escapeHtml(effect.regen_bonus_per_dot_percent ?? '') + '" placeholder="4"><span>%</span></div></label>';
+        }
+        if (pattern === 'regen_lowest') {
+            return '<label class="effect-field"><span>Recurso mais baixo</span><div class="input-suffix"><input class="control" data-effect-field="regen_lowest_percent" type="number" min="0" max="100" value="' + escapeHtml(effect.regen_lowest_percent ?? '') + '" placeholder="6"><span>%</span></div><small>Restaura a percentagem do máximo de MN ou SN, o que estiver mais baixo.</small></label>';
+        }
+        if (pattern === 'refund_spent') {
+            var refund = effect.refund_spent || {};
+            return '<label class="effect-field"><span>Percentagem devolvida</span><div class="input-suffix"><input class="control" data-effect-field="refund_spent.percent" type="number" min="0" max="100" value="' + escapeHtml(percentOf(refund.percent)) + '" placeholder="25"><span>%</span></div><small>Devolve parte do MN/SN gasto enquanto o estado durou.</small></label>'
+                + '<label class="effect-field"><span>Recursos</span><input class="control" data-effect-field="refund_spent.resources" value="' + escapeHtml(listValue(refund.resources)) + '" placeholder="mana, stamina"></label>';
+        }
+        if (pattern === 'cleanse_on_heal') {
+            var cleanseOnHeal = effect.cleanse_on_heal || {};
+            return '<label class="effect-field"><span>Limpar ao receber cura</span><input class="control" data-effect-field="cleanse_on_heal.count" type="number" min="1" value="' + escapeHtml(cleanseOnHeal.count ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Elemento da cura</span><input class="control" data-effect-field="cleanse_on_heal.element" value="' + escapeHtml(cleanseOnHeal.element || 'florere') + '"></label>'
+                + '<label class="effect-field"><span>Máximo de limpezas</span><input class="control" data-effect-field="cleanse_on_heal.max_triggers" type="number" min="1" value="' + escapeHtml(cleanseOnHeal.max_triggers ?? 3) + '"></label>';
+        }
+        if (pattern === 'damage_reduction') {
+            var reduction = effect.damage_reduction || {};
+            return '<label class="effect-field"><span>Redução</span><div class="input-suffix"><input class="control" data-effect-field="damage_reduction.percent" type="number" min="0" max="100" value="' + escapeHtml(percentOf(reduction.percent)) + '" placeholder="15"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Cargas</span><input class="control" data-effect-field="damage_reduction.charges" type="number" min="1" value="' + escapeHtml(reduction.charges ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Cura adjacente</span><div class="input-suffix"><input class="control" data-effect-field="damage_reduction.heal_adjacent_percent" type="number" min="0" max="100" value="' + escapeHtml(reduction.heal_adjacent_percent ?? '') + '" placeholder="6"><span>%</span></div></label>';
+        }
+        if (pattern === 'drain_max') {
+            var drainMax = effect.drain_percent_of_max_hp || {};
+            return '<label class="effect-field"><span>Recurso</span><select class="control" data-effect-field="drain_percent_of_max_hp.resource">'
+                + optionMarkup('hp', 'Vida', (drainMax.resource || 'hp') === 'hp')
+                + optionMarkup('mana', 'Mana', drainMax.resource === 'mana') + '</select></label>'
+                + '<label class="effect-field"><span>Percentagem do máximo</span><div class="input-suffix"><input class="control" data-effect-field="drain_percent_of_max_hp.percent" type="number" min="0" max="100" value="' + escapeHtml(drainMax.percent ?? '') + '" placeholder="8"><span>%</span></div></label>';
+        }
+        if (pattern === 'drain_turn') {
+            var drainTurn = effect.drain_per_turn || {};
+            return '<label class="effect-field"><span>Recurso</span><select class="control" data-effect-field="drain_per_turn.resource">'
+                + optionMarkup('hp', 'Vida', (drainTurn.resource || 'hp') === 'hp')
+                + optionMarkup('mana', 'Mana', drainTurn.resource === 'mana') + '</select></label>'
+                + '<label class="effect-field"><span>Percentagem por turno</span><div class="input-suffix"><input class="control" data-effect-field="drain_per_turn.percent_of_max" type="number" min="0" max="100" value="' + escapeHtml(drainTurn.percent_of_max ?? '') + '" placeholder="6"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Chance</span><div class="input-suffix"><input class="control" data-effect-field="drain_per_turn.chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(drainTurn.chance ?? 1)) + '"><span>%</span></div></label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="drain_per_turn.heal_to_source" ' + (drainTurn.heal_to_source ? 'checked' : '') + '> Devolve ao lançador</label>';
+        }
+        if (pattern === 'movement_immune') {
+            return '<label class="effect-stack"><input type="checkbox" data-effect-field="movement_immunity" ' + (effect.movement_immunity ? 'checked' : '') + '> Não pode ser movido por efeitos</label>';
+        }
+        if (pattern === 'stat_multipliers') {
+            return pairsEditor('Multiplicadores de atributos', effect.stat_multipliers || {}, 'stat_multiplier_pairs', 'physical_attack: 1.15, magical_attack: 1.15')
+                + '<small>Valores multiplicativos (1.15 = +15%).</small>';
+        }
         if (pattern === 'deferred') {
             var deferred = effect.deferred_damage || {};
             return '<label class="effect-field"><span>Dano</span><input class="control" data-effect-field="deferred_damage.amount" type="number" min="0" value="' + escapeHtml(deferred.amount ?? 12) + '"><small>O golpe cai mais tarde, não agora.</small></label>'
@@ -1949,6 +2009,16 @@
     }
 
     function detectPattern(effect) {
+        if (effect.damage_reduction) return 'damage_reduction';
+        if (effect.cleanse_on_heal) return 'cleanse_on_heal';
+        if (effect.cleanse_dot) return 'cleanse_dot';
+        if ((effect.regen_bonus_per_negative ?? 0) > 0 || (effect.regen_bonus_per_dot_percent ?? 0) > 0) return 'regen_bonus';
+        if (effect.refund_spent) return 'refund_spent';
+        if (effect.drain_percent_of_max_hp) return 'drain_max';
+        if (effect.drain_per_turn) return 'drain_turn';
+        if (effect.regen_lowest_percent) return 'regen_lowest';
+        if (effect.movement_immunity) return 'movement_immune';
+        if (effect.stat_multipliers) return 'stat_multipliers';
         if (effect.charges) return 'charges';
         if (effect.trip_on_action) return 'trip';
         if (effect.spend_trigger) return 'spend_trigger';
@@ -1984,6 +2054,16 @@
         if (effect.cost_multiplier) return 'cost_multiplier';
         if (effect.end_cost) return 'end_cost';
         if (effect.on_death_blast) return 'on_death_blast';
+        if (effect.cleanse_dot) return 'cleanse_dot';
+        if ((effect.regen_bonus_per_negative ?? 0) > 0 || (effect.regen_bonus_per_dot_percent ?? 0) > 0) return 'regen_bonus';
+        if (effect.regen_lowest_percent) return 'regen_lowest';
+        if (effect.refund_spent) return 'refund_spent';
+        if (effect.cleanse_on_heal) return 'cleanse_on_heal';
+        if (effect.damage_reduction) return 'damage_reduction';
+        if (effect.drain_percent_of_max_hp) return 'drain_max';
+        if (effect.drain_per_turn) return 'drain_turn';
+        if (effect.movement_immunity) return 'movement_immune';
+        if (effect.stat_multipliers) return 'stat_multipliers';
         if (effect.self_upkeep) return 'upkeep';
         if (effect.regen_per_turn) return 'regen_turn';
         if (effect.resource_transfer) return 'transfer';
@@ -2107,6 +2187,16 @@
         if (pattern === 'cost_multiplier') properties.cost_multiplier = { mana: 0.5, stamina: 0.5 };
         if (pattern === 'end_cost') properties.end_cost = { resource: 'stamina', percent_of_max: 50, shortfall: 'hp' };
         if (pattern === 'on_death_blast') properties.on_death_blast = { power: 40 };
+        if (pattern === 'cleanse_dot') properties.cleanse_dot = 1;
+        if (pattern === 'regen_bonus') { properties.regen_bonus_per_negative = 2; properties.regen_bonus_per_dot_percent = 4; }
+        if (pattern === 'regen_lowest') properties.regen_lowest_percent = 6;
+        if (pattern === 'refund_spent') properties.refund_spent = { percent: 0.25, resources: ['mana', 'stamina'] };
+        if (pattern === 'cleanse_on_heal') properties.cleanse_on_heal = { count: 1, element: 'florere', max_triggers: 3 };
+        if (pattern === 'damage_reduction') properties.damage_reduction = { percent: 0.15, charges: 2, heal_adjacent_percent: 6 };
+        if (pattern === 'drain_max') properties.drain_percent_of_max_hp = { percent: 8, resource: 'hp', to: 'caster' };
+        if (pattern === 'drain_turn') properties.drain_per_turn = { resource: 'hp', percent_of_max: 6, chance: 0.3, heal_to_source: true };
+        if (pattern === 'movement_immune') properties.movement_immunity = true;
+        if (pattern === 'stat_multipliers') properties.stat_multipliers = { physical_attack: 1.15 };
         skill.effects.push(Model.makeEffect(skill.id, pattern, applyTo, effectIndex - 1, properties));
         state.openScopes[skill.id] = state.openScopes[skill.id] || {};
         state.openScopes[skill.id][scope] = true;
@@ -2147,7 +2237,7 @@
         if (!skill || !card) return;
         var effect = skill.effects.find(function (item) { return item.effect_id === card.dataset.effectId; });
         if (!effect) return;
-        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast'].forEach(function (key) { delete effect[key]; });
+        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent', 'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction', 'drain_percent_of_max_hp', 'drain_per_turn', 'movement_immunity', 'stat_multipliers'].forEach(function (key) { delete effect[key]; });
         var type = select.value;
         if (type === 'regen') effect.resource_regen = { hp: 15 };
         if (type === 'regen_turn') effect.regen_per_turn = { hp: 10 };
@@ -2192,6 +2282,16 @@
         if (type === 'cost_multiplier') effect.cost_multiplier = { mana: 0.5, stamina: 0.5 };
         if (type === 'end_cost') effect.end_cost = { resource: 'stamina', percent_of_max: 50, shortfall: 'hp' };
         if (type === 'on_death_blast') effect.on_death_blast = { power: 40 };
+        if (type === 'cleanse_dot') effect.cleanse_dot = 1;
+        if (type === 'regen_bonus') { effect.regen_bonus_per_negative = 2; effect.regen_bonus_per_dot_percent = 4; }
+        if (type === 'regen_lowest') effect.regen_lowest_percent = 6;
+        if (type === 'refund_spent') effect.refund_spent = { percent: 0.25, resources: ['mana', 'stamina'] };
+        if (type === 'cleanse_on_heal') effect.cleanse_on_heal = { count: 1, element: 'florere', max_triggers: 3 };
+        if (type === 'damage_reduction') effect.damage_reduction = { percent: 0.15, charges: 2, heal_adjacent_percent: 6 };
+        if (type === 'drain_max') effect.drain_percent_of_max_hp = { percent: 8, resource: 'hp', to: 'caster' };
+        if (type === 'drain_turn') effect.drain_per_turn = { resource: 'hp', percent_of_max: 6, chance: 0.3, heal_to_source: true };
+        if (type === 'movement_immune') effect.movement_immunity = true;
+        if (type === 'stat_multipliers') effect.stat_multipliers = { physical_attack: 1.15 };
         // O nome do estado segue a operação, mas só enquanto o autor não o
         // tiver escrito por si.
         if (Object.values(Model.PATTERN_STATUS_NAMES || {}).includes(effect.status_effect)) {
@@ -2251,13 +2351,15 @@
                     if (list.length) effect[key] = list;
                     else delete effect[key];
                 } else if (key === 'element_modulation_pairs' || key === 'damage_channel_modulation_pairs'
-                    || key === 'upgrade_regen_pairs' || key === 'element_power_pairs' || key === 'weather_element_pairs') {
+                    || key === 'upgrade_regen_pairs' || key === 'element_power_pairs' || key === 'weather_element_pairs'
+                    || key === 'stat_multiplier_pairs') {
                     // Pares "chave: valor"; cada editor dirige o seu destino.
                     var targetKey = key === 'element_modulation_pairs' ? 'element_modulation'
                         : key === 'damage_channel_modulation_pairs' ? 'damage_channel_modulation'
                             : key === 'element_power_pairs' ? 'element_power'
                                 : key === 'weather_element_pairs' ? 'weather.element_effect_multipliers'
-                                    : 'upgrade_vs_status.extra_regen_per_turn_percent';
+                                    : key === 'stat_multiplier_pairs' ? 'stat_multipliers'
+                                        : 'upgrade_vs_status.extra_regen_per_turn_percent';
                     var parsedPairs = {};
                     String(field.value || '').split(',').forEach(function (entry) {
                         var halves = entry.split(':');
@@ -2271,7 +2373,9 @@
                     || key === 'upgrade_vs_status.extra_turns_chance'
                     || key === 'detonate_on_turn.turn_skip_chance'
                     || key === 'interrupt.chance' || key === 'reflect.chance'
-                    || key === 'spend_steal.percent' || key === 'evade_next.chance') {
+                    || key === 'spend_steal.percent' || key === 'evade_next.chance'
+                    || key === 'refund_spent.percent' || key === 'damage_reduction.percent'
+                    || key === 'drain_per_turn.chance') {
                     // Mostram-se em percentagem mas guardam-se como fração.
                     var fractionLeaf = key.split('.');
                     var fractionParent = readNested(effect, fractionLeaf.slice(0, -1).join('.')) || {};
@@ -2289,7 +2393,7 @@
                     || key === 'charges.release.prevent_actions'
                     || key === 'trip_on_action.spawn.prevent_actions'
                     || key === 'conductor.grounded_by_elements' || key === 'interrupt.actions'
-                    || key === 'evade_next.damage_types') {
+                    || key === 'evade_next.damage_types' || key === 'refund_spent.resources') {
                     var commaLeaf = key.split('.');
                     var commaName = commaLeaf[commaLeaf.length - 1];
                     var commaList = String(field.value || '').split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);

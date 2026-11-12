@@ -349,6 +349,30 @@ export interface CombatEffectInstance {
     endCost?: { resource: CombatResourceId; percentOfMax: number; shortfall: 'hp' } | null;
     /** Direct-damage retaliation when the bearer falls. */
     onDeathBlast?: { power: number } | null;
+    /** Removes only damage-over-time effects. */
+    cleanseDot?: number;
+    /** Extra HoT per negative status on the bearer. */
+    regenBonusPerNegative?: number;
+    /** Extra HoT per 10% of max HP currently drained by DoTs. */
+    regenBonusPerDotPercent?: number;
+    /** One-shot healing of the lower of mana/stamina, as a percent. */
+    regenLowestPercent?: number;
+    /** Refunds part of the resources spent while the status was live. */
+    refundSpent?: {
+        percent: number;
+        resources: string[];
+        baseline: { mana: number; stamina: number };
+    } | null;
+    /** Cleanse on receiving a heal of the named element. */
+    cleanseOnHeal?: { count: number; element: string; maxTriggers: number; triggers: number } | null;
+    /** Flat damage reduction with charges (`pollen_ward`). */
+    damageReduction?: { percent: number; charges: number; healAdjacentPercent: number } | null;
+    /** Drains a percent of a max pool on hit. */
+    drainPercentOfMaxHp?: { percent: number; resource: 'hp' | 'mana'; to: 'caster' } | null;
+    /** Drains a percent of a max pool at the start of each turn. */
+    drainPerTurn?: { resource: 'hp' | 'mana'; percentOfMax: number; chance: number; healToSource: boolean } | null;
+    /** The bearer cannot be moved by forced movement. */
+    movementImmunity?: boolean;
     /** Turn count when the status landed, used by detonations to scale. */
     appliedTurnCount?: number;
 }
@@ -567,6 +591,8 @@ export interface CombatReflectSpec {
     power: number;
     chance: number;
     consume: boolean;
+    /** Reflects left before the status falls; omitted means unlimited. */
+    charges?: number;
 }
 
 export interface CombatSpendStealSpec {

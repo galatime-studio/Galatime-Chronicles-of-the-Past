@@ -221,6 +221,16 @@
         cost_multiplier: 'Desconto de custo',
         end_cost: 'Custo final',
         on_death_blast: 'Último golpe',
+        cleanse_dot: 'Limpeza de DoT',
+        regen_bonus: 'Bónus de regeneração',
+        regen_lowest: 'Sap do recurso baixo',
+        refund_spent: 'Devolução de gasto',
+        cleanse_on_heal: 'Limpeza ao curar',
+        damage_reduction: 'Redução de dano',
+        drain_max: 'Dreno do máximo',
+        drain_turn: 'Dreno por turno',
+        movement_immune: 'Raiz imóvel',
+        stat_multipliers: 'Multiplicadores',
     };
 
     function patternStatusName(pattern) { return PATTERN_STATUS_NAMES[pattern] || 'Efeito'; }
@@ -753,6 +763,21 @@
             fragments.push('Até ' + (effect.projectile_reroll.per_turn ?? 1)
                 + ' vez(es) por ronda, o portador repete o primeiro disparo que falhou.');
         }
+        if (effect.cleanse_dot) fragments.push('Remove até ' + effect.cleanse_dot + ' efeito(s) de dano contínuo.');
+        if (effect.regen_bonus_per_negative) fragments.push('A regeneração ganha +' + effect.regen_bonus_per_negative + '% por estado negativo no portador.');
+        if (effect.regen_bonus_per_dot_percent) fragments.push('A regeneração ganha +' + effect.regen_bonus_per_dot_percent + '% por cada 10% de vida drenada por DoTs.');
+        if (effect.regen_lowest_percent) fragments.push('Restaura ' + effect.regen_lowest_percent + '% do máximo do menor recurso entre MN e SN.');
+        if (effect.refund_spent) fragments.push('Ao terminar, devolve ' + Math.round((effect.refund_spent.percent || 0) * 100) + '% do MN/SN gasto entretanto.');
+        if (effect.cleanse_on_heal) fragments.push('Limpa ' + (effect.cleanse_on_heal.count || 1) + ' estado(s) ao receber cura de ' + (effect.cleanse_on_heal.element || 'florere') + '.');
+        if (effect.damage_reduction) fragments.push('Reduz ' + Math.round((effect.damage_reduction.percent || 0) * 100) + '% do dano em ' + (effect.damage_reduction.charges || 1) + ' carga(s).');
+        if (effect.drain_percent_of_max_hp) fragments.push('Drena ' + effect.drain_percent_of_max_hp.percent + '% do máximo de ' + (effect.drain_percent_of_max_hp.resource === 'mana' ? 'mana' : 'vida') + '.');
+        if (effect.drain_per_turn) fragments.push('No início do turno, ' + Math.round((effect.drain_per_turn.chance ?? 1) * 100) + '% de drenar ' + effect.drain_per_turn.percent_of_max + '% do máximo de ' + (effect.drain_per_turn.resource === 'mana' ? 'mana' : 'vida') + '.');
+        if (effect.movement_immunity) fragments.push('Não pode ser movido por efeitos.');
+        if (effect.stat_multipliers) {
+            Object.keys(effect.stat_multipliers).forEach(function (statName) {
+                fragments.push('Multiplica ' + statName + ' por ' + effect.stat_multipliers[statName] + '.');
+            });
+        }
         if (effect.detonate_on_turn && typeof effect.detonate_on_turn === 'object') {
             var detonate = effect.detonate_on_turn;
             fragments.push('Detona no início do turno do portador com ' + detonate.power + ' de poder'
@@ -871,6 +896,10 @@
             'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal',
             // Corporis: esquiva/riposta, cobertura, custos, custo final e último golpe.
             'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast',
+            // Florere: HoTs condicionais, sap, refunds, escudos e drenos.
+            'stat_multipliers', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent',
+            'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction',
+            'drain_percent_of_max_hp', 'drain_per_turn', 'movement_immunity',
         ];
         var cleaned = {};
         allowed.forEach(function (key) {
@@ -895,7 +924,10 @@
         ['shield', 'cleanse_per_turn', 'spend_trigger', 'upgrade_vs_status', 'charges', 'trip_on_action', 'element_modulation',
             'condition', 'turn_postpone', 'on_miss_move', 'element_power', 'projectile_accuracy', 'projectile_mark',
             'resource_transfer', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect',
-            'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast'].forEach(function (key) {
+            'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast',
+            'stat_multipliers', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent',
+            'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction',
+            'drain_percent_of_max_hp', 'drain_per_turn'].forEach(function (key) {
             if (cleaned[key] && typeof cleaned[key] === 'object' && !Object.keys(cleaned[key]).length) {
                 delete cleaned[key];
             }

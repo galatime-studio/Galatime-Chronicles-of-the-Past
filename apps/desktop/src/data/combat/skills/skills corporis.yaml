@@ -1,9 +1,4 @@
-# Corporis — physicality. No mana: every skill pays stamina only.
-# Base forms only; the tree derives the _II … _V tiers from element_id,
-# learning_requirements and learning_cost.
-
 skills:
-  # Strike lane — Punch & Kick
   - id: punch
     name: Punch
     description: "The caster drives a straight punch; one physical hit deals power 10 at 95% accuracy."

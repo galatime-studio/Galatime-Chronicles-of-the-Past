@@ -411,8 +411,18 @@ function buildResolution(
     const targetHpBefore = recipient.currentHp;
     // A live status shield (Condensation, and later the ice walls) soaks the
     // hit before the holder's health pays: shields absorb first, health next.
-    const damageDealt = Math.max(0, result.finalDamage);
-    const shield = absorbShieldDamage(recipient, damageDealt, random);
+    const ward = recipient.effects.find((effect) => effect.damageReduction
+        && effect.damageReduction.charges > 0);
+    const reduced = ward?.damageReduction
+        ? Math.max(0, Math.round(result.finalDamage * (1 - ward.damageReduction.percent)))
+        : Math.max(0, result.finalDamage);
+    if (ward?.damageReduction) {
+        ward.damageReduction.charges -= 1;
+        if (ward.damageReduction.charges <= 0) {
+            recipient.effects = recipient.effects.filter((effect) => effect !== ward);
+        }
+    }
+    const shield = absorbShieldDamage(recipient, reduced, random);
     const healthDamage = shield.leftover;
     if (healthDamage > 0) {
         recipient.currentHp = Math.max(0, recipient.currentHp - healthDamage);
@@ -425,7 +435,7 @@ function buildResolution(
         actionId: action.id,
         ...result,
         finalDamage: healthDamage,
-        shielded: damageDealt - healthDamage,
+        shielded: reduced - healthDamage,
         targetHpBefore,
         targetHpAfter: recipient.currentHp,
         appliedEffectIds: [],
@@ -1213,6 +1223,12 @@ function resolveChaosFollowUp(
                 if (reflect.reflect.consume) {
                     target.effects = target.effects.filter((effect) => effect !== reflect);
                     events.push({ type: 'effect_expired', unitId: target.id, effectId: reflect.effectId });
+                } else if (reflect.reflect.charges !== undefined) {
+                    reflect.reflect.charges -= 1;
+                    if (reflect.reflect.charges <= 0) {
+                        target.effects = target.effects.filter((effect) => effect !== reflect);
+                        events.push({ type: 'effect_expired', unitId: target.id, effectId: reflect.effectId });
+                    }
                 }
             }
         }

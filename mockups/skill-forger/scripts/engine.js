@@ -510,6 +510,12 @@
                 || skill.backlane_splash || skill.instability || skill.on_kill_detonation
                 || skill.no_space_recoil || skill.cooldown_reset || (skill.control_immune_damage > 0)
                 || skill.damage_taken_scaling || skill.element_effectiveness
+                || skill.effects?.some(function (effect) {
+                    return effect.cleanse_dot || effect.regen_bonus_per_negative || effect.regen_bonus_per_dot_percent
+                        || effect.regen_lowest_percent || effect.refund_spent || effect.cleanse_on_heal
+                        || effect.damage_reduction || effect.drain_percent_of_max_hp || effect.drain_per_turn
+                        || effect.movement_immunity || effect.stat_multipliers;
+                })
                 ? 'Cadeias, estilhaços, recuo, fogo amigo, instabilidade, detonações e mecânicas físicas (cobertura, esquiva, custos e dano acumulado) são resolvidos pelo motor do jogo — o simulador mostra apenas o golpe principal.'
                 : null,
             hitCount: hitCount,

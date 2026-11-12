@@ -1,7 +1,4 @@
 skills:
-  # ---------------------------------------------------------------------------
-  # Burst
-  # ---------------------------------------------------------------------------
   - id: spark
     name: Spark
     description: "A tiny pop of unstable energy that leaves the target Jolted, slowing it and spoiling its aim for a turn."
@@ -511,9 +508,6 @@ skills:
         buff: { magical_attack: 20, speed: 12, physical_defense: 10 }
         self_upkeep: { hp: 10 }
 
-  # ---------------------------------------------------------------------------
-  # Electricity
-  # ---------------------------------------------------------------------------
   - id: charge
     name: Charge
     description: "A simple jolt of current with perfect accuracy."

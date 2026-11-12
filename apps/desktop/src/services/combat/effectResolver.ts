@@ -17,6 +17,7 @@ import type {
     CombatRandom,
     CombatResourceId,
     CombatRewindSpec,
+    CombatState,
     CombatStatDelta,
     CombatStats,
     CombatUnit,
@@ -702,6 +703,7 @@ function readReflect(source: unknown): CombatEffectInstance['reflect'] {
         power,
         chance: clamp(readNumber(record.chance, 1), 0, 1),
         consume: readBoolean(record.consume, true),
+        charges: readOptionalPositive(record.charges) ?? undefined,
     };
 }
 
@@ -773,6 +775,86 @@ function readOnDeathBlast(source: unknown): CombatEffectInstance['onDeathBlast']
     if (!record) return null;
     const power = Math.max(0, readNumber(record.power, 0));
     return power > 0 ? { power } : null;
+}
+
+/** Reads the plant-side regen modifiers (`mending_bloom`, `deep_rooted_remedy`). */
+function readRegenBonuses(record: Record<string, unknown>): {
+    perNegative: number;
+    perDotPercent: number;
+} {
+    return {
+        perNegative: Math.max(0, readNumber(record.regen_bonus_per_negative, 0)),
+        perDotPercent: Math.max(0, readNumber(record.regen_bonus_per_dot_percent, 0)),
+    };
+}
+
+/** Reads a refund of resources spent while the status lives (`greenfire`). */
+function readRefundSpent(source: unknown): CombatEffectInstance['refundSpent'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const percent = clamp(readNumber(record.percent, 0), 0, 1);
+    if (percent <= 0) return null;
+    const resources = readTrimmedStringList(record.resources)
+        ?.filter((entry) => entry === 'mana' || entry === 'stamina') ?? ['mana', 'stamina'];
+    return {
+        percent,
+        resources,
+        // The baseline is stamped from the unit when the status lands.
+        baseline: { mana: 0, stamina: 0 },
+    };
+}
+
+/** Reads a cleanse triggered by receiving a heal of an element (`flore`). */
+function readCleanseOnHeal(source: unknown): CombatEffectInstance['cleanseOnHeal'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const element = readString(record.element, 'florere').trim() || 'florere';
+    return {
+        count: Math.max(1, Math.round(readNumber(record.count, 1))),
+        element,
+        maxTriggers: Math.max(1, Math.round(readNumber(record.max_triggers, 3))),
+        triggers: 0,
+    };
+}
+
+/** Reads a charged damage reduction (`pollen_ward`). */
+function readDamageReduction(source: unknown): CombatEffectInstance['damageReduction'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const percent = clamp(readNumber(record.percent, 0), 0, 1);
+    if (percent <= 0) return null;
+    return {
+        percent,
+        charges: Math.max(1, Math.round(readNumber(record.charges, 1))),
+        healAdjacentPercent: Math.max(0, readNumber(record.heal_adjacent_percent, 0)),
+    };
+}
+
+/** Reads a percent-of-max drain (`life_drain`, `mana_drain`). */
+function readDrainPercentOfMaxHp(source: unknown): CombatEffectInstance['drainPercentOfMaxHp'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const percent = Math.max(0, readNumber(record.percent, 0));
+    if (percent <= 0) return null;
+    return {
+        percent,
+        resource: readString(record.resource, 'hp') === 'mana' ? 'mana' : 'hp',
+        to: 'caster',
+    };
+}
+
+/** Reads a per-turn percent drain (`blood_seed`, `mana_seed`). */
+function readDrainPerTurn(source: unknown): CombatEffectInstance['drainPerTurn'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const percentOfMax = Math.max(0, readNumber(record.percent_of_max, 0));
+    if (percentOfMax <= 0) return null;
+    return {
+        resource: readString(record.resource, 'hp') === 'mana' ? 'mana' : 'hp',
+        percentOfMax,
+        chance: clamp(readNumber(record.chance, 1), 0, 1),
+        healToSource: readBoolean(record.heal_to_source, false),
+    };
 }
 
 /** Reads a `cleanse_per_turn` spec (`rain`); `polarity` defaults to negatives. */
@@ -885,7 +967,7 @@ export function createEffectInstance(
         applyTo: readString(effect.apply_to, '') || null,
         buff,
         debuff: mergedDebuff,
-        statMultipliers: null,
+        statMultipliers: readNumberRecord(record.stat_multipliers),
         polarity: 'neutral',
         regenPerTurn: scaleStatDelta(
             readStatDelta(record.regen_per_turn),
@@ -974,6 +1056,16 @@ export function createEffectInstance(
         costMultiplier: readCostMultiplier(record.cost_multiplier),
         endCost: readEndCost(record.end_cost),
         onDeathBlast: readOnDeathBlast(record.on_death_blast),
+        cleanseDot: Math.max(0, Math.round(readNumber(record.cleanse_dot, 0))),
+        regenBonusPerNegative: readRegenBonuses(record).perNegative,
+        regenBonusPerDotPercent: readRegenBonuses(record).perDotPercent,
+        regenLowestPercent: Math.max(0, readNumber(record.regen_lowest_percent, 0)),
+        refundSpent: readRefundSpent(record.refund_spent),
+        cleanseOnHeal: readCleanseOnHeal(record.cleanse_on_heal),
+        damageReduction: readDamageReduction(record.damage_reduction),
+        drainPercentOfMaxHp: readDrainPercentOfMaxHp(record.drain_percent_of_max_hp),
+        drainPerTurn: readDrainPerTurn(record.drain_per_turn),
+        movementImmunity: readBoolean(record.movement_immunity, false),
         appliedTurnCount: 0,
     };
 
@@ -1114,7 +1206,17 @@ function carriesStatusPayload(instance: CombatEffectInstance): boolean {
         || instance.damageRedirect
         || instance.costMultiplier
         || instance.endCost
-        || instance.onDeathBlast,
+        || instance.onDeathBlast
+        || instance.cleanseDot
+        || (instance.regenBonusPerNegative ?? 0) > 0
+        || (instance.regenBonusPerDotPercent ?? 0) > 0
+        || (instance.regenLowestPercent ?? 0) > 0
+        || instance.refundSpent
+        || instance.cleanseOnHeal
+        || instance.damageReduction
+        || instance.drainPercentOfMaxHp
+        || instance.drainPerTurn
+        || instance.movementImmunity,
     );
 }
 
@@ -1148,6 +1250,12 @@ export function applyEffectToUnit(
     // Detonations scale from the bearer's own turn count, so stamp the landing
     // turn while the target is still in hand.
     instance.appliedTurnCount = unit.turnCount;
+    if (instance.refundSpent) {
+        instance.refundSpent.baseline = {
+            mana: unit.eventCounts.mana_spent_total ?? 0,
+            stamina: unit.eventCounts.stamina_spent_total ?? 0,
+        };
+    }
 
     // A landing that houses nothing a status can keep (a bare `move`, a
     // one-shot `turn_postpone` clause) resolves in the field and leaves no
@@ -1305,6 +1413,7 @@ export function applyEffectToUnit(
 export function tickUnitEffects(
     unit: CombatUnit,
     random: CombatRandom = Math.random,
+    state?: Pick<CombatState, 'units'>,
 ): CombatEvent[] {
     const events: CombatEvent[] = [];
     const remaining: CombatEffectInstance[] = [];
@@ -1326,6 +1435,23 @@ export function tickUnitEffects(
             events.push(...changeResource(unit, 'hp', -amount));
         }
 
+        // A seed (`blood_seed`, `mana_seed`) drains a share of a maximum pool
+        // at the start of the bearer's turn and can feed its source.
+        if (effect.drainPerTurn && random() < effect.drainPerTurn.chance) {
+            const stats = effectiveStats(unit);
+            const max = effect.drainPerTurn.resource === 'mana' ? stats.maxMana : stats.maxHp;
+            const amount = Math.max(0, Math.round(max * effect.drainPerTurn.percentOfMax / 100));
+            if (amount > 0) {
+                events.push(...changeResource(unit, effect.drainPerTurn.resource, -amount));
+                if (effect.drainPerTurn.healToSource && state) {
+                    const source = state.units.find((candidate) => candidate.id === effect.sourceId);
+                    if (source && source.status === 'alive') {
+                        events.push(...changeResource(source, effect.drainPerTurn.resource, amount));
+                    }
+                }
+            }
+        }
+
         if (effect.regenPerTurn) {
             events.push(...payResourceDelta(unit, effect.regenPerTurn, 1));
         }
@@ -1333,7 +1459,21 @@ export function tickUnitEffects(
         // A HoT authored as a percent of the holder's own maxima (`rain`-family
         // regen) pays against the *current* max, so buffs scale it along.
         if (effect.regenPerTurnPercent) {
-            events.push(...payPercentOfMaxDelta(unit, effect.regenPerTurnPercent, isHealBlocked(unit)));
+            const percent = { ...effect.regenPerTurnPercent };
+            if ((effect.regenBonusPerNegative ?? 0) > 0) {
+                const negatives = unit.effects.filter((active) => active.polarity === 'negative').length;
+                percent.hp = (percent.hp ?? 0) + negatives * (effect.regenBonusPerNegative ?? 0);
+            }
+            if ((effect.regenBonusPerDotPercent ?? 0) > 0) {
+                const maxHp = Math.max(1, effectiveStats(unit).maxHp);
+                const dotPerTurn = unit.effects.reduce(
+                    (total, active) => total + Math.max(0, active.damagePerTurn),
+                    0,
+                );
+                percent.hp = (percent.hp ?? 0)
+                    + Math.floor((dotPerTurn / maxHp) * 10) * (effect.regenBonusPerDotPercent ?? 0);
+            }
+            events.push(...payPercentOfMaxDelta(unit, percent as CombatStatDelta, isHealBlocked(unit)));
         }
 
         // `cleansing_rain` picks one of the holder's pools at random and pays a
@@ -1636,19 +1776,35 @@ function payResourceDelta(
  * out of health, which is why the helper reads the live maxima.
  */
 function applyEndCost(unit: CombatUnit, effect: CombatEffectInstance): CombatEvent[] {
+    const events: CombatEvent[] = [];
     const cost = effect.endCost;
-    if (!cost || cost.percentOfMax <= 0) return [];
+    if (cost && cost.percentOfMax > 0) {
+        const stats = effectiveStats(unit);
+        const max = cost.resource === 'mana' ? stats.maxMana : stats.maxStamina;
+        const wanted = Math.round(max * cost.percentOfMax / 100);
+        if (wanted > 0) {
+            const current = cost.resource === 'mana' ? unit.currentMana : unit.currentStamina;
+            const paid = Math.min(current, wanted);
+            events.push(...changeResource(unit, cost.resource, -paid));
+            const shortfall = wanted - paid;
+            if (shortfall > 0) events.push(...changeResource(unit, 'hp', -shortfall));
+        }
+    }
 
-    const stats = effectiveStats(unit);
-    const max = cost.resource === 'mana' ? stats.maxMana : stats.maxStamina;
-    const wanted = Math.round(max * cost.percentOfMax / 100);
-    if (wanted <= 0) return [];
+    const refund = effect.refundSpent;
+    if (refund) {
+        const stats = effectiveStats(unit);
+        for (const resource of refund.resources) {
+            if (resource !== 'mana' && resource !== 'stamina') continue;
+            const spent = (unit.eventCounts[`${resource}_spent_total`] ?? 0)
+                - refund.baseline[resource];
+            const amount = Math.round(Math.max(0, spent) * refund.percent);
+            if (amount <= 0) continue;
+            const max = resource === 'mana' ? stats.maxMana : stats.maxStamina;
+            events.push(...changeResource(unit, resource, Math.min(amount, max)));
+        }
+    }
 
-    const current = cost.resource === 'mana' ? unit.currentMana : unit.currentStamina;
-    const paid = Math.min(current, wanted);
-    const events = [...changeResource(unit, cost.resource, -paid)];
-    const shortfall = wanted - paid;
-    if (shortfall > 0) events.push(...changeResource(unit, 'hp', -shortfall));
     return events;
 }
 
@@ -1677,7 +1833,10 @@ export function changeResource(
 
     // Paying out of mana/stamina (a cost, a drain, a cursed tax) breaks that
     // resource's idle streak, so the next turn's regen restarts from the floor.
-    if (resource !== 'hp' && delta < 0) unit.resourceSpentSinceTurnStart[resource] = true;
+    if (resource !== 'hp' && delta < 0) {
+        unit.resourceSpentSinceTurnStart[resource] = true;
+        unit.eventCounts[`${resource}_spent_total`] = (unit.eventCounts[`${resource}_spent_total`] ?? 0) + -delta;
+    }
 
     if (resource === 'hp') unit.currentHp = next;
     else if (resource === 'mana') unit.currentMana = next;
@@ -1744,11 +1903,28 @@ export function applyEffectResources(
         if (drained > 0) events.push(...changeResource(options.drainRecipient, 'hp', drained));
     }
 
+    // A siphon authored as a share of the victim's *maximum* pool
+    // (`life_drain`, `mana_drain`) pays the caster that share directly.
+    const maxDrain = readDrainPercentOfMaxHp(record.drain_percent_of_max_hp);
+    if (maxDrain && options.drainRecipient) {
+        const stats = effectiveStats(unit);
+        const max = maxDrain.resource === 'mana' ? stats.maxMana : stats.maxHp;
+        const amount = Math.round(max * maxDrain.percent / 100 * outputMultiplier * phase * elementScale);
+        if (amount > 0) {
+            events.push(...changeResource(options.drainRecipient, maxDrain.resource, amount));
+        }
+    }
+
     // Healing and regen are the holder's *own* output, so a weapon like the
     // Asclepius Wand boosts them; damage and drain are not touched by it.
     const heal = readNumber(record.heal, 0);
+    let healed = false;
     if (heal > 0 && !options.healBlocked) {
-        events.push(...changeResource(unit, 'hp', Math.round(heal * outputMultiplier * phase * elementScale)));
+        const amount = Math.round(heal * outputMultiplier * phase * elementScale);
+        if (amount > 0) {
+            events.push(...changeResource(unit, 'hp', amount));
+            healed = true;
+        }
     }
 
     // A heal authored as a percent of the holder's max HP (`dew`). The holder's
@@ -1758,6 +1934,7 @@ export function applyEffectResources(
         const maxHp = effectiveStats(unit).maxHp;
         const amount = Math.round(maxHp * healPercentOfMax / 100 * outputMultiplier * phase * elementScale);
         if (amount > 0) events.push(...changeResource(unit, 'hp', amount));
+        if (amount > 0) healed = true;
     }
 
     // A one-shot pool restore as percents of the holder's own maxima
@@ -1851,6 +2028,36 @@ export function applyEffectResources(
         }
     }
 
+    // A one-shot restore of whichever of MN/SN is at the lower percentage
+    // (`sunlight_sap`, `group_sap`).
+    const lowestPercent = Math.max(0, readNumber(record.regen_lowest_percent, 0));
+    if (lowestPercent > 0) {
+        const stats = effectiveStats(unit);
+        const manaFraction = stats.maxMana > 0 ? unit.currentMana / stats.maxMana : 0;
+        const staminaFraction = stats.maxStamina > 0 ? unit.currentStamina / stats.maxStamina : 0;
+        const resource = manaFraction <= staminaFraction ? 'mana' : 'stamina';
+        const max = resource === 'mana' ? stats.maxMana : stats.maxStamina;
+        const amount = Math.round(max * lowestPercent / 100 * outputMultiplier * phase * elementScale);
+        if (amount > 0) events.push(...changeResource(unit, resource, amount));
+    }
+
+    // `flore` cleanses a negative status each time its bearer receives a
+    // Florere heal, up to its authored trigger count.
+    if (healed) {
+        for (const active of [...unit.effects]) {
+            const cleanse = active.cleanseOnHeal;
+            if (!cleanse) continue;
+            if (cleanse.element && cleanse.element !== options.sourceElementId) continue;
+            if (cleanse.triggers >= cleanse.maxTriggers) continue;
+            events.push(...cleanseEffects(unit, { count: cleanse.count }));
+            cleanse.triggers += 1;
+            if (cleanse.triggers >= cleanse.maxTriggers) {
+                unit.effects = unit.effects.filter((effect) => effect !== active);
+                events.push({ type: 'effect_expired', unitId: unit.id, effectId: active.effectId });
+            }
+        }
+    }
+
     return events;
 }
 
@@ -1913,9 +2120,12 @@ export function clearUnitEffects(unit: CombatUnit): CombatEvent[] {
  */
 export function cleanseEffects(
     unit: CombatUnit,
-    options: { count?: number; all?: boolean } = {},
+    options: { count?: number; all?: boolean; damageOverTimeOnly?: boolean } = {},
 ): CombatEvent[] {
-    const removable = unit.effects.filter((effect) => effect.polarity === 'negative');
+    const removable = unit.effects.filter((effect) => (
+        effect.polarity === 'negative'
+        && (!options.damageOverTimeOnly || effect.damagePerTurn > 0)
+    ));
     const chosen = options.all
         ? removable
         : removable.slice(0, Math.max(0, Math.floor(options.count ?? 0)));
