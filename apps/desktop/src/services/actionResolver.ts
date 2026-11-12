@@ -61,8 +61,20 @@ import {
 } from './combat/effectMechanics';
 import { reachableTargets, scatterCandidates } from './combat/targetResolver';
 import { effectiveTimePhase, setPhaseBlock } from './combat/phaseOverride';
-import { moveUnitToLine } from './combat/positionRules';
+import { canPlaceInLine, moveUnitToLine } from './combat/positionRules';
 import { fleeChanceFor } from './combat/fleeRules';
+import {
+    applyInstabilityCharge,
+    dealFlatDamage,
+    groundConductorShield,
+    hasStatusLabel,
+    selectBacklaneTarget,
+    selectChainTarget,
+    selectConductorTarget,
+    selectFriendlyFireTargets,
+    selectOnKillTargets,
+    selectShrapnelTarget,
+} from './combat/chaosMechanics';
 import { weaponStackMultiplier, effectPowerMultiplier } from './combat/weaponEffects';
 import { applyWeaponActionHooks } from './combat/weaponActionHooks';
 import { applyWeather, readWeatherSpec, weatherElementMultiplierFor } from './combat/weather';
@@ -652,6 +664,9 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
     // targets; the team scopes are resolved once for the whole battlefield. A
     // status that lands wakes the victim's `on_status_applied` abilities.
     const appliedByUnit = new Map<string, string[]>();
+    // A resisted control effect (`shock` on a boss) still pays its flat damage,
+    // once per bearer, no matter how many control clauses the action carries.
+    const controlImmunePaid = new Set<string>();
     for (const effect of action.effects) {
         const applyTo = readString(effect.apply_to, '') || null;
         const scopeTargets = applyTo === null || applyTo === 'target'
@@ -710,6 +725,17 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
                         units: state.units,
                         random,
                     }));
+                } else if ((action.controlImmuneDamage ?? 0) > 0 && !controlImmunePaid.has(scopeTarget.id)) {
+                    controlImmunePaid.add(scopeTarget.id);
+                    dealFlatDamage(
+                        events,
+                        actor,
+                        scopeTarget,
+                        action.controlImmuneDamage ?? 0,
+                        action.id,
+                        action.damageType,
+                        random,
+                    );
                 }
             }
 
@@ -764,6 +790,11 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
         resolution.appliedEffectIds = appliedByUnit.get(target.id) ?? [];
         events.push({ type: 'attack_resolved', resolution });
     }
+
+    // Chaos aftermath: chains, shrapnel, recoil, marks, conductors and the
+    // unstable-charge ladder all read the same authored specs and reuse the
+    // main resolution helpers.
+    resolveChaosFollowUp(context, resolutions, resolvedUnits, events, primaryTarget);
 
     // A status carrying an `on_miss_move` clause answers misses on its own:
     // whenever a damaging action misses its holder, the holder steps across
@@ -860,6 +891,324 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
 
     reapDefeated(state, events, random);
     return events;
+}
+
+/**
+ * Resolves the Chaos follow-ups an attack leaves behind.
+ *
+ * The authored specs are element-agnostic: serial chains, rear-line splashes,
+ * shrapnel, recoil, friendly fire, on-kill detonations, instability, marks,
+ * conductors and flat reflect all read their own clause and reuse the main
+ * damage/shield machinery. Keeping the sequencing here means a future element
+ * can opt into any of them without touching the core hit loop.
+ */
+function resolveChaosFollowUp(
+    context: ActionResolutionContext,
+    resolutions: Map<string, AttackResolution>,
+    resolvedUnits: CombatUnit[],
+    events: CombatEvent[],
+    primaryTarget: CombatUnit | null,
+): void {
+    const { state, actor, action, random } = context;
+    const primaryResolution = primaryTarget ? resolutions.get(primaryTarget.id) : null;
+    const mainHit = Boolean(primaryResolution?.isHit);
+
+    // A serial chain starts from the aimed unit and hops through units that
+    // have not been hit yet. Each hop rolls its own accuracy and pays a fraction
+    // of the previous hop's power; a miss ends the chain.
+    if (action.chain && primaryTarget && mainHit) {
+        const spec = action.chain;
+        // Only the aimed unit and previous jumps are excluded: an area chain
+        // may still arc onto other enemies the main blast already clipped.
+        const hitIds = new Set<string>(primaryTarget ? [primaryTarget.id] : []);
+        const branches = Math.max(1, spec.branches ?? 1);
+        const powerPercent = spec.powerPercent ?? 0.6;
+        const maxJumps = Math.max(1, spec.jumps ?? 1);
+
+        for (let branch = 0; branch < branches; branch += 1) {
+            let from = primaryTarget;
+            let power = action.power * powerPercent;
+            let chance = spec.chance ?? 1;
+
+            for (let jump = 0; jump < maxJumps; jump += 1) {
+                if (chance < 1 && random() >= chance) break;
+
+                const target = selectChainTarget(state, actor, from, hitIds, spec, random);
+                if (!target) break;
+
+                const chainAction: CombatAction = {
+                    ...action,
+                    power,
+                    accuracy: spec.accuracy ?? action.accuracy,
+                    hitCount: 1,
+                    scatterTargets: false,
+                    scatterHits: null,
+                };
+                const resolution = buildResolution(context, target, { attempts: 1, action: chainAction });
+                if (!resolutions.has(target.id)) resolutions.set(target.id, resolution);
+                if (!resolvedUnits.some((unit) => unit.id === target.id)) resolvedUnits.push(target);
+                events.push({ type: 'attack_resolved', resolution });
+                hitIds.add(target.id);
+
+                if (resolution.isHit && (spec.stunChance ?? 0) > 0 && random() < (spec.stunChance ?? 0)) {
+                    const stun: AttackEffect = {
+                        effect_id: `${action.id}_chain_stun`,
+                        status_effect: 'Stunned',
+                        turns: 1,
+                        polarity: 'negative',
+                        prevent_actions: ['attack', 'skill', 'weapon'],
+                    };
+                    const applied = applyEffectToUnit(target, stun, actor.id, action.elementId, random);
+                    if (applied) events.push(applied);
+                }
+
+                if (!resolution.isHit) break;
+                from = target;
+                power *= powerPercent;
+                chance = Math.max(spec.minChance ?? 0.15, chance + (spec.chanceStep ?? 0));
+            }
+        }
+    }
+
+    // A rear-line clip: a low chance to catch an enemy backliner, optionally
+    // paying the aimed target the same flat PWR as well.
+    if (action.backlaneSplash && primaryTarget && mainHit) {
+        const spec = action.backlaneSplash;
+        if (random() < spec.chance) {
+            const target = selectBacklaneTarget(state, actor, new Set(resolutions.keys()), random);
+            if (target) {
+                const splashAction: CombatAction = {
+                    ...action,
+                    power: spec.power,
+                    hitCount: 1,
+                    scatterTargets: false,
+                    scatterHits: null,
+                };
+                const resolution = buildResolution(context, target, { attempts: 1, action: splashAction });
+                if (!resolutions.has(target.id)) resolutions.set(target.id, resolution);
+                if (!resolvedUnits.some((unit) => unit.id === target.id)) resolvedUnits.push(target);
+                events.push({ type: 'attack_resolved', resolution });
+            }
+            if (spec.both && primaryTarget) {
+                dealFlatDamage(events, actor, primaryTarget, spec.power, action.id, action.damageType, random);
+            }
+        }
+    }
+
+    // Shrapnel: low-accuracy debris that can clip anyone in reach, allies
+    // included. A focus status (Precision Burst) concentrates it on the target.
+    if (action.shrapnel) {
+        const spec = action.shrapnel;
+        for (let piece = 0; piece < Math.max(0, spec.count); piece += 1) {
+            const target = selectShrapnelTarget(
+                state,
+                actor,
+                primaryTarget,
+                spec.includeAllies ?? false,
+                spec.focusStatus ?? null,
+                random,
+            );
+            if (!target) continue;
+
+            const shrapnelAction: CombatAction = {
+                ...action,
+                power: spec.power,
+                accuracy: spec.accuracy ?? 40,
+                hitCount: 1,
+                scatterTargets: false,
+                scatterHits: null,
+            };
+            const resolution = buildResolution(context, target, { attempts: 1, action: shrapnelAction });
+            if (!resolutions.has(target.id)) resolutions.set(target.id, resolution);
+            if (!resolvedUnits.some((unit) => unit.id === target.id)) resolvedUnits.push(target);
+            events.push({ type: 'attack_resolved', resolution });
+        }
+    }
+
+    // Marks, conductors and flat reflect answer the units the main hit landed on.
+    const chainDetonated = new Set<string>();
+    for (const target of resolvedUnits) {
+        const resolution = resolutions.get(target.id);
+        if (!resolution?.isHit || target.status !== 'alive') continue;
+
+        // A `chain_detonation` mark pays extra when another chaos hit lands and
+        // can set off its neighbours' marks, once each. Every extra mark costs
+        // the caster recoil.
+        if (action.elementId === 'chaos') {
+            const mark = target.effects.find((effect) => effect.chainDetonation && effect.sourceId !== action.id);
+            if (mark?.chainDetonation) {
+                dealFlatDamage(
+                    events,
+                    actor,
+                    target,
+                    mark.chainDetonation.power,
+                    action.id,
+                    action.damageType,
+                    random,
+                );
+
+                const neighbours = state.units.filter((unit) => (
+                    unit.status === 'alive'
+                    && unit.id !== target.id
+                    && unit.line === target.line
+                    && unit.effects.some((effect) => effect.chainDetonation)
+                    && !chainDetonated.has(unit.id)
+                ));
+                for (const neighbour of neighbours) {
+                    chainDetonated.add(neighbour.id);
+                    const neighbourMark = neighbour.effects.find((effect) => effect.chainDetonation);
+                    if (!neighbourMark?.chainDetonation) continue;
+                    dealFlatDamage(
+                        events,
+                        actor,
+                        neighbour,
+                        neighbourMark.chainDetonation.power,
+                        action.id,
+                        action.damageType,
+                        random,
+                    );
+                    neighbour.effects = neighbour.effects.filter((effect) => effect !== neighbourMark);
+                    events.push({ type: 'effect_expired', unitId: neighbour.id, effectId: neighbourMark.effectId });
+                    if (neighbourMark.chainDetonation.recoilPerTarget > 0) {
+                        events.push(...changeResource(actor, 'hp', -neighbourMark.chainDetonation.recoilPerTarget));
+                    }
+                }
+            }
+        }
+
+        // A conductor carries an electric hit to the nearest enemy; a Lapis
+        // skill grounds it, consumes the status and shields its nearest ally.
+        const conductor = target.effects.find((effect) => effect.conductor);
+        if (conductor?.conductor) {
+            if (action.elementId === 'chaos') {
+                const jumpTarget = selectConductorTarget(state, target);
+                if (jumpTarget) {
+                    dealFlatDamage(
+                        events,
+                        actor,
+                        jumpTarget,
+                        conductor.conductor.jumpPower,
+                        action.id,
+                        action.damageType,
+                        random,
+                    );
+                }
+            } else if (action.elementId === 'lapis') {
+                target.effects = target.effects.filter((effect) => effect !== conductor);
+                events.push({ type: 'effect_expired', unitId: target.id, effectId: conductor.effectId });
+
+                const shield = groundConductorShield(conductor);
+                const ally = [...state.units]
+                    .filter((unit) => unit.status === 'alive' && unit.side === target.side && unit.id !== target.id)
+                    .sort((a, b) => Math.abs(a.slot - target.slot) - Math.abs(b.slot - target.slot))[0];
+                if (shield && ally) {
+                    const applied = applyEffectToUnit(ally, shield, actor.id, 'lapis', random);
+                    if (applied) events.push(applied);
+                }
+            }
+        }
+
+        // A flat reflect status throws authored PWR back at the attacker.
+        const reflect = target.effects.find((effect) => effect.reflect);
+        if (reflect?.reflect && (reflect.reflect.chance ?? 1) > 0 && resolution.finalDamage > 0) {
+            if ((reflect.reflect.chance ?? 1) >= 1 || random() < (reflect.reflect.chance ?? 1)) {
+                const amount = Math.max(0, reflect.reflect.power);
+                actor.currentHp = Math.max(0, actor.currentHp - amount);
+                events.push({
+                    type: 'damage_reflected',
+                    sourceId: target.id,
+                    targetId: actor.id,
+                    abilityId: reflect.effectId,
+                    abilityName: reflect.statusEffect ?? 'Reflect',
+                    isHit: true,
+                    amount,
+                    targetHpAfter: actor.currentHp,
+                });
+                if (reflect.reflect.consume) {
+                    target.effects = target.effects.filter((effect) => effect !== reflect);
+                    events.push({ type: 'effect_expired', unitId: target.id, effectId: reflect.effectId });
+                }
+            }
+        }
+    }
+
+    // A landed hit on a target carrying the authored status trims the caster's
+    // own cooldowns (`arc_lash` on a Paralyzed target).
+    if (action.cooldownReset) {
+        const landed = resolvedUnits.some((target) => (
+            target.status === 'alive'
+            && resolutions.get(target.id)?.isHit
+            && hasStatusLabel(target, action.cooldownReset?.status ?? '')
+        ));
+        if (landed) {
+            for (const actionId of Object.keys(actor.cooldowns)) {
+                const remaining = actor.cooldowns[actionId] - (action.cooldownReset.amount || 1);
+                if (remaining <= 0) delete actor.cooldowns[actionId];
+                else actor.cooldowns[actionId] = remaining;
+            }
+        }
+    }
+
+    // Recoil the caster pays for a reckless action, flat or as a fraction of
+    // the main hit.
+    if (action.recoil) {
+        const flat = Math.max(0, action.recoil.hp ?? 0);
+        const fraction = Math.max(0, action.recoil.fractionOfDamage ?? 0);
+        const amount = Math.round(flat + (primaryResolution?.finalDamage ?? 0) * fraction);
+        if (amount > 0) events.push(...changeResource(actor, 'hp', -amount));
+    }
+
+    // A blast that cannot push because the target line is full reflects part of
+    // the blow onto its own caster.
+    if (action.noSpaceRecoil && primaryTarget && primaryResolution && mainHit) {
+        if (!canPlaceInLine(state.units, primaryTarget.side, primaryTarget.line)) {
+            const amount = Math.round(primaryResolution.finalDamage * action.noSpaceRecoil.fraction);
+            if (amount > 0) events.push(...changeResource(actor, 'hp', -amount));
+        }
+    }
+
+    // Reckless area blasts also scar the caster's own line.
+    if (action.friendlyFire) {
+        const spec = action.friendlyFire;
+        if ((spec.chance ?? 1) >= 1 || random() < (spec.chance ?? 1)) {
+            const power = spec.damage
+                ?? Math.round(action.power * (spec.percentOfPower ?? 0));
+            if (power > 0) {
+                const allies = selectFriendlyFireTargets(
+                    state,
+                    actor,
+                    spec.scope ?? 'allies_all',
+                    primaryTarget?.line ?? actor.line,
+                );
+                for (const ally of allies) {
+                    dealFlatDamage(events, actor, ally, power, action.id, action.damageType, random);
+                }
+            }
+        }
+    }
+
+    // A demolition blast throws a secondary charge around every target it
+    // defeated.
+    if (action.onKillDetonation) {
+        for (const target of resolvedUnits) {
+            if (target.currentHp > 0 && target.status === 'alive') continue;
+            const targets = selectOnKillTargets(state, target, action.onKillDetonation.includeAllies ?? true);
+            for (const victim of targets) {
+                dealFlatDamage(
+                    events,
+                    actor,
+                    victim,
+                    action.onKillDetonation.power,
+                    action.id,
+                    action.damageType,
+                    random,
+                );
+            }
+        }
+    }
+
+    // The explosive ladder grows after the action, whatever it hit.
+    events.push(...applyInstabilityCharge(actor, action, random));
 }
 
 /**

@@ -140,6 +140,43 @@ function scaleEffect(effect: AttackEffect, factor: number): AttackEffect {
         next.random_buff = { ...effect.random_buff, amount: scaleRounded(effect.random_buff.amount, factor) };
     }
     if (effect.heal_on_kill !== undefined) next.heal_on_kill = scaleRounded(effect.heal_on_kill, factor);
+    // Chaos outputs: marks, detonations, jumps and fields grow with the tier.
+    if (effect.detonate_on_turn) {
+        next.detonate_on_turn = {
+            ...effect.detonate_on_turn,
+            power: scaleRounded(effect.detonate_on_turn.power, factor),
+            scale_per_turn: effect.detonate_on_turn.scale_per_turn === undefined
+                ? undefined
+                : scaleRounded(effect.detonate_on_turn.scale_per_turn, factor),
+            max_power: effect.detonate_on_turn.max_power === undefined || effect.detonate_on_turn.max_power === Number.POSITIVE_INFINITY
+                ? effect.detonate_on_turn.max_power
+                : scaleRounded(effect.detonate_on_turn.max_power, factor),
+        };
+    }
+    if (effect.chain_detonation) {
+        next.chain_detonation = {
+            ...effect.chain_detonation,
+            power: scaleRounded(effect.chain_detonation.power, factor),
+        };
+    }
+    if (effect.conductor) {
+        next.conductor = {
+            ...effect.conductor,
+            jump_power: scaleRounded(effect.conductor.jump_power, factor),
+        };
+    }
+    if (effect.reflect) {
+        next.reflect = { ...effect.reflect, power: scaleRounded(effect.reflect.power, factor) };
+    }
+    if (effect.trip_on_action) {
+        next.trip_on_action = {
+            ...effect.trip_on_action,
+            damage: scaleRounded(effect.trip_on_action.damage, factor),
+            expire_damage: effect.trip_on_action.expire_damage === undefined
+                ? undefined
+                : scaleRounded(effect.trip_on_action.expire_damage, factor),
+        };
+    }
 
     return next;
 }
@@ -192,6 +229,24 @@ export function applySkillLevel(skill: PublicAttack, level: number): PublicAttac
     };
 
     if (Array.isArray(skill.effects)) next.effects = skill.effects.map((effect) => scaleEffect(effect, powerFactor));
+
+    // Chaos action outputs that are not driven by `power` (secondary blasts,
+    // shrapnel, backline clips and friendly splash) scale with the tier too.
+    if (skill.shrapnel) {
+        next.shrapnel = { ...skill.shrapnel, power: scaleRounded(skill.shrapnel.power, powerFactor) };
+    }
+    if (skill.backlane_splash) {
+        next.backlane_splash = { ...skill.backlane_splash, power: scaleRounded(skill.backlane_splash.power, powerFactor) };
+    }
+    if (skill.friendly_fire?.damage !== undefined) {
+        next.friendly_fire = { ...skill.friendly_fire, damage: scaleRounded(skill.friendly_fire.damage, powerFactor) };
+    }
+    if (skill.on_kill_detonation) {
+        next.on_kill_detonation = {
+            ...skill.on_kill_detonation,
+            power: scaleRounded(skill.on_kill_detonation.power, powerFactor),
+        };
+    }
 
     return next;
 }

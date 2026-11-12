@@ -1,0 +1,1002 @@
+skills:
+  # ---------------------------------------------------------------------------
+  # Burst
+  # ---------------------------------------------------------------------------
+  - id: spark
+    name: Spark
+    description: "A tiny pop of unstable energy that leaves the target Jolted, slowing it and spoiling its aim for a turn."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 8 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: spark_jolt
+        status_effect: Jolted
+        apply_to: target
+        turns: 1
+        polarity: negative
+        debuff: { speed: 8, accuracy: 5 }
+
+  - id: burst
+    name: Burst
+    description: "A wide, unstable detonation. Its damage swings far above and far below the norm."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [spark] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 18 }
+    damage_variance: [0.6, 1.4]
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+
+  - id: flicker_mark
+    name: Flicker Mark
+    description: "Plants a weak rupture mark. When the marked enemy's turn arrives, the mark detonates and damages its line."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [burst] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 10 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: flicker_mark
+        status_effect: Flicker Mark
+        apply_to: target
+        turns: 2
+        polarity: negative
+        detonate_on_turn: { power: 10, include_line: true }
+
+  - id: rupture_mark
+    name: Rupture Mark
+    description: "A strong mark that detonates on the target's turn. The longer it waits, the harder it bursts, up to 50 PWR."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [flicker_mark] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 22 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 16, stamina: 0, cooldown: 1 }
+    effects:
+      - effect_id: rupture_mark
+        status_effect: Rupture Mark
+        apply_to: target
+        turns: 3
+        polarity: negative
+        detonate_on_turn: { power: 22, scale_per_turn: 4, max_power: 50, include_line: true }
+
+  - id: time_bomb
+    name: Time Bomb
+    description: "A ticking charge. It may detonate when the target's turn comes, dealing 14 PWR and costing the target that turn."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [flicker_mark] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 14 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 12, stamina: 0, cooldown: 1 }
+    effects:
+      - effect_id: time_bomb
+        status_effect: Time Bomb
+        apply_to: target
+        turns: 2
+        polarity: negative
+        detonate_on_turn: { power: 14, turn_skip_chance: 0.35 }
+
+  - id: volley_burst
+    name: Volley Burst
+    description: "Four rapid detonations that scale with magic attack. Each hit leaves a small rupture mark on the target."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [burst] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 7 }
+    accuracy: 95
+    hit_count: 4
+    costs: { mana: 14, stamina: 0, cooldown: 1 }
+    effects:
+      - effect_id: volley_mark
+        status_effect: Volley Mark
+        apply_to: target
+        turns: 2
+        polarity: negative
+        detonate_on_turn: { power: 8, include_line: true }
+
+  - id: unstable_blast
+    name: Unstable Blast
+    description: "A wildly variable blast that can crit for double. Every explosive builds Instability, raising damage and variance; at three charges the next blast may detonate prematurely."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [burst] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 18 }
+    damage_variance: [0.5, 1.5]
+    crit_multiplier: 2
+    accuracy: 80
+    hit_count: 1
+    costs: { mana: 16, stamina: 0, cooldown: 1 }
+    instability: { status: Instability, max: 3, damage_per_charge: 0.1, self_damage: 12, self_damage_chance: 0.25, turns: 3 }
+
+  - id: detonate
+    name: Detonate
+    description: "A heavy delayed detonation that lowers magic defence and marks the target. Further Chaos hits on a marked target deal +8 PWR and can set off adjacent marks."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [volley_burst] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 28 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 24, stamina: 0, cooldown: 1 }
+    effects:
+      - effect_id: detonate_mdef
+        status_effect: Shattered Focus
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { magical_defense: 8 }
+      - effect_id: marked_for_detonation
+        status_effect: Marked for Detonation
+        apply_to: target
+        turns: 2
+        polarity: negative
+        chain_detonation: { power: 8, recoil_per_target: 4 }
+
+  - id: shatter_burst
+    name: Shatter Burst
+    description: "A crushing blast that lowers physical defence. It can clip the enemy rear line, and a full target line reflects part of the blow onto the caster."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [detonate] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 32 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 30, stamina: 0, cooldown: 2 }
+    backlane_splash: { chance: 0.3, power: 8, both: true }
+    no_space_recoil: { fraction: 0.5 }
+    effects:
+      - effect_id: shatter_pdef
+        status_effect: Shattered Guard
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { physical_defense: 10 }
+
+  - id: cataclysm
+    name: Cataclysm
+    description: "A field-wide blast that costs the caster 8 HP and may catch nearby allies in the shockwave."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [detonate, unstable_blast] }
+    learning_cost: { experience_points: 7 }
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 26 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 32, stamina: 0, cooldown: 2 }
+    recoil: { hp: 8 }
+    friendly_fire: { damage: 8, chance: 0.5, scope: allies_all }
+
+  - id: explosion
+    name: Explosion
+    description: "An area blast that costs 10 HP and splashes 4 HP onto the caster's allies. The ground stays unstable, detonating again when someone acts on it."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [burst] }
+    learning_cost: { experience_points: 2 }
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 20 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 24, stamina: 0, cooldown: 1 }
+    recoil: { hp: 10 }
+    friendly_fire: { damage: 4, chance: 1, scope: allies_all }
+    effects:
+      - effect_id: unstable_ground
+        status_effect: Unstable Ground
+        apply_to: target
+        turns: 2
+        polarity: negative
+        trip_on_action:
+          actions: [attack, skill, weapon]
+          chance: 1
+          damage: 8
+          max_triggers: 1
+          expire_damage: 8
+
+  - id: shockwave
+    name: Shockwave
+    description: "A sweeping blast that slows every enemy. After the main damage, low-accuracy shrapnel scatters through neighbouring squares, allies included."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [explosion] }
+    learning_cost: { experience_points: 3 }
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 18 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 22, stamina: 0, cooldown: 1 }
+    shrapnel: { count: 3, power: 5, accuracy: 40, include_allies: true }
+    effects:
+      - effect_id: shockwave_slow
+        status_effect: Shocked
+        apply_to: target
+        turns: 1
+        polarity: negative
+        debuff: { speed: 10 }
+
+  - id: concussive_blast
+    name: Concussive Blast
+    description: "A focused shock that slows the target for two turns. A low chance catches the enemy rear line for 8 PWR as well."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [explosion] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 24 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    backlane_splash: { chance: 0.3, power: 8, both: true }
+    effects:
+      - effect_id: concussive_slow
+        status_effect: Concussed
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { speed: 10 }
+
+  - id: blast_rush
+    name: Blast Rush
+    description: "A reckless forward blast that costs 8 HP. It can clip the rear line and leaves an unstable zone that erupts when someone moves through it."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [concussive_blast] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 24 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 20, stamina: 0, cooldown: 1 }
+    recoil: { hp: 8 }
+    backlane_splash: { chance: 0.3, power: 8, both: true }
+    effects:
+      - effect_id: unstable_zone
+        status_effect: Unstable Zone
+        apply_to: target
+        turns: 2
+        polarity: negative
+        trip_on_action:
+          actions: [switch_line]
+          chance: 1
+          damage: 12
+          max_triggers: 1
+          expire_damage: 12
+
+  - id: minefield
+    name: Minefield
+    description: "No direct damage. Every enemy who moves through the field takes 14 PWR and is slowed."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: utility
+    learning_requirements: { required_attack_ids: [explosion] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_all
+    costs: { mana: 20, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: minefield
+        status_effect: Minefield
+        apply_to: target
+        turns: 3
+        polarity: negative
+        trip_on_action:
+          actions: [switch_line]
+          chance: 1
+          damage: 14
+          max_triggers: 1
+          spawn:
+            status_effect: Mired
+            turns: 1
+            debuff: { speed: 8 }
+
+  - id: shrapnel_storm
+    name: Shrapnel Storm
+    description: "Three waves of jagged debris. After the main hits, low-accuracy shrapnel scatters across any entity in reach, allies included."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [shockwave, concussive_blast] }
+    learning_cost: { experience_points: 6 }
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 9 }
+    accuracy: 90
+    hit_count: 3
+    costs: { mana: 24, stamina: 0, cooldown: 1 }
+    shrapnel: { count: 3, power: 5, accuracy: 40, include_allies: true }
+
+  - id: demolition
+    name: Demolition
+    description: "A crushing area blast that lowers physical defence. Every target it defeats detonates again, damaging entities beside it, allies included."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: attack
+    learning_requirements: { required_attack_ids: [shrapnel_storm] }
+    learning_cost: { experience_points: 5 }
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 26 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 30, stamina: 0, cooldown: 2 }
+    on_kill_detonation: { power: 12, include_allies: true }
+    effects:
+      - effect_id: demolition_pdef
+        status_effect: Exposed
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { physical_defense: 10 }
+
+  - id: precision_burst
+    name: Precision Burst
+    description: "For two turns the caster gains +15 accuracy and focuses shrapnel on the main target instead of scattering it."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: buff
+    learning_requirements: { required_attack_ids: [shrapnel_storm] }
+    learning_cost: { experience_points: 4 }
+    targeting: self
+    costs: { mana: 11, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: precision_burst
+        status_effect: Precision Burst
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff: { accuracy: 15 }
+
+  - id: overcharge
+    name: Overcharge
+    description: "Floods the caster's magic attack for three turns, adding +20 MATK at the cost of 8 HP per turn."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: buff
+    learning_requirements: { required_attack_ids: [burst] }
+    learning_cost: { experience_points: 1 }
+    targeting: self
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: overcharge
+        status_effect: Overcharged
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { magical_attack: 20 }
+        self_upkeep: { hp: 8 }
+
+  - id: adrenal_surge
+    name: Adrenal Surge
+    description: "A short rush of power: +12 MATK and +10 speed for two turns, paid for with 5 HP per turn."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: buff
+    learning_requirements: { required_attack_ids: [overcharge] }
+    learning_cost: { experience_points: 3 }
+    targeting: self
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: adrenal_surge
+        status_effect: Adrenal Surge
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff: { magical_attack: 12, speed: 10 }
+        self_upkeep: { hp: 5 }
+
+  - id: recoil_guard
+    name: Recoil Guard
+    description: "Hardens the caster with +12 physical defence and throws 8 PWR back at every attacker, at the cost of 4 HP per turn."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: buff
+    learning_requirements: { required_attack_ids: [overcharge] }
+    learning_cost: { experience_points: 3 }
+    targeting: self
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: recoil_guard
+        status_effect: Recoil Guard
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 12 }
+        self_upkeep: { hp: 4 }
+        reflect: { power: 8, chance: 1, consume: false }
+
+  - id: volatile_core
+    name: Volatile Core
+    description: "The caster becomes a walking detonation: +20 MATK, +12 speed and +10 physical defence for three turns, paid for with 10 HP per turn."
+    element_id: chaos
+    sfx: chaos_explosion
+    kind: buff
+    learning_requirements: { required_attack_ids: [adrenal_surge, recoil_guard] }
+    learning_cost: { experience_points: 6 }
+    targeting: self
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: volatile_core
+        status_effect: Volatile Core
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { magical_attack: 20, speed: 12, physical_defense: 10 }
+        self_upkeep: { hp: 10 }
+
+  # ---------------------------------------------------------------------------
+  # Electricity
+  # ---------------------------------------------------------------------------
+  - id: charge
+    name: Charge
+    description: "A simple jolt of current with perfect accuracy."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 8 }
+    accuracy: 100
+    hit_count: 1
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+
+  - id: lightning_bolt
+    name: Lightning Bolt
+    description: "A focused bolt of lightning that never misses."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [charge] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 18 }
+    accuracy: 100
+    hit_count: 1
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+
+  - id: thunderclap
+    name: Thunderclap
+    description: "A crack of thunder with a 30% chance to stun the target for a turn."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [lightning_bolt] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 22 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 16, stamina: 0, cooldown: 1 }
+    effects:
+      - effect_id: thunderclap_stun
+        status_effect: Stunned
+        apply_to: target
+        turns: 1
+        polarity: negative
+        effect_hit_chance: 0.3
+        prevent_actions: [attack, skill, weapon]
+
+  - id: discharge
+    name: Discharge
+    description: "Releases current into every enemy on the field."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [charge] }
+    learning_cost: { experience_points: 1 }
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 12 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+
+  - id: chain_lightning
+    name: Chain Lightning
+    description: "A bolt with a 65% chance to leap to one nearby enemy for 60% of its power. Rear-line targets are slightly less likely."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [charge] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 16 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    chain: { chance: 0.65, jumps: 1, power_percent: 0.6, accuracy: 95, weighted_backlane: true }
+
+  - id: arc_burst
+    name: Arc Burst
+    description: "A stronger bolt that leaps up to two times, each jump dealing 60% of the previous hit. Unlike most chains, allies can be caught."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [lightning_bolt] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 22 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 16, stamina: 0, cooldown: 1 }
+    chain: { chance: 1, jumps: 2, power_percent: 0.6, accuracy: 95, include_allies: true, weighted_backlane: true }
+
+  - id: forked_lightning
+    name: Forked Lightning
+    description: "Two forks seek two enemies not yet hit, each dealing 70% of the bolt's power. Wet targets are preferred."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [chain_lightning] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 14 }
+    accuracy: 95
+    hit_count: 2
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    chain: { chance: 1, jumps: 1, branches: 2, power_percent: 0.7, accuracy: 95, prioritize_status: Wet }
+
+  - id: cascading_arc
+    name: Cascading Arc
+    description: "A spreading arc: the first jump succeeds 70% of the time, the second 50%. Each jump deals 60% of the previous power."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [chain_lightning] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 16 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 20, stamina: 0, cooldown: 1 }
+    chain: { chance: 0.7, chance_step: -0.2, min_chance: 0.2, jumps: 2, power_percent: 0.6, accuracy: 90, weighted_backlane: true }
+
+  - id: arc_lash
+    name: Arc Lash
+    description: "Three quick lashes. A target already Paralyzed takes bonus damage and has one of its cooldowns shortened instead of being paralysed again."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [discharge] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 8 }
+    accuracy: 95
+    hit_count: 3
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    bonus_vs_status:
+      - status: Paralyzed
+        multiplier: 1.35
+        defense_pierce: 0
+    cooldown_reset: { status: Paralyzed, amount: 1 }
+    effects:
+      - effect_id: arc_lash_paralysis
+        status_effect: Paralyzed
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.35
+        prevent_actions: [attack, skill, weapon]
+
+  - id: overload_arc
+    name: Overload Arc
+    description: "Two sweeping arcs that can jump twice and may paralyse. Running dry leaves the caster slowed."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [arc_lash] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 15 }
+    accuracy: 90
+    hit_count: 2
+    costs: { mana: 24, stamina: 0, cooldown: 1 }
+    chain: { chance: 0.8, jumps: 2, power_percent: 0.6, accuracy: 90, weighted_backlane: true, stun_chance: 0.25 }
+
+  - id: chain_storm
+    name: Chain Storm
+    description: "A storm that keeps leaping: 75% spread, falling 15 points per jump to a floor of 15%. Every target it reaches has a 20% chance to be Stunned."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [cascading_arc, arc_burst] }
+    learning_cost: { experience_points: 7 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 24 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 32, stamina: 0, cooldown: 2 }
+    chain: { chance: 0.75, chance_step: -0.15, min_chance: 0.15, jumps: 8, power_percent: 0.6, accuracy: 90, weighted_backlane: true, stun_chance: 0.2 }
+
+  - id: shock
+    name: Shock
+    description: "Paralyses the target for two turns. The first skill it attempts may be interrupted, though its costs are still paid. Control-immune foes take 14 PWR instead."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: control
+    learning_requirements: { required_attack_ids: [charge] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 14 }
+    accuracy: 100
+    hit_count: 1
+    costs: { mana: 16, stamina: 0, cooldown: 1 }
+    control_immune_damage: 14
+    effects:
+      - effect_id: shock_paralysis
+        status_effect: Paralyzed
+        apply_to: target
+        turns: 2
+        polarity: negative
+        interrupt: { chance: 0.5, actions: [skill, weapon] }
+
+  - id: stun_bolt
+    name: Stun Bolt
+    description: "A heavy bolt with a 40% chance to stun."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [shock] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 24 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 16, stamina: 0, cooldown: 1 }
+    effects:
+      - effect_id: stun_bolt_stun
+        status_effect: Stunned
+        apply_to: target
+        turns: 1
+        polarity: negative
+        effect_hit_chance: 0.4
+        prevent_actions: [attack, skill, weapon]
+
+  - id: numbing_current
+    name: Numbing Current
+    description: "No direct damage. Slows the target and spoils its aim for three turns, and steals part of the next mana it spends."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: debuff
+    learning_requirements: { required_attack_ids: [shock] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: numbing_current
+        status_effect: Numbed
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff: { speed: 12, accuracy: 10 }
+      - effect_id: numbing_steal
+        status_effect: Numbed
+        apply_to: target
+        turns: 2
+        polarity: negative
+        spend_steal: { resource: mana, percent: 0.25, max: 15 }
+
+  - id: static_overload
+    name: Static Overload
+    description: "Overloads every enemy for three turns: 8 PWR per turn, -15 accuracy, and part of their next mana spend is stolen."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: debuff
+    learning_requirements: { required_attack_ids: [numbing_current] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_all
+    costs: { mana: 24, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: static_overload
+        status_effect: Overloaded
+        apply_to: target
+        turns: 3
+        polarity: negative
+        damage_per_turn: 8
+        debuff: { accuracy: 15 }
+      - effect_id: static_overload_steal
+        status_effect: Overloaded
+        apply_to: target
+        turns: 2
+        polarity: negative
+        spend_steal: { resource: mana, percent: 0.2, max: 12 }
+
+  - id: paralyzing_field
+    name: Paralyzing Field
+    description: "Paralyses every enemy for a turn and slows them. The field lingers for three turns, shocking and possibly paralysing the first entities to act in it."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: control
+    learning_requirements: { required_attack_ids: [stun_bolt, numbing_current] }
+    learning_cost: { experience_points: 6 }
+    targeting: enemies_all
+    costs: { mana: 24, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: paralyzing_field_initial
+        status_effect: Paralyzed
+        apply_to: target
+        turns: 1
+        polarity: negative
+        prevent_actions: [attack, skill, weapon]
+        debuff: { speed: 10 }
+      - effect_id: paralyzing_field
+        status_effect: Paralyzing Field
+        apply_to: target
+        turns: 3
+        polarity: negative
+        trip_on_action:
+          actions: [attack, skill, weapon, switch_line]
+          chance: 1
+          damage: 12
+          max_triggers: 3
+          spawn:
+            status_effect: Paralyzed
+            turns: 1
+            prevent_actions: [attack, skill, weapon]
+            debuff: { speed: 10 }
+
+  - id: static_field
+    name: Static Field
+    description: "The caster becomes a conductor: reflects 12 PWR to attackers, and electric hits on the caster jump to the nearest enemy for 8 PWR. A Lapis skill can ground it into a shield."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: buff
+    learning_requirements: { required_attack_ids: [charge] }
+    learning_cost: { experience_points: 1 }
+    targeting: self
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: static_field
+        status_effect: Conductor
+        apply_to: self
+        turns: 3
+        polarity: positive
+        reflect: { power: 12, chance: 1, consume: false }
+        conductor: { jump_power: 8, grounded_by_elements: [lapis], ground_shield_percent: 12 }
+
+  - id: conductive_skin
+    name: Conductive Skin
+    description: "The caster gains +10 physical defence, reflects 16 PWR, and conducts electric hits onward for 10 PWR."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: buff
+    learning_requirements: { required_attack_ids: [static_field] }
+    learning_cost: { experience_points: 3 }
+    targeting: self
+    costs: { mana: 20, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: conductive_skin
+        status_effect: Conductive Skin
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 10 }
+        reflect: { power: 16, chance: 1, consume: false }
+        conductor: { jump_power: 10, grounded_by_elements: [lapis], ground_shield_percent: 12 }
+
+  - id: capacitor
+    name: Capacitor
+    description: "Raises magic defence and magic attack, restores 6 mana per turn, and steals part of the next mana an enemy spends."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: buff
+    learning_requirements: { required_attack_ids: [conductive_skin] }
+    learning_cost: { experience_points: 4 }
+    targeting: self
+    costs: { mana: 15, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: capacitor
+        status_effect: Capacitor
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { magical_defense: 12, magical_attack: 8 }
+        regen_per_turn: { mana: 6 }
+      - effect_id: capacitor_steal
+        status_effect: Capacitor Charge
+        apply_to: enemies_all
+        turns: 3
+        polarity: negative
+        spend_steal: { resource: mana, percent: 0.25, max: 20 }
+
+  - id: grounding
+    name: Grounding
+    description: "Seals movement for a turn and slows every enemy. A grounding field lingers, shocking and possibly paralysing those who act in it."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: utility
+    learning_requirements: { required_attack_ids: [charge] }
+    learning_cost: { experience_points: 3 }
+    targeting: enemies_all
+    costs: { mana: 20, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: grounding_seal
+        status_effect: Grounded
+        apply_to: target
+        turns: 1
+        polarity: negative
+        prevent_actions: [switch_line]
+        debuff: { speed: 8 }
+      - effect_id: grounding_field
+        status_effect: Grounding Field
+        apply_to: target
+        turns: 3
+        polarity: negative
+        trip_on_action:
+          actions: [attack, skill, weapon]
+          chance: 1
+          damage: 14
+          max_triggers: 3
+          spawn:
+            status_effect: Paralyzed
+            turns: 1
+            prevent_actions: [attack, skill, weapon]
+
+  - id: insulating_aura
+    name: Insulating Aura
+    description: "Grants every ally +8 physical and magic defence for three turns. A grounded conductor can still be turned into a shield by a Lapis skill."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: buff
+    learning_requirements: { required_attack_ids: [grounding] }
+    learning_cost: { experience_points: 4 }
+    targeting: allies_all
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: insulating_aura
+        status_effect: Insulated
+        apply_to: allies_all
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 8, magical_defense: 8 }
+
+  - id: tesla_coil
+    name: Tesla Coil
+    description: "A storm coils through every enemy for heavy damage, reflecting 16 PWR and with a 25% stun chance. The caster may pay extra mana to add jumps or raise the paralysis chance."
+    element_id: chaos
+    sfx: chaos_electricity
+    kind: attack
+    learning_requirements: { required_attack_ids: [capacitor, insulating_aura] }
+    learning_cost: { experience_points: 7 }
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 26 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 32, stamina: 0, cooldown: 2 }
+    chain: { chance: 0.85, jumps: 2, power_percent: 0.6, accuracy: 90, weighted_backlane: true, stun_chance: 0.25 }
+    effects:
+      - effect_id: tesla_coil_reflect
+        status_effect: Tesla Coil
+        apply_to: self
+        turns: 2
+        polarity: positive
+        reflect: { power: 16, chance: 1, consume: false }

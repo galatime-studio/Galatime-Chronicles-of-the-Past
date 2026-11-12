@@ -603,6 +603,7 @@ function readTripOnAction(
         effectId: `${readString(spawnRecord.status_effect, 'slipped').trim().toLowerCase()}_slip`,
         turns: Math.max(1, Math.round(readNumber(spawnRecord.turns, 1))),
         debuff: (readStatDelta(spawnRecord.debuff) ?? null) as CombatStatDelta | null,
+        preventActions: readTrimmedStringList(spawnRecord.prevent_actions),
     } : null;
 
     return {
@@ -611,7 +612,111 @@ function readTripOnAction(
         chance: clamp(readNumber(record.chance, 0.5), 0, 1),
         damage: Math.max(0, readNumber(record.damage, 0)),
         spawn,
+        maxTriggers: readOptionalPositive(record.max_triggers),
+        triggers: 0,
+        expireDamage: Math.max(0, readNumber(record.expire_damage, 0)),
     };
+}
+
+/** Reads an optional positive integer, returning `null` when absent or zero. */
+function readOptionalPositive(source: unknown): number | null {
+    const value = Math.round(readNumber(source, 0));
+    return value > 0 ? value : null;
+}
+
+/** Reads a `detonate_on_turn` mark (`flicker_mark`, `time_bomb`). */
+function readDetonateOnTurn(
+    source: unknown,
+): CombatEffectInstance['detonateOnTurn'] {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const power = Math.max(0, readNumber(record.power, 0));
+    if (power <= 0) return null;
+
+    const maxPower = readNumber(record.max_power, 0);
+    return {
+        power,
+        scalePerTurn: Math.max(0, readNumber(record.scale_per_turn, 0)),
+        // No authored cap means the mark can keep growing with time.
+        maxPower: maxPower > 0 ? Math.max(power, maxPower) : Number.POSITIVE_INFINITY,
+        includeLine: readBoolean(record.include_line, false),
+        turnSkipChance: clamp(readNumber(record.turn_skip_chance, 0), 0, 1),
+    };
+}
+
+/** Reads a `chain_detonation` mark (`detonate`). */
+function readChainDetonation(
+    source: unknown,
+): CombatEffectInstance['chainDetonation'] {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const power = Math.max(0, readNumber(record.power, 0));
+    if (power <= 0) return null;
+
+    return {
+        power,
+        recoilPerTarget: Math.max(0, readNumber(record.recoil_per_target, 0)),
+    };
+}
+
+/** Reads a `conductor` status (`static_field`, `conductive_skin`). */
+function readConductor(source: unknown): CombatEffectInstance['conductor'] {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const jumpPower = Math.max(0, readNumber(record.jump_power, 0));
+    if (jumpPower <= 0) return null;
+
+    return {
+        jumpPower,
+        groundedByElements: readTrimmedStringList(record.grounded_by_elements),
+        groundShieldPercent: Math.max(0, readNumber(record.ground_shield_percent, 0)),
+    };
+}
+
+/** Reads an `interrupt` status (`shock`). */
+function readInterrupt(source: unknown): CombatEffectInstance['interrupt'] {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const chance = clamp(readNumber(record.chance, 0), 0, 1);
+    if (chance <= 0) return null;
+
+    return {
+        chance,
+        actions: readTrimmedStringList(record.actions),
+    };
+}
+
+/** Reads a flat `reflect` status (`recoil_guard`, `static_field`). */
+function readReflect(source: unknown): CombatEffectInstance['reflect'] {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const power = Math.max(0, readNumber(record.power, 0));
+    if (power <= 0) return null;
+
+    return {
+        power,
+        chance: clamp(readNumber(record.chance, 1), 0, 1),
+        consume: readBoolean(record.consume, true),
+    };
+}
+
+/** Reads a `spend_steal` status (`numbing_current`, `capacitor`). */
+function readSpendSteal(source: unknown): CombatEffectInstance['spendSteal'] {
+    const record = asRecord(source);
+    if (!record) return null;
+
+    const resource = readString(record.resource, 'mana') === 'stamina' ? 'stamina' : 'mana';
+    const percent = clamp(readNumber(record.percent, 0), 0, 1);
+    const amount = Math.max(0, readNumber(record.amount, 0));
+    const max = Math.max(0, readNumber(record.max, 0));
+    if (percent <= 0 && amount <= 0) return null;
+
+    return { resource, percent, amount, max };
 }
 
 /** Reads a `cleanse_per_turn` spec (`rain`); `polarity` defaults to negatives. */
@@ -802,6 +907,13 @@ export function createEffectInstance(
             const perTurn = Math.round(readNumber(spec.per_turn, 0));
             return perTurn > 0 ? { perTurn: Math.min(3, perTurn), used: 0 } : null;
         })(),
+        detonateOnTurn: readDetonateOnTurn(record.detonate_on_turn),
+        chainDetonation: readChainDetonation(record.chain_detonation),
+        conductor: readConductor(record.conductor),
+        interrupt: readInterrupt(record.interrupt),
+        reflect: readReflect(record.reflect),
+        spendSteal: readSpendSteal(record.spend_steal),
+        appliedTurnCount: 0,
     };
 
     instance.polarity = readPolarity(effect, instance);
@@ -930,7 +1042,13 @@ function carriesStatusPayload(instance: CombatEffectInstance): boolean {
         || instance.projectileAccuracy
         || instance.projectileMark
         || (instance.rangedEvasion ?? 0) > 0
-        || instance.projectileReroll,
+        || instance.projectileReroll
+        || instance.detonateOnTurn
+        || instance.chainDetonation
+        || instance.conductor
+        || instance.interrupt
+        || instance.reflect
+        || instance.spendSteal,
     );
 }
 
@@ -961,6 +1079,9 @@ export function applyEffectToUnit(
     const instance = createEffectInstance(
         effect, sourceId, elementId, outputMultiplier * modulation, phaseMultiplier, random,
     );
+    // Detonations scale from the bearer's own turn count, so stamp the landing
+    // turn while the target is still in hand.
+    instance.appliedTurnCount = unit.turnCount;
 
     // A landing that houses nothing a status can keep (a bare `move`, a
     // one-shot `turn_postpone` clause) resolves in the field and leaves no
@@ -1199,7 +1320,11 @@ export function tickUnitEffects(
 
         events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
 
-        // A focus status that runs out lets its holder choose targets again.
+        // A field that expires untouched still bites whoever stood on it
+        // (`blast_rush`, `grounding`).
+        if ((effect.tripOnAction?.expireDamage ?? 0) > 0) {
+            events.push(...changeResource(unit, 'hp', -(effect.tripOnAction?.expireDamage ?? 0)));
+        }
         if (effect.locksTarget && unit.lockedByEffectId === effect.effectId) {
             unit.lockedTargetId = null;
             unit.lockedByEffectId = null;
@@ -1876,12 +2001,18 @@ export function applyActionTriggers(
     random: CombatRandom,
 ): CombatEvent[] {
     const events: CombatEvent[] = [];
+    const spent: CombatEffectInstance[] = [];
 
     for (const effect of actor.effects) {
         const trap = effect.tripOnAction;
         if (!trap) continue;
         if (!trapActionsMatch(trap.actions, action.kind)) continue;
         if (trap.damageTypes?.length && !trap.damageTypes.includes(action.damageType)) continue;
+        if (trap.maxTriggers !== null && trap.maxTriggers !== undefined
+            && (trap.triggers ?? 0) >= trap.maxTriggers) {
+            spent.push(effect);
+            continue;
+        }
         if (trap.chance < 1 && random() >= trap.chance) continue;
 
         if (trap.damage > 0) {
@@ -1895,9 +2026,23 @@ export function applyActionTriggers(
                 status_effect: trap.spawn.statusEffect ?? '',
                 turns: trap.spawn.turns,
                 polarity: 'negative',
+                ...(trap.spawn.preventActions ? { prevent_actions: trap.spawn.preventActions } : {}),
                 ...(trap.spawn.debuff ? { debuff: trap.spawn.debuff as unknown as Record<string, number> } : {}),
             };
             actor.effects.push(createEffectInstance(synthetic, effect.sourceId, effect.elementId, 1, 1, random));
+        }
+
+        trap.triggers = (trap.triggers ?? 0) + 1;
+        if (trap.maxTriggers !== null && trap.maxTriggers !== undefined
+            && trap.triggers >= trap.maxTriggers) {
+            spent.push(effect);
+        }
+    }
+
+    if (spent.length > 0) {
+        actor.effects = actor.effects.filter((effect) => !spent.includes(effect));
+        for (const effect of spent) {
+            events.push({ type: 'effect_expired', unitId: actor.id, effectId: effect.effectId });
         }
     }
 
@@ -1921,21 +2066,51 @@ function trapActionsMatch(actions: readonly string[], kind: CombatAction['kind']
 export function applySpendTriggers(
     state: { units: readonly CombatUnit[] },
     unit: CombatUnit,
+    spend: Partial<Record<CombatResourceId, number>> = {},
 ): CombatEvent[] {
     const events: CombatEvent[] = [];
+    const consumed: CombatEffectInstance[] = [];
 
     for (const effect of unit.effects) {
         const trigger = effect.spendTrigger;
-        if (!trigger) continue;
-
-        if (trigger.damage > 0) {
-            events.push(...changeResource(unit, 'hp', -trigger.damage));
-        }
-        if (trigger.healToSource > 0) {
-            const source = state.units.find((candidate) => candidate.id === effect.sourceId);
-            if (source && source.status === 'alive') {
-                events.push(...changeResource(source, 'hp', trigger.healToSource));
+        if (trigger) {
+            if (trigger.damage > 0) {
+                events.push(...changeResource(unit, 'hp', -trigger.damage));
             }
+            if (trigger.healToSource > 0) {
+                const source = state.units.find((candidate) => candidate.id === effect.sourceId);
+                if (source && source.status === 'alive') {
+                    events.push(...changeResource(source, 'hp', trigger.healToSource));
+                }
+            }
+        }
+
+        const steal = effect.spendSteal;
+        if (steal) {
+            const spent = Math.max(0, spend[steal.resource] ?? 0);
+            if (spent > 0) {
+                const source = state.units.find((candidate) => candidate.id === effect.sourceId);
+                if (source && source.status === 'alive') {
+                    const wanted = steal.amount > 0
+                        ? steal.amount
+                        : Math.round(spent * steal.percent);
+                    const amount = steal.max > 0
+                        ? Math.min(steal.max, wanted)
+                        : wanted;
+                    if (amount > 0) {
+                        events.push(...changeResource(source, steal.resource, amount));
+                    }
+                }
+                // A stolen spend is a one-shot debt: the status is spent.
+                consumed.push(effect);
+            }
+        }
+    }
+
+    if (consumed.length > 0) {
+        unit.effects = unit.effects.filter((effect) => !consumed.includes(effect));
+        for (const effect of consumed) {
+            events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
         }
     }
 

@@ -36,6 +36,12 @@
         ['reroll', 'Segunda chance no ar'],
         ['upkeep', 'Manter carga'],
         ['rewind', 'Retroceder tempo'],
+        ['detonate', 'Detonar no turno'],
+        ['chain_detonation', 'Marca em cadeia'],
+        ['conductor', 'Condutor elétrico'],
+        ['interrupt', 'Interromper ação'],
+        ['reflect', 'Refletir dano fixo'],
+        ['spend_steal', 'Roubar gasto de recurso'],
     ];
     var TARGET_LABELS = {
         any_one: 'qualquer personagem', enemies_all: 'todos os inimigos',
@@ -419,6 +425,22 @@
         form.elements.bonus_per_charge_status.value = skill.bonus_per_charge?.status || '';
         form.elements.bonus_per_charge_multiplier.value = skill.bonus_per_charge?.multiplier_per_charge ?? '';
         form.elements.bonus_per_charge_consume.checked = Boolean(skill.bonus_per_charge?.consume);
+        if (form.elements.recoil_hp) form.elements.recoil_hp.value = skill.recoil?.hp ?? '';
+        if (form.elements.friendly_fire_damage) form.elements.friendly_fire_damage.value = skill.friendly_fire?.damage ?? '';
+        if (form.elements.backlane_power) form.elements.backlane_power.value = skill.backlane_splash?.power ?? '';
+        if (form.elements.backlane_chance) form.elements.backlane_chance.value = percentOf(skill.backlane_splash?.chance);
+        if (form.elements.no_space_recoil_fraction) form.elements.no_space_recoil_fraction.value = skill.no_space_recoil?.fraction ?? '';
+        if (form.elements.control_immune_damage) form.elements.control_immune_damage.value = skill.control_immune_damage ?? '';
+        if (form.elements.on_kill_detonation_power) form.elements.on_kill_detonation_power.value = skill.on_kill_detonation?.power ?? '';
+        if (form.elements.chain_jumps) form.elements.chain_jumps.value = skill.chain?.jumps ?? '';
+        if (form.elements.chain_power_percent) form.elements.chain_power_percent.value = percentOf(skill.chain?.power_percent);
+        if (form.elements.chain_chance) form.elements.chain_chance.value = percentOf(skill.chain?.chance ?? 1);
+        if (form.elements.chain_branches) form.elements.chain_branches.value = skill.chain?.branches ?? '';
+        if (form.elements.shrapnel_count) form.elements.shrapnel_count.value = skill.shrapnel?.count ?? '';
+        if (form.elements.shrapnel_power) form.elements.shrapnel_power.value = skill.shrapnel?.power ?? '';
+        if (form.elements.instability_self_damage) form.elements.instability_self_damage.value = skill.instability?.self_damage ?? '';
+        if (form.elements.cooldown_reset_status) form.elements.cooldown_reset_status.value = skill.cooldown_reset?.status ?? '';
+        if (form.elements.cooldown_reset_amount) form.elements.cooldown_reset_amount.value = skill.cooldown_reset?.amount ?? '';
         updatePowerFields(false);
         if (form.elements.power_kind.value === 'random' && form.elements.power_max) form.elements.power_max.value = power?.max ?? form.elements.power_value.value;
         if (form.elements.power_kind.value === 'attribute' && form.elements.power_stat) form.elements.power_stat.value = skill.power_scaling?.stat || 'speed';
@@ -879,6 +901,7 @@
             + '<div><span>Nível</span><strong>' + sim.tier.label + ' · poder ×' + round(sim.tier.powerFactor, 2) + ' · custo ×' + round(sim.tier.costFactor, 2) + '</strong></div>'
             + '</div>'
             + '<p class="sim-note">' + (sim.scalingNote ? escapeHtml(sim.scalingNote) + ' ' : '')
+            + (sim.chaosNote ? escapeHtml(sim.chaosNote) + ' ' : '')
             + 'Sem críticos e sem a variância (0.9 … 1.1): este é o valor esperado de um acerto, não uma tiragem.</p>';
     }
 
@@ -886,6 +909,16 @@
     function effectMechanicNotes(skill) {
         var notes = [];
         (skill.effects || []).forEach(function (effect) {
+            if (effect.detonate_on_turn) {
+                notes.push('Detona no turno do portador: ' + effect.detonate_on_turn.power + ' PWR'
+                    + (effect.detonate_on_turn.include_line ? ' na linha' : '')
+                    + (effect.detonate_on_turn.turn_skip_chance ? ' · ' + Math.round(effect.detonate_on_turn.turn_skip_chance * 100) + '% de perder o turno' : ''));
+            }
+            if (effect.chain_detonation) notes.push('Marca em cadeia: +' + effect.chain_detonation.power + ' PWR quando outro Chaos acerta');
+            if (effect.conductor) notes.push('Condutor: salta ' + effect.conductor.jump_power + ' PWR para o inimigo mais próximo');
+            if (effect.interrupt) notes.push('Interrupção: ' + Math.round(effect.interrupt.chance * 100) + '% de falhar a ação vigiada');
+            if (effect.reflect) notes.push('Reflete ' + effect.reflect.power + ' PWR fixo');
+            if (effect.spend_steal) notes.push('Rouba ' + (effect.spend_steal.amount ? effect.spend_steal.amount : Math.round((effect.spend_steal.percent || 0) * 100) + '%') + ' do próximo gasto');
             if (effect.confuse) {
                 var chance = effect.confusion_chance === undefined || effect.confusion_chance === null
                     ? 50 : Math.round(Number(effect.confusion_chance) * 100);
@@ -1125,6 +1158,103 @@
             if (!skill.bonus_per_charge.consume) delete skill.bonus_per_charge.consume;
         } else {
             delete skill.bonus_per_charge;
+        }
+
+        var recoilHp = form.elements.recoil_hp ? numberValue(form.elements.recoil_hp.value, 0) : 0;
+        if (recoilHp > 0) skill.recoil = { hp: recoilHp };
+        else delete skill.recoil;
+
+        var friendlyDamage = form.elements.friendly_fire_damage
+            ? numberValue(form.elements.friendly_fire_damage.value, 0) : 0;
+        if (friendlyDamage > 0) {
+            skill.friendly_fire = { damage: friendlyDamage, chance: 1, scope: 'allies_all' };
+        } else {
+            delete skill.friendly_fire;
+        }
+
+        var backlanePower = form.elements.backlane_power
+            ? numberValue(form.elements.backlane_power.value, 0) : 0;
+        if (backlanePower > 0) {
+            skill.backlane_splash = {
+                power: backlanePower,
+                chance: Math.min(1, Math.max(0,
+                    numberValue(form.elements.backlane_chance.value, 30) / 100)),
+                both: true,
+            };
+        } else {
+            delete skill.backlane_splash;
+        }
+
+        var noSpaceFraction = form.elements.no_space_recoil_fraction
+            ? numberValue(form.elements.no_space_recoil_fraction.value, 0) : 0;
+        if (noSpaceFraction > 0) skill.no_space_recoil = { fraction: Math.min(1, noSpaceFraction) };
+        else delete skill.no_space_recoil;
+
+        var controlDamage = form.elements.control_immune_damage
+            ? numberValue(form.elements.control_immune_damage.value, 0) : 0;
+        if (controlDamage > 0) skill.control_immune_damage = controlDamage;
+        else delete skill.control_immune_damage;
+
+        var onKillPower = form.elements.on_kill_detonation_power
+            ? numberValue(form.elements.on_kill_detonation_power.value, 0) : 0;
+        if (onKillPower > 0) skill.on_kill_detonation = { power: onKillPower, include_allies: true };
+        else delete skill.on_kill_detonation;
+
+        var chainJumps = form.elements.chain_jumps
+            ? numberValue(form.elements.chain_jumps.value, 0) : 0;
+        if (chainJumps > 0) {
+            skill.chain = {
+                chance: Math.min(1, Math.max(0,
+                    numberValue(form.elements.chain_chance.value, 100) / 100)),
+                jumps: chainJumps,
+                power_percent: Math.min(1, Math.max(0,
+                    numberValue(form.elements.chain_power_percent.value, 60) / 100)),
+                accuracy: numberValue(skill.accuracy, 95),
+                weighted_backlane: true,
+            };
+            var chainBranches = numberValue(form.elements.chain_branches.value, 1);
+            if (chainBranches > 1) skill.chain.branches = chainBranches;
+        } else {
+            delete skill.chain;
+        }
+
+        var shrapnelCount = form.elements.shrapnel_count
+            ? numberValue(form.elements.shrapnel_count.value, 0) : 0;
+        if (shrapnelCount > 0) {
+            skill.shrapnel = {
+                count: shrapnelCount,
+                power: numberValue(form.elements.shrapnel_power.value, 5),
+                accuracy: 40,
+                include_allies: true,
+            };
+        } else {
+            delete skill.shrapnel;
+        }
+
+        var instabilityDamage = form.elements.instability_self_damage
+            ? numberValue(form.elements.instability_self_damage.value, 0) : 0;
+        if (instabilityDamage > 0) {
+            skill.instability = {
+                status: 'Instability',
+                max: 3,
+                damage_per_charge: 0.1,
+                self_damage: instabilityDamage,
+                self_damage_chance: 0.25,
+                turns: 3,
+            };
+        } else {
+            delete skill.instability;
+        }
+
+        var cooldownResetStatus = form.elements.cooldown_reset_status
+            ? form.elements.cooldown_reset_status.value.trim() : '';
+        if (cooldownResetStatus) {
+            skill.cooldown_reset = {
+                status: cooldownResetStatus,
+                amount: Math.max(1, numberValue(form.elements.cooldown_reset_amount.value, 1)),
+            };
+        } else {
+            delete skill.cooldown_reset;
         }
         syncBonusVs(skill);
 
@@ -1444,7 +1574,49 @@
                 + '<label class="effect-field"><span>Estado da queda</span><input class="control" data-effect-field="trip_on_action.spawn.status_effect" value="' + escapeHtml((trip.spawn || {}).status_effect || '') + '" placeholder="Slipped"></label>'
                 + '<label class="effect-field"><span>Duração do estado</span><input class="control" data-effect-field="trip_on_action.spawn.turns" type="number" min="1" value="' + escapeHtml((trip.spawn || {}).turns ?? 1) + '"></label>'
                 + statRowsPicker(trip.spawn || {}, 'trip_on_action.spawn.debuff', 'Debuff da queda')
+                + '<label class="effect-field"><span>Máximo de disparos</span><input class="control" data-effect-field="trip_on_action.max_triggers" type="number" min="1" value="' + escapeHtml(trip.max_triggers ?? '') + '" placeholder="—"><small>O campo desaparece depois deste número de ativações.</small></label>'
+                + '<label class="effect-field"><span>Dano ao expirar</span><input class="control" data-effect-field="trip_on_action.expire_damage" type="number" min="0" value="' + escapeHtml(trip.expire_damage ?? '') + '" placeholder="0"><small>Se ninguém o disparar, o campo ainda fere quem está nele.</small></label>'
+                + '<label class="effect-field"><span>Proibido durante a queda</span><input class="control" data-effect-field="trip_on_action.spawn.prevent_actions" value="' + escapeHtml(listValue((trip.spawn || {}).prevent_actions)) + '" placeholder="attack, skill, weapon"><small>Ações barradas pelo estado gerado (separadas por vírgulas).</small></label>'
                 + '<small>A armadilha dura os turnos do estado e desliza quem usa uma das ações listadas.</small>';
+        }
+        if (pattern === 'detonate') {
+            var detonate = effect.detonate_on_turn || {};
+            return '<label class="effect-field"><span>Poder da explosão</span><input class="control" data-effect-field="detonate_on_turn.power" type="number" min="0" value="' + escapeHtml(detonate.power ?? 12) + '"><small>Dano fixo quando o turno do portador chega.</small></label>'
+                + '<label class="effect-field"><span>Cresce por turno</span><input class="control" data-effect-field="detonate_on_turn.scale_per_turn" type="number" min="0" value="' + escapeHtml(detonate.scale_per_turn ?? '') + '" placeholder="0"></label>'
+                + '<label class="effect-field"><span>Teto de poder</span><input class="control" data-effect-field="detonate_on_turn.max_power" type="number" min="0" value="' + escapeHtml(detonate.max_power === Infinity ? '' : (detonate.max_power ?? '')) + '" placeholder="sem teto"></label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="detonate_on_turn.include_line" ' + (detonate.include_line ? 'checked' : '') + '> Atinge a linha inteira</label>'
+                + '<label class="effect-field"><span>Chance de perder o turno</span><div class="input-suffix"><input class="control" data-effect-field="detonate_on_turn.turn_skip_chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(detonate.turn_skip_chance)) + '" placeholder="0"><span>%</span></div></label>';
+        }
+        if (pattern === 'chain_detonation') {
+            var chainDetonation = effect.chain_detonation || {};
+            return '<label class="effect-field"><span>Dano extra</span><input class="control" data-effect-field="chain_detonation.power" type="number" min="0" value="' + escapeHtml(chainDetonation.power ?? 8) + '"><small>Pago quando outro golpe de Chaos acerta o portador.</small></label>'
+                + '<label class="effect-field"><span>Recuo por marca extra</span><input class="control" data-effect-field="chain_detonation.recoil_per_target" type="number" min="0" value="' + escapeHtml(chainDetonation.recoil_per_target ?? '') + '" placeholder="0"><small>Vida que o atacante paga por cada marca vizinha detonada.</small></label>';
+        }
+        if (pattern === 'conductor') {
+            var conductor = effect.conductor || {};
+            return '<label class="effect-field"><span>Salto elétrico</span><input class="control" data-effect-field="conductor.jump_power" type="number" min="0" value="' + escapeHtml(conductor.jump_power ?? 8) + '"><small>Dano fixo que salta para o inimigo mais próximo.</small></label>'
+                + '<label class="effect-field"><span>Elementos que aterram</span><input class="control" data-effect-field="conductor.grounded_by_elements" value="' + escapeHtml(listValue(conductor.grounded_by_elements)) + '" placeholder="lapis"><small>Lista separada por vírgulas.</small></label>'
+                + '<label class="effect-field"><span>Escudo ao aterrar</span><div class="input-suffix"><input class="control" data-effect-field="conductor.ground_shield_percent" type="number" min="0" max="100" value="' + escapeHtml(conductor.ground_shield_percent ?? '') + '" placeholder="0"><span>%</span></div><small>Percentagem da vida máxima do aliado mais próximo.</small></label>';
+        }
+        if (pattern === 'interrupt') {
+            var interrupt = effect.interrupt || {};
+            return '<label class="effect-field"><span>Chance de interromper</span><div class="input-suffix"><input class="control" data-effect-field="interrupt.chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(interrupt.chance)) + '" placeholder="50"><span>%</span></div><small>A ação falha, mas os custos são pagos.</small></label>'
+                + '<label class="effect-field"><span>Ações vigiadas</span><input class="control" data-effect-field="interrupt.actions" value="' + escapeHtml(listValue(interrupt.actions)) + '" placeholder="skill, weapon"><small>Vazio vigia skills e armas.</small></label>';
+        }
+        if (pattern === 'reflect') {
+            var reflect = effect.reflect || {};
+            return '<label class="effect-field"><span>Dano refletido</span><input class="control" data-effect-field="reflect.power" type="number" min="0" value="' + escapeHtml(reflect.power ?? 8) + '"></label>'
+                + '<label class="effect-field"><span>Chance</span><div class="input-suffix"><input class="control" data-effect-field="reflect.chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(reflect.chance ?? 1)) + '" placeholder="100"><span>%</span></div></label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="reflect.consume" ' + (reflect.consume ? 'checked' : '') + '> Consome o estado ao refletir</label>';
+        }
+        if (pattern === 'spend_steal') {
+            var steal = effect.spend_steal || {};
+            return '<label class="effect-field"><span>Recurso</span><select class="control" data-effect-field="spend_steal.resource">'
+                + optionMarkup('mana', 'Mana', (steal.resource || 'mana') === 'mana')
+                + optionMarkup('stamina', 'Stamina', steal.resource === 'stamina') + '</select></label>'
+                + '<label class="effect-field"><span>Percentagem roubada</span><div class="input-suffix"><input class="control" data-effect-field="spend_steal.percent" type="number" min="0" max="100" value="' + escapeHtml(percentOf(steal.percent)) + '" placeholder="25"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Valor fixo</span><input class="control" data-effect-field="spend_steal.amount" type="number" min="0" value="' + escapeHtml(steal.amount ?? '') + '" placeholder="0"><small>Substitui a percentagem quando preenchido.</small></label>'
+                + '<label class="effect-field"><span>Teto por gasto</span><input class="control" data-effect-field="spend_steal.max" type="number" min="0" value="' + escapeHtml(steal.max ?? '') + '" placeholder="—"></label>';
         }
         if (pattern === 'deferred') {
             var deferred = effect.deferred_damage || {};
@@ -1744,6 +1916,12 @@
         if (effect.ranged_evasion) return 'veil';
         if (effect.projectile_reroll) return 'reroll';
         if (effect.rewind) return 'rewind';
+        if (effect.detonate_on_turn) return 'detonate';
+        if (effect.chain_detonation) return 'chain_detonation';
+        if (effect.conductor) return 'conductor';
+        if (effect.interrupt) return 'interrupt';
+        if (effect.reflect) return 'reflect';
+        if (effect.spend_steal) return 'spend_steal';
         if (effect.self_upkeep) return 'upkeep';
         if (effect.regen_per_turn) return 'regen_turn';
         if (effect.resource_transfer) return 'transfer';
@@ -1856,6 +2034,12 @@
         if (pattern === 'reroll') properties.projectile_reroll = { per_turn: 1 };
         if (pattern === 'upkeep') properties.self_upkeep = { hp: 2 };
         if (pattern === 'rewind') properties.rewind = { turns: 1, resources: ['hp', 'mana', 'stamina'], cleanse: true };
+        if (pattern === 'detonate') properties.detonate_on_turn = { power: 12, scale_per_turn: 2, max_power: 30, include_line: true };
+        if (pattern === 'chain_detonation') properties.chain_detonation = { power: 8, recoil_per_target: 3 };
+        if (pattern === 'conductor') properties.conductor = { jump_power: 8, grounded_by_elements: ['lapis'], ground_shield_percent: 12 };
+        if (pattern === 'interrupt') properties.interrupt = { chance: 0.5, actions: ['skill', 'weapon'] };
+        if (pattern === 'reflect') properties.reflect = { power: 8, chance: 1, consume: false };
+        if (pattern === 'spend_steal') properties.spend_steal = { resource: 'mana', percent: 0.25, max: 15 };
         skill.effects.push(Model.makeEffect(skill.id, pattern, applyTo, effectIndex - 1, properties));
         state.openScopes[skill.id] = state.openScopes[skill.id] || {};
         state.openScopes[skill.id][scope] = true;
@@ -1896,7 +2080,7 @@
         if (!skill || !card) return;
         var effect = skill.effects.find(function (item) { return item.effect_id === card.dataset.effectId; });
         if (!effect) return;
-        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll'].forEach(function (key) { delete effect[key]; });
+        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal'].forEach(function (key) { delete effect[key]; });
         var type = select.value;
         if (type === 'regen') effect.resource_regen = { hp: 15 };
         if (type === 'regen_turn') effect.regen_per_turn = { hp: 10 };
@@ -1930,6 +2114,12 @@
         if (type === 'reroll') effect.projectile_reroll = { per_turn: 1 };
         if (type === 'upkeep') effect.self_upkeep = { hp: 2 };
         if (type === 'rewind') effect.rewind = { turns: 1, resources: ['hp', 'mana', 'stamina'], cleanse: true };
+        if (type === 'detonate') effect.detonate_on_turn = { power: 12, scale_per_turn: 2, max_power: 30, include_line: true };
+        if (type === 'chain_detonation') effect.chain_detonation = { power: 8, recoil_per_target: 3 };
+        if (type === 'conductor') effect.conductor = { jump_power: 8, grounded_by_elements: ['lapis'], ground_shield_percent: 12 };
+        if (type === 'interrupt') effect.interrupt = { chance: 0.5, actions: ['skill', 'weapon'] };
+        if (type === 'reflect') effect.reflect = { power: 8, chance: 1, consume: false };
+        if (type === 'spend_steal') effect.spend_steal = { resource: 'mana', percent: 0.25, max: 15 };
         // O nome do estado segue a operação, mas só enquanto o autor não o
         // tiver escrito por si.
         if (Object.values(Model.PATTERN_STATUS_NAMES || {}).includes(effect.status_effect)) {
@@ -2006,7 +2196,10 @@
                     if (Object.keys(parsedPairs).length) setNested(effect, targetKey, parsedPairs);
                     else { setNested(effect, targetKey, undefined); pruneEmpty(effect, targetKey); }
                 } else if (key === 'shield.hit_chance' || key === 'trip_on_action.chance'
-                    || key === 'upgrade_vs_status.extra_turns_chance') {
+                    || key === 'upgrade_vs_status.extra_turns_chance'
+                    || key === 'detonate_on_turn.turn_skip_chance'
+                    || key === 'interrupt.chance' || key === 'reflect.chance'
+                    || key === 'spend_steal.percent') {
                     // Mostram-se em percentagem mas guardam-se como fração.
                     var fractionLeaf = key.split('.');
                     var fractionParent = readNested(effect, fractionLeaf.slice(0, -1).join('.')) || {};
@@ -2021,7 +2214,9 @@
                             numberValue(field.value, 100) / 100 >= 1 ? 1 : numberValue(field.value, 100) / 100);
                     }
                 } else if (key === 'trip_on_action.actions' || key === 'trip_on_action.damage_types'
-                    || key === 'charges.release.prevent_actions') {
+                    || key === 'charges.release.prevent_actions'
+                    || key === 'trip_on_action.spawn.prevent_actions'
+                    || key === 'conductor.grounded_by_elements' || key === 'interrupt.actions') {
                     var commaLeaf = key.split('.');
                     var commaName = commaLeaf[commaLeaf.length - 1];
                     var commaList = String(field.value || '').split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
@@ -2160,7 +2355,7 @@
                 delete effect.random_buff;
             }
             // Cascas vazias das novas mecânicas também somem.
-            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent'], ['condition'], ['turn_postpone'], ['turn_postpone', 'condition'], ['on_miss_move'], ['weather'], ['weather', 'element_effect_multipliers'], ['element_power'], ['projectile_accuracy'], ['projectile_mark'], ['projectile_reroll']].forEach(function (path) {
+            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent'], ['condition'], ['turn_postpone'], ['turn_postpone', 'condition'], ['on_miss_move'], ['weather'], ['weather', 'element_effect_multipliers'], ['element_power'], ['projectile_accuracy'], ['projectile_mark'], ['projectile_reroll'], ['detonate_on_turn'], ['chain_detonation'], ['conductor'], ['interrupt'], ['reflect'], ['spend_steal']].forEach(function (path) {
                 var holder = effect;
                 var valid = true;
                 for (var index = 0; index < path.length; index += 1) {

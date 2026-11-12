@@ -46,7 +46,7 @@ skills:
         apply_to: target
         turns: 1
         polarity: positive
-        heal_percent_of_max: 22\
+        heal_percent_of_max: 22
   - id: efficient_recall
     name: Efficient Recall
     description: "The caster guides mana back with less waste; spends 18 MN and restores exactly 18 MN, up to the target's maximum."

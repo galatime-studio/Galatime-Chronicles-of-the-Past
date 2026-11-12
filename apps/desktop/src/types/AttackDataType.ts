@@ -85,6 +85,166 @@ export interface AttackRewindSpec {
     cleanse?: boolean;
 }
 
+/** The caster's own price for a reckless action (Chaos detonations). */
+export interface AttackRecoilSpec {
+    /** Flat health the caster pays. */
+    hp?: number;
+    /** Fraction of the direct damage dealt that the caster takes back. */
+    fraction_of_damage?: number;
+}
+
+/** Splash a reckless action throws onto the caster's own side. */
+export interface AttackFriendlyFireSpec {
+    /** Flat health each ally in scope pays. */
+    damage?: number;
+    /** Percent of the action's power each ally pays (0 … 1). */
+    percent_of_power?: number;
+    /** Chance the splash happens at all (defaults to 1). */
+    chance?: number;
+    /** `allies_all` or the line the main target stands in (defaults to `allies_lane`). */
+    scope?: 'allies_all' | 'allies_lane';
+}
+
+/** A chance for the blast to clip the enemy rear line as well. */
+export interface AttackBacklaneSplashSpec {
+    chance: number;
+    power: number;
+    /** Hit the main target too, on top of the rear-line victim. */
+    both?: boolean;
+}
+
+/**
+ * Serial chain lightning (or a fork).
+ *
+ * Each jump starts from the previous victim, picks one unit not yet hit,
+ * checks its own accuracy and deals `power_percent` of the previous jump.
+ * Adjacency is approximated by line: same line first, then the other one.
+ */
+export interface AttackChainSpec {
+    /** Chance the first jump happens (defaults to 1). */
+    chance?: number;
+    /** Chance lost per jump. */
+    chance_step?: number;
+    /** Floor for the jump chance. */
+    min_chance?: number;
+    /** Maximum jumps after the main hit. */
+    jumps?: number;
+    /** Each jump's power as a fraction of the previous one (defaults to 0.6). */
+    power_percent?: number;
+    /** Accuracy used by jumps; omitted inherits the action's. */
+    accuracy?: number;
+    /** Include the caster's own side as chain candidates (`arc_burst`). */
+    include_allies?: boolean;
+    /** Rear-line candidates weigh 0.8 instead of 1. */
+    weighted_backlane?: boolean;
+    /** Prefer candidates carrying this status (`Wet` for `forked_lightning`). */
+    prioritize_status?: string;
+    /** Chance each jump stuns its victim for one turn. */
+    stun_chance?: number;
+    /** Independent forks from the main target instead of a serial chain. */
+    branches?: number;
+}
+
+/** Low-accuracy shrapnel thrown after the main blast. */
+export interface AttackShrapnelSpec {
+    /** Projectiles thrown. */
+    count: number;
+    /** Flat power of each projectile. */
+    power: number;
+    /** Hit chance per projectile; omitted inherits the action's accuracy. */
+    accuracy?: number;
+    /** Shrapnel may pick the caster's allies too. */
+    include_allies?: boolean;
+    /** Concentrate on the main target while the caster carries this status (`Precision Burst`). */
+    focus_status?: string;
+}
+
+/** Charges that build on the caster and make the next explosive unstable. */
+export interface AttackInstabilitySpec {
+    /** Status label used for the charge stack (defaults to `Instability`). */
+    status?: string;
+    /** Charges that trigger a premature detonation. */
+    max?: number;
+    /** Extra damage per charge (0.1 = +10%). */
+    damage_per_charge?: number;
+    /** Extra variance per charge. */
+    variance_per_charge?: number;
+    /** Health the caster loses when the stack blows up. */
+    self_damage?: number;
+    /** Chance the stack blows up at its maximum. */
+    self_damage_chance?: number;
+    /** Turns the charges survive without another explosive. */
+    turns?: number;
+}
+
+/** A secondary blast when the action defeats a target (`demolition`). */
+export interface AttackOnKillDetonationSpec {
+    power: number;
+    /** Let the secondary blast hit the caster's own line too. */
+    include_allies?: boolean;
+}
+
+/** A mark that detonates when its bearer's turn arrives. */
+export interface AttackDetonateOnTurnSpec {
+    /** Base power of the detonation. */
+    power: number;
+    /** Extra power per turn elapsed since the mark landed. */
+    scale_per_turn?: number;
+    /** Hard cap for the scaled power. */
+    max_power?: number;
+    /** The blast also hits everybody else in the bearer's line. */
+    include_line?: boolean;
+    /** Chance the bearer loses the turn to the detonation. */
+    turn_skip_chance?: number;
+}
+
+/** `Marked for Detonation`: another chaos hit adds power and can chain marks. */
+export interface AttackChainDetonationSpec {
+    /** Extra power added to a chaos hit on the bearer. */
+    power: number;
+    /** Extra health the caster pays for each chained mark. */
+    recoil_per_target?: number;
+}
+
+/** A conductor that electric hits jump through, and Lapis can ground. */
+export interface AttackConductorSpec {
+    /** Flat damage an electric hit jumps to the nearest enemy. */
+    jump_power: number;
+    /** Elements that ground the conductor and remove it (`lapis`). */
+    grounded_by_elements?: string[];
+    /** Shield percent the grounded conductor grants the nearest ally. */
+    ground_shield_percent?: number;
+}
+
+/** A status that may interrupt the bearer's next skill. */
+export interface AttackInterruptSpec {
+    /** Chance (`0…1`) the attempt is interrupted. */
+    chance: number;
+    /** Action kinds that can be interrupted; omitted means skills and weapons. */
+    actions?: string[];
+}
+
+/** Flat damage thrown back when the bearer is hit. */
+export interface AttackReflectSpec {
+    /** Flat damage reflected. */
+    power: number;
+    /** Chance (`0…1`); omitted means always. */
+    chance?: number;
+    /** The status is spent by a successful reflection. */
+    consume?: boolean;
+}
+
+/** A portion of the bearer's next resource spend goes to the status source. */
+export interface AttackSpendStealSpec {
+    resource: 'mana' | 'stamina';
+    /** Fraction of the spend stolen (0 … 1). */
+    percent?: number;
+    /** Flat cap on the amount stolen. */
+    amount?: number;
+    /** Hard cap regardless of the fraction. */
+    max?: number;
+}
+
 export interface AttackEffect {
     effect_id: string;
     /** Omit to inherit the attack's element. */
@@ -285,8 +445,24 @@ export interface AttackEffect {
         /** Health the tripping holder pays. */
         damage?: number;
         /** Punishment status added on the trip (a `Slipped` SPD loss). */
-        spawn?: { status_effect?: string; turns?: number; debuff?: Record<string, number> };
+        spawn?: { status_effect?: string; turns?: number; prevent_actions?: string[]; debuff?: Record<string, number> };
+        /** The field disappears after this many trips. */
+        max_triggers?: number;
+        /** Flat damage the field deals when it expires still armed. */
+        expire_damage?: number;
     };
+    /** A mark that detonates when its bearer's turn arrives (Chaos marks). */
+    detonate_on_turn?: AttackDetonateOnTurnSpec;
+    /** A mark that adds damage when another chaos hit lands and can spread. */
+    chain_detonation?: AttackChainDetonationSpec;
+    /** An electric conductor that jumps damage and can be grounded by Lapis. */
+    conductor?: AttackConductorSpec;
+    /** A chance to interrupt the bearer's next matching action (`Shock`). */
+    interrupt?: AttackInterruptSpec;
+    /** Flat damage thrown back at an attacker (`Recoil Guard`, `Static Field`). */
+    reflect?: AttackReflectSpec;
+    /** Steals part of the bearer's next mana/stamina spend for the status source. */
+    spend_steal?: AttackSpendStealSpec;
     /** Stat fields the holder cannot gain buffs to while the status lives. */
     block_stat_buffs?: string[];
     /** Incoming damage multipliers per channel (`frost_mirror` halves physical). */
@@ -376,6 +552,26 @@ export interface AttackSkill {
     power_scaling?: { stat: string; per_point: number };
     /** Multiplier a critical hit uses instead of the global ×1.75 (`Meteor Drop` doubles). */
     crit_multiplier?: number;
+    /** Health the caster pays for a reckless action (`cataclysm`, `explosion`). */
+    recoil?: AttackRecoilSpec;
+    /** Splash a reckless action throws onto the caster's own allies. */
+    friendly_fire?: AttackFriendlyFireSpec;
+    /** A chance the blast clips the enemy rear line as well. */
+    backlane_splash?: AttackBacklaneSplashSpec;
+    /** Damage the caster takes back when the target's line has no room. */
+    no_space_recoil?: { fraction: number };
+    /** Serial chain lightning / forks. */
+    chain?: AttackChainSpec;
+    /** Low-accuracy shrapnel thrown after the main blast. */
+    shrapnel?: AttackShrapnelSpec;
+    /** Charges that build on the caster and make the next explosive unstable. */
+    instability?: AttackInstabilitySpec;
+    /** Flat damage dealt when a control effect is resisted (`Shock`). */
+    control_immune_damage?: number;
+    /** A secondary blast when the action defeats a target (`demolition`). */
+    on_kill_detonation?: AttackOnKillDetonationSpec;
+    /** Takes turns off the caster's own cooldowns when a target carries a status. */
+    cooldown_reset?: { status: string; amount?: number };
     /**
      * SFX track id played when the skill is used.
      *
@@ -428,6 +624,16 @@ export type PublicAttack = Pick<AttackSkill,
     | 'damage_variance'
     | 'power_scaling'
     | 'crit_multiplier'
+    | 'recoil'
+    | 'friendly_fire'
+    | 'backlane_splash'
+    | 'no_space_recoil'
+    | 'chain'
+    | 'shrapnel'
+    | 'instability'
+    | 'control_immune_damage'
+    | 'on_kill_detonation'
+    | 'cooldown_reset'
     | 'sfx'
 >;
 

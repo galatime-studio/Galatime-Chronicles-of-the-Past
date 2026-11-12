@@ -506,6 +506,11 @@
             projectileNote: skill.projectile_accuracy || skill.projectile_mark || skill.ranged_evasion || skill.projectile_reroll
                 ? 'Mira/véu de projéteis existem no motor do jogo — o simulador não os aplica.' : null,
             weatherNote: skill.weather ? 'O clima altera dano e efeitos por elemento no motor do jogo — o simulador não o aplica.' : null,
+            chaosNote: skill.chain || skill.shrapnel || skill.recoil || skill.friendly_fire
+                || skill.backlane_splash || skill.instability || skill.on_kill_detonation
+                || skill.no_space_recoil || skill.cooldown_reset || (skill.control_immune_damage > 0)
+                ? 'Cadeias, estilhaços, recuo, fogo amigo, instabilidade e detonações são resolvidos pelo motor do jogo — o simulador mostra apenas o golpe principal.'
+                : null,
             hitCount: hitCount,
             hitChance: hitChance,
             expectedHits: expectedHits,

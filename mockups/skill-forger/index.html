@@ -207,6 +207,31 @@
                                 <label class="toggle-row trait-toggle"><input type="checkbox" name="bonus_per_charge_consume"><span class="toggle-track"></span><span>Consome as cargas ao acertar</span></label>
                             </div>
                         </div>
+
+                        <div class="trait-block">
+                            <span class="trait-head-label">CHAOS — IMPACTO</span>
+                            <div class="form-grid trait-grid">
+                                <label class="field"><span>Recuo (HP)</span><input class="control" name="recoil_hp" type="number" min="0" placeholder="0"></label>
+                                <label class="field"><span>Fogo amigo (dano)</span><input class="control" name="friendly_fire_damage" type="number" min="0" placeholder="0"></label>
+                                <label class="field"><span>Atinge a linha de trás</span><div class="range-pair"><input class="control" name="backlane_power" type="number" min="0" placeholder="8"><input class="control" name="backlane_chance" type="number" min="0" max="100" placeholder="30"></div><small>poder · chance %</small></label>
+                                <label class="field"><span>Recuo sem espaço</span><div class="input-suffix"><input class="control" name="no_space_recoil_fraction" type="number" min="0" max="1" step="0.05" placeholder="0.5"><span>fração</span></div></label>
+                                <label class="field"><span>Dano fixo se imune a controlo</span><input class="control" name="control_immune_damage" type="number" min="0" placeholder="14"></label>
+                                <label class="field"><span>Detonação ao matar</span><input class="control" name="on_kill_detonation_power" type="number" min="0" placeholder="12"></label>
+                            </div>
+                        </div>
+
+                        <div class="trait-block">
+                            <span class="trait-head-label">CHAOS — CADEIA E INSTABILIDADE</span>
+                            <div class="form-grid trait-grid">
+                                <label class="field"><span>Saltos da cadeia</span><input class="control" name="chain_jumps" type="number" min="0" placeholder="0"></label>
+                                <label class="field"><span>Poder por salto</span><div class="input-suffix"><input class="control" name="chain_power_percent" type="number" min="0" max="100" placeholder="60"><span>%</span></div></label>
+                                <label class="field"><span>Chance inicial</span><div class="input-suffix"><input class="control" name="chain_chance" type="number" min="0" max="100" placeholder="65"><span>%</span></div></label>
+                                <label class="field"><span>Ramos</span><input class="control" name="chain_branches" type="number" min="1" placeholder="1"></label>
+                                <label class="field"><span>Estilhaços</span><div class="range-pair"><input class="control" name="shrapnel_count" type="number" min="0" placeholder="0"><input class="control" name="shrapnel_power" type="number" min="0" placeholder="5"></div><small>quantidade · poder</small></label>
+                                <label class="field"><span>Instabilidade: auto-dano</span><input class="control" name="instability_self_damage" type="number" min="0" placeholder="12"></label>
+                                <label class="field"><span>Refund se o alvo tiver</span><div class="range-pair"><input class="control" name="cooldown_reset_status" placeholder="Paralyzed"><input class="control" name="cooldown_reset_amount" type="number" min="1" placeholder="1"></div><small>estado · turnos</small></label>
+                            </div>
+                        </div>
                     </section>
 
                     <div id="editor-message" class="editor-message" role="status"></div>

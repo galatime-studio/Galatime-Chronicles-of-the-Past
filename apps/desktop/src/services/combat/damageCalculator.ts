@@ -535,6 +535,32 @@ export interface DamageResult {
  * The only place a damage number is produced: the turn resolver and the HUD
  * preview both call it, so they can never drift apart.
  */
+/**
+ * Damage multiplier from the caster's unstable-explosive charges.
+ *
+ * The authored `instability` trait lives on the action; the charges live on the
+ * caster as a stacking status with the same label. Keeping the multiplication
+ * here means a preview and a real hit read the same ladder.
+ */
+function instabilityMultiplier(attacker: CombatUnit | null | undefined, action: CombatAction): number {
+    const spec = action.instability;
+    if (!attacker || !spec) return 1;
+
+    const wanted = (spec.status?.trim() || 'Instability').toLowerCase().replace(/\s+/g, '_');
+    const holder = attacker.effects.find((effect) => (
+        effect.chargeMax !== undefined
+        && ((effect.statusEffect ?? '').trim().toLowerCase().replace(/\s+/g, '_') === wanted
+            || effect.effectId.trim().toLowerCase() === wanted)
+    ));
+    if (!holder) return 1;
+
+    const stacks = Math.min(
+        Math.max(1, Math.round(spec.max ?? 3)),
+        Math.max(0, holder.stacks),
+    );
+    return 1 + Math.max(0, spec.damagePerCharge ?? 0) * stacks;
+}
+
 export function resolveDamage(request: DamageRequest): DamageResult {
     const { action, elementIndex, random } = request;
     const rolling = request.roll ?? true;
@@ -580,9 +606,9 @@ export function resolveDamage(request: DamageRequest): DamageResult {
     const [powerMin, powerMax] = RANDOMIZE_POWER_RANGE;
     // Speed-scaled skills (`Tempest Flurry`) read the caster's live stat on
     // every hit, so a buffed speed strikes harder and previews agree.
-    const hitPowerBase = action.power + (action.powerScaling
+    const hitPowerBase = (action.power + (action.powerScaling
         ? action.powerScaling.perPoint * Math.max(0, request.attackerStats[action.powerScaling.stat] ?? 0)
-        : 0);
+        : 0)) * instabilityMultiplier(request.attacker, action);
 
     // The skill's traits, folded once so every hit of the same action reads
     // the same numbers. A `bonus_per_charge` trait (`avalanche`) trades each

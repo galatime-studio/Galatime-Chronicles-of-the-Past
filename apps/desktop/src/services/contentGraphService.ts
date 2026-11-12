@@ -45,6 +45,16 @@ const PUBLIC_SKILL_FIELDS = [
     'damage_variance',
     'power_scaling',
     'crit_multiplier',
+    'recoil',
+    'friendly_fire',
+    'backlane_splash',
+    'no_space_recoil',
+    'chain',
+    'shrapnel',
+    'instability',
+    'control_immune_damage',
+    'on_kill_detonation',
+    'cooldown_reset',
     'sfx',
 ] as const;
 
@@ -137,6 +147,12 @@ const PUBLIC_EFFECT_FIELDS = [
     'lane_change_free',
     'on_miss_move',
     'expires',
+    'detonate_on_turn',
+    'chain_detonation',
+    'conductor',
+    'interrupt',
+    'reflect',
+    'spend_steal',
 ] as const;
 
 function clone(value: unknown): unknown {

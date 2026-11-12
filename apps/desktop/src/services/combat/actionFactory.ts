@@ -185,6 +185,130 @@ function readPowerScaling(source: Record<string, unknown>): CombatAction['powerS
     return { stat: stat as keyof CombatStats, perPoint };
 }
 
+/** Reads the caster's own price for a reckless action. */
+function readRecoil(source: Record<string, unknown>): CombatAction['recoil'] {
+    const record = asRecord(source.recoil);
+    if (!record) return null;
+    const hp = Math.max(0, readNumber(record.hp, 0));
+    const fractionOfDamage = clamp(readNumber(record.fraction_of_damage, 0), 0, 1);
+    return hp > 0 || fractionOfDamage > 0 ? { hp, fractionOfDamage } : null;
+}
+
+/** Reads the splash a reckless action throws onto its caster's allies. */
+function readFriendlyFire(source: Record<string, unknown>): CombatAction['friendlyFire'] {
+    const record = asRecord(source.friendly_fire);
+    if (!record) return null;
+    const damage = Math.max(0, readNumber(record.damage, 0));
+    const percentOfPower = clamp(readNumber(record.percent_of_power, 0), 0, 1);
+    if (damage <= 0 && percentOfPower <= 0) return null;
+    const scope = readString(record.scope, 'allies_lane') === 'allies_all' ? 'allies_all' : 'allies_lane';
+    return {
+        damage,
+        percentOfPower,
+        chance: clamp(readNumber(record.chance, 1), 0, 1),
+        scope,
+    };
+}
+
+/** Reads the chance a blast clips the enemy rear line. */
+function readBacklaneSplash(source: Record<string, unknown>): CombatAction['backlaneSplash'] {
+    const record = asRecord(source.backlane_splash);
+    if (!record) return null;
+    const power = Math.max(0, readNumber(record.power, 0));
+    if (power <= 0) return null;
+    return {
+        chance: clamp(readNumber(record.chance, 0.2), 0, 1),
+        power,
+        both: readBoolean(record.both, false),
+    };
+}
+
+/** Reads a `no_space_recoil` clause. */
+function readNoSpaceRecoil(source: Record<string, unknown>): CombatAction['noSpaceRecoil'] {
+    const record = asRecord(source.no_space_recoil);
+    if (!record) return null;
+    const fraction = clamp(readNumber(record.fraction, 0), 0, 1);
+    return fraction > 0 ? { fraction } : null;
+}
+
+/** Reads a serial chain / fork specification. */
+function readChain(source: Record<string, unknown>): CombatAction['chain'] {
+    const record = asRecord(source.chain);
+    if (!record) return null;
+    const jumps = Math.max(0, Math.round(readNumber(record.jumps, 0)));
+    const branches = Math.max(0, Math.round(readNumber(record.branches, 0)));
+    if (jumps <= 0 && branches <= 0) return null;
+    return {
+        chance: clamp(readNumber(record.chance, 1), 0, 1),
+        chanceStep: clamp(readNumber(record.chance_step, 0), -1, 1),
+        minChance: clamp(readNumber(record.min_chance, 0), 0, 1),
+        jumps,
+        powerPercent: clamp(readNumber(record.power_percent, 0.6), 0, 1),
+        accuracy: ((): number | null => {
+            const value = readNumber(record.accuracy, Number.NaN);
+            return Number.isFinite(value) ? clamp(value, 0, 100) : null;
+        })(),
+        includeAllies: readBoolean(record.include_allies, false),
+        weightedBacklane: readBoolean(record.weighted_backlane, false),
+        prioritizeStatus: readString(record.prioritize_status, '') || null,
+        stunChance: clamp(readNumber(record.stun_chance, 0), 0, 1),
+        branches,
+    };
+}
+
+/** Reads a shrapnel burst specification. */
+function readShrapnel(source: Record<string, unknown>): CombatAction['shrapnel'] {
+    const record = asRecord(source.shrapnel);
+    if (!record) return null;
+    const count = Math.max(0, Math.round(readNumber(record.count, 0)));
+    const power = Math.max(0, readNumber(record.power, 0));
+    if (count <= 0 || power <= 0) return null;
+    return {
+        count,
+        power,
+        accuracy: ((): number | null => {
+            const value = readNumber(record.accuracy, Number.NaN);
+            return Number.isFinite(value) ? clamp(value, 0, 100) : null;
+        })(),
+        includeAllies: readBoolean(record.include_allies, true),
+        focusStatus: readString(record.focus_status, '') || null,
+    };
+}
+
+/** Reads the instability charges an explosive builds on its caster. */
+function readInstability(source: Record<string, unknown>): CombatAction['instability'] {
+    const record = asRecord(source.instability);
+    if (!record) return null;
+    return {
+        status: readString(record.status, 'Instability') || 'Instability',
+        max: Math.max(1, Math.round(readNumber(record.max, 3))),
+        damagePerCharge: Math.max(0, readNumber(record.damage_per_charge, 0.1)),
+        variancePerCharge: Math.max(0, readNumber(record.variance_per_charge, 0.1)),
+        selfDamage: Math.max(0, readNumber(record.self_damage, 0)),
+        selfDamageChance: clamp(readNumber(record.self_damage_chance, 0.25), 0, 1),
+        turns: Math.max(1, Math.round(readNumber(record.turns, 3))),
+    };
+}
+
+/** Reads a secondary blast that fires when the action defeats somebody. */
+function readOnKillDetonation(source: Record<string, unknown>): CombatAction['onKillDetonation'] {
+    const record = asRecord(source.on_kill_detonation);
+    if (!record) return null;
+    const power = Math.max(0, readNumber(record.power, 0));
+    return power > 0
+        ? { power, includeAllies: readBoolean(record.include_allies, false) }
+        : null;
+}
+
+/** Reads a cooldown refund that fires when a hit target carries a named status. */
+function readCooldownReset(source: Record<string, unknown>): CombatAction['cooldownReset'] {
+    const record = asRecord(source.cooldown_reset);
+    if (!record) return null;
+    const status = readString(record.status, '').trim();
+    const amount = Math.max(1, Math.round(readNumber(record.amount, 1)));
+    return status ? { status, amount } : null;
+}
+
 /**
  * The traits every action carries, whatever it came from.
  *
@@ -198,6 +322,9 @@ function defaultTraits(): Pick<
     | 'bonusVsStatus' | 'bonusPerCharge' | 'collateral'
     | 'scatterTargets' | 'scatterHits' | 'canHitAnyEnemy' | 'ignorePositionPenalty'
     | 'powerScaling' | 'critMultiplier'
+    | 'recoil' | 'friendlyFire' | 'backlaneSplash' | 'noSpaceRecoil'
+    | 'chain' | 'shrapnel' | 'instability' | 'controlImmuneDamage' | 'onKillDetonation'
+    | 'cooldownReset'
 > {
     return {
         solar: false,
@@ -220,6 +347,16 @@ function defaultTraits(): Pick<
         ignorePositionPenalty: false,
         powerScaling: null,
         critMultiplier: null,
+        recoil: null,
+        friendlyFire: null,
+        backlaneSplash: null,
+        noSpaceRecoil: null,
+        chain: null,
+        shrapnel: null,
+        instability: null,
+        controlImmuneDamage: 0,
+        onKillDetonation: null,
+        cooldownReset: null,
     };
 }
 
@@ -287,6 +424,16 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
             const value = readNumber(raw.crit_multiplier, 0);
             return Number.isFinite(value) && value > 0 ? value : null;
         })(),
+        recoil: readRecoil(raw),
+        friendlyFire: readFriendlyFire(raw),
+        backlaneSplash: readBacklaneSplash(raw),
+        noSpaceRecoil: readNoSpaceRecoil(raw),
+        chain: readChain(raw),
+        shrapnel: readShrapnel(raw),
+        instability: readInstability(raw),
+        controlImmuneDamage: Math.max(0, readNumber(raw.control_immune_damage, 0)),
+        onKillDetonation: readOnKillDetonation(raw),
+        cooldownReset: readCooldownReset(raw),
     };
 }
 

@@ -208,6 +208,13 @@
         mark: 'Marca cruzada',
         veil: 'Véu antiaéreo',
         reroll: 'Segunda chance',
+        // Chaos: marcas, condutores e roubo de gasto.
+        detonate: 'Marca explosiva',
+        chain_detonation: 'Marca em cadeia',
+        conductor: 'Condutor',
+        interrupt: 'Interrupção',
+        reflect: 'Reflexo fixo',
+        spend_steal: 'Roubo de recurso',
     };
 
     function patternStatusName(pattern) { return PATTERN_STATUS_NAMES[pattern] || 'Efeito'; }
@@ -739,6 +746,35 @@
         if (effect.projectile_reroll && typeof effect.projectile_reroll === 'object') {
             fragments.push('Até ' + (effect.projectile_reroll.per_turn ?? 1)
                 + ' vez(es) por ronda, o portador repete o primeiro disparo que falhou.');
+        }
+        if (effect.detonate_on_turn && typeof effect.detonate_on_turn === 'object') {
+            var detonate = effect.detonate_on_turn;
+            fragments.push('Detona no início do turno do portador com ' + detonate.power + ' de poder'
+                + (detonate.include_line ? ' na linha inteira' : '')
+                + (detonate.turn_skip_chance ? ', com ' + Math.round(detonate.turn_skip_chance * 100) + '% de o fazer perder o turno' : '') + '.');
+        }
+        if (effect.chain_detonation && typeof effect.chain_detonation === 'object') {
+            fragments.push('Quando outro golpe de Chaos acerta o portador, sofre +' + effect.chain_detonation.power
+                + ' de dano e pode detonar marcas vizinhas.');
+        }
+        if (effect.conductor && typeof effect.conductor === 'object') {
+            fragments.push('Conduz golpes elétricos para o inimigo mais próximo (' + effect.conductor.jump_power + ' de dano)'
+                + (effect.conductor.grounded_by_elements?.length ? '; ' + effect.conductor.grounded_by_elements.join('/') + ' aterra o condutor' : '') + '.');
+        }
+        if (effect.interrupt && typeof effect.interrupt === 'object') {
+            fragments.push('Tem ' + Math.round((effect.interrupt.chance || 0) * 100)
+                + '% de interromper a próxima ação vigiada do portador (os custos são pagos).');
+        }
+        if (effect.reflect && typeof effect.reflect === 'object') {
+            fragments.push('Reflete ' + effect.reflect.power + ' de dano fixo a quem o acerta'
+                + (effect.reflect.consume ? ' e consome o estado' : '') + '.');
+        }
+        if (effect.spend_steal && typeof effect.spend_steal === 'object') {
+            fragments.push('Rouba ' + (effect.spend_steal.amount
+                ? effect.spend_steal.amount + ' de '
+                : Math.round((effect.spend_steal.percent || 0) * 100) + '% do ')
+                + (effect.spend_steal.resource === 'stamina' ? 'stamina' : 'mana')
+                + ' do próximo gasto do portador para quem aplicou o estado.');
         }
         if (condition && condition.requires_no_space) {
             fragments.push('Só aplica se a linha ' + (condition.requires_no_space === 'front' ? 'da frente' : 'de trás')

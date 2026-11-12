@@ -44,6 +44,7 @@ import {
 import { buildElementDamageIndex } from './combat/damageCalculator';
 import { previewImpact } from './combat/damagePreview';
 import { reapDefeated } from './combat/defeatResolver';
+import { checkInterrupt, resolveTurnStartMechanics } from './combat/chaosMechanics';
 import {
     changeResource,
     applyActionTriggers,
@@ -386,8 +387,14 @@ function beginUnitTurn(state: CombatState, unit: CombatUnit, random: CombatRando
     const ticked = tickUnitEffects(unit, random);
     events.push(...ticked);
 
+    // Marks that detonate when their bearer's turn arrives resolve here, after
+    // the ordinary status tick and before the turn is handed over.
+    const detonated = resolveTurnStartMechanics(state, unit, random);
+    events.push(...detonated);
+
     // One `on_status_removed` per status that wore off this turn.
-    const removed = ticked.filter((event) => event.type === 'effect_expired').length;
+    const removed = [...ticked, ...detonated]
+        .filter((event) => event.type === 'effect_expired').length;
     for (let index = 0; index < removed; index += 1) {
         events.push(...resolveAbilityEvent(state, unit, 'on_status_removed', passiveTriggerContext(random, state.units)));
     }
@@ -440,6 +447,13 @@ function advanceToNextUnit(
 
         events.push(...beginUnitTurn(state, advance.unit, random));
         if (advance.unit.currentHp > 0) {
+            // A detonation mark may cost its bearer the turn outright
+            // (`time_bomb`); the skip is set while the turn opens.
+            if (advance.unit.flags.skipTurn === true) {
+                delete advance.unit.flags.skipTurn;
+                events.push({ type: 'turn_skipped', unitId: advance.unit.id });
+                continue;
+            }
             // A full status lock (`Frozen` misses its next turn) skips the
             // turn outright: nobody is handed a turn they cannot legally act.
             if (!anyActionAvailable(state, advance.unit)) {
@@ -1096,42 +1110,63 @@ export function submitCombatAction(
         });
     }
 
+    // A `shock`-style status may interrupt the action as it begins. The costs
+    // are still paid, the status is consumed and the turn ends without an
+    // action resolving.
+    const interrupt = checkInterrupt(actor, action, random);
+
     // The action's resource costs. A `hangover`-style status charges the
     // spender once the pools actually dropped: paying mana or stamina
     // triggers any spend trigger the payer carries.
     const poolsBefore = { mana: actor.currentMana, stamina: actor.currentStamina };
     const events: CombatEvent[] = payCosts(actor, action);
-    const spentSomething = poolsBefore.mana !== actor.currentMana
-        || poolsBefore.stamina !== actor.currentStamina;
-    if (spentSomething) events.push(...applySpendTriggers(state, actor));
+    const spentMana = Math.max(0, poolsBefore.mana - actor.currentMana);
+    const spentStamina = Math.max(0, poolsBefore.stamina - actor.currentStamina);
+    if (spentMana > 0 || spentStamina > 0) {
+        events.push(...applySpendTriggers(state, actor, { mana: spentMana, stamina: spentStamina }));
+    }
 
-    // A field trap the actor carries (Standing On Thin Ice / Frozen Earth)
-    // rolls as the action begins: the trip costs health, never the turn.
-    events.push(...applyActionTriggers(state, actor, action, random));
-    const resolved = resolveCombatAction({
-        state,
-        actor,
-        action,
-        target: validation.target,
-        elementIndex,
-        random,
-        // Ammo is spent against the actor's live inventory, so arrows shot in
-        // this fight leave the quiver when it is flushed back to the store.
-        unitInventory: getUnitInventory(session, actor),
-    });
-    events.push(...resolved.events);
+    let actionOutcome: CombatOutcome | null = null;
+    if (interrupt) {
+        actor.effects = actor.effects.filter((effect) => effect !== interrupt);
+        events.push({ type: 'effect_expired', unitId: actor.id, effectId: interrupt.effectId });
+        events.push({
+            type: 'action_interrupted',
+            unitId: actor.id,
+            actionId: action.id,
+            effectId: interrupt.effectId,
+            statusEffect: interrupt.statusEffect,
+        });
+    } else {
+        // A field trap the actor carries (Standing On Thin Ice / Frozen Earth)
+        // rolls as the action begins: the trip costs health, never the turn.
+        events.push(...applyActionTriggers(state, actor, action, random));
+        const resolved = resolveCombatAction({
+            state,
+            actor,
+            action,
+            target: validation.target,
+            elementIndex,
+            random,
+            // Ammo is spent against the actor's live inventory, so arrows shot in
+            // this fight leave the quiver when it is flushed back to the store.
+            unitInventory: getUnitInventory(session, actor),
+        });
+        events.push(...resolved.events);
+        actionOutcome = resolved.outcome;
+    }
 
     // The actor's own turn ends: its turn-scoped abilities bank the turn and may
     // fire (a soul transforms, a tree summons). A unit killed by its own action
     // (a reflection) does not get a turn end.
-    if (!resolved.outcome && actor.status === 'alive') {
+    if (!actionOutcome && actor.status === 'alive') {
         events.push(...resolveUnitTurnEnd(state, actor, random));
         // `turn_end` statuses (`Ranged Veil`) expire right after their holder
         // acts — they guard exactly one of the holder's turns.
         events.push(...expireTurnEndEffects(actor));
     }
 
-    const outcome = resolved.outcome ?? evaluateOutcome(state);
+    const outcome = actionOutcome ?? evaluateOutcome(state);
     events.push({ type: 'turn_ended', unitId: actor.id });
 
     if (outcome) {

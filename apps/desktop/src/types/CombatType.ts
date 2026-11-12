@@ -282,7 +282,10 @@ export interface CombatEffectInstance {
         damageTypes?: string[] | null;
         chance: number;
         damage: number;
-        spawn: { statusEffect: string; effectId: string; turns: number; debuff: CombatStatDelta | null } | null;
+        spawn: { statusEffect: string; effectId: string; turns: number; debuff: CombatStatDelta | null; preventActions?: string[] | null } | null;
+        maxTriggers?: number | null;
+        triggers?: number;
+        expireDamage?: number;
     } | null;
     /** How many copies are stacked; `1` when the effect does not stack. */
     stacks: number;
@@ -324,6 +327,20 @@ export interface CombatEffectInstance {
      * (`Second Chance`); `used` tracks how often it fired since the last reset.
      */
     projectileReroll?: { perTurn: number; used: number } | null;
+    /** A mark that detonates when the bearer's turn arrives. */
+    detonateOnTurn?: CombatDetonateOnTurnSpec | null;
+    /** A mark that adds damage when another chaos hit lands and can spread. */
+    chainDetonation?: CombatChainDetonationSpec | null;
+    /** Conducts electric hits and can be grounded by Lapis. */
+    conductor?: CombatConductorSpec | null;
+    /** Chance to interrupt the bearer's next matching action. */
+    interrupt?: CombatInterruptSpec | null;
+    /** Flat damage thrown back at an attacker. */
+    reflect?: CombatReflectSpec | null;
+    /** Steals part of the bearer's next resource spend for the status source. */
+    spendSteal?: CombatSpendStealSpec | null;
+    /** Turn count when the status landed, used by detonations to scale. */
+    appliedTurnCount?: number;
 }
 
 /** Remaining cooldown, in turns, keyed by action id. */
@@ -457,6 +474,98 @@ export type CombatActionKind =
     | 'inventory'
     | 'switch_line';
 
+export interface CombatRecoilSpec {
+    hp: number;
+    fractionOfDamage: number;
+}
+
+export interface CombatFriendlyFireSpec {
+    damage: number;
+    percentOfPower: number;
+    chance: number;
+    scope: 'allies_all' | 'allies_lane';
+}
+
+export interface CombatBacklaneSplashSpec {
+    chance: number;
+    power: number;
+    both: boolean;
+}
+
+export interface CombatChainSpec {
+    chance: number;
+    chanceStep: number;
+    minChance: number;
+    jumps: number;
+    powerPercent: number;
+    accuracy: number | null;
+    includeAllies: boolean;
+    weightedBacklane: boolean;
+    prioritizeStatus: string | null;
+    stunChance: number;
+    branches: number;
+}
+
+export interface CombatShrapnelSpec {
+    count: number;
+    power: number;
+    accuracy: number | null;
+    includeAllies: boolean;
+    focusStatus: string | null;
+}
+
+export interface CombatInstabilitySpec {
+    status: string;
+    max: number;
+    damagePerCharge: number;
+    variancePerCharge: number;
+    selfDamage: number;
+    selfDamageChance: number;
+    turns: number;
+}
+
+export interface CombatOnKillDetonationSpec {
+    power: number;
+    includeAllies: boolean;
+}
+
+export interface CombatDetonateOnTurnSpec {
+    power: number;
+    scalePerTurn: number;
+    maxPower: number | null;
+    includeLine: boolean;
+    turnSkipChance: number;
+}
+
+export interface CombatChainDetonationSpec {
+    power: number;
+    recoilPerTarget: number;
+}
+
+export interface CombatConductorSpec {
+    jumpPower: number;
+    groundedByElements: string[] | null;
+    groundShieldPercent: number;
+}
+
+export interface CombatInterruptSpec {
+    chance: number;
+    actions: string[] | null;
+}
+
+export interface CombatReflectSpec {
+    power: number;
+    chance: number;
+    consume: boolean;
+}
+
+export interface CombatSpendStealSpec {
+    resource: 'mana' | 'stamina';
+    percent: number;
+    amount: number;
+    max: number;
+}
+
 export interface CombatActionCost {
     mana: number;
     stamina: number;
@@ -572,6 +681,26 @@ export interface CombatAction {
      * (`Meteor Drop` doubles on crit). `null`/absent keeps the default.
      */
     critMultiplier?: number | null;
+    /** Health the caster pays for a reckless action. */
+    recoil?: CombatRecoilSpec | null;
+    /** Splash a reckless action throws onto the caster's own allies. */
+    friendlyFire?: CombatFriendlyFireSpec | null;
+    /** A chance the blast clips the enemy rear line as well. */
+    backlaneSplash?: CombatBacklaneSplashSpec | null;
+    /** Fraction of the hit the caster takes back when the target line has no room. */
+    noSpaceRecoil?: { fraction: number } | null;
+    /** Serial chain lightning / forks. */
+    chain?: CombatChainSpec | null;
+    /** Low-accuracy shrapnel thrown after the main blast. */
+    shrapnel?: CombatShrapnelSpec | null;
+    /** Charges that build on the caster and make the next explosive unstable. */
+    instability?: CombatInstabilitySpec | null;
+    /** Flat damage dealt when a control effect is resisted. */
+    controlImmuneDamage?: number;
+    /** A secondary blast when the action defeats a target. */
+    onKillDetonation?: CombatOnKillDetonationSpec | null;
+    /** Cuts the caster's own cooldowns when a hit target carries a status. */
+    cooldownReset?: { status: string; amount: number } | null;
 }
 
 /**Damage-channel modifiers folded from a defender's passive abilities.
@@ -802,6 +931,14 @@ export type CombatEvent =
     }
     /** A unit whose every action was unavailable passed its turn untouched. */
     | { type: 'turn_skipped'; unitId: string }
+    /** A status interrupted the unit's action (`Shock`); costs were still paid. */
+    | {
+        type: 'action_interrupted';
+        unitId: string;
+        actionId: string;
+        effectId: string;
+        statusEffect: string | null;
+    }
     | { type: 'turn_ended'; unitId: string }
     /** A weapon on `unitId` lost durability (wear) or was repaired. */
     | {
