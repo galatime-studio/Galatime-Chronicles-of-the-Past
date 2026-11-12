@@ -16,6 +16,7 @@ import { readString } from '../../utils/combatUtils';
 import { readAbilityEntityTarget } from './abilityFactory';
 import { abilityNotFired } from './abilityResult';
 import type { AbilityActionResult } from './abilityResult';
+import { unitHpFraction } from './effectResolver';
 import { getUnitBlueprint, instantiateUnit } from './unitBlueprint';
 
 /** Parameters: `entity_id`, `entity_type` and an optional display `name`. */
@@ -30,7 +31,7 @@ export function transformUnit(
     const blueprint = getUnitBlueprint(target.entityId, target.entityType);
     if (!blueprint) return abilityNotFired();
 
-    const hpRatio = unit.stats.maxHp > 0 ? unit.currentHp / unit.stats.maxHp : 1;
+    const hpRatio = unitHpFraction(unit);
     const name = readString(definition.action.parameters?.name, '') || undefined;
 
     const replacement = instantiateUnit(blueprint, {

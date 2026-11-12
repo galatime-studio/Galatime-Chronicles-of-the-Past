@@ -11,7 +11,7 @@ import type { AiDecisionContext } from '../../../types/AiType';
 import type { CombatAction, CombatUnit } from '../../../types/CombatType';
 import { clamp } from '../../../utils/combatUtils';
 import { previewHealOn } from '../damagePreview';
-import { effectiveStats } from '../effectResolver';
+import { effectiveStats, unitHpFraction } from '../effectResolver';
 
 /**
  * A `[0, 1]` value for healing `target`: the fraction of its health it is
@@ -30,7 +30,7 @@ export function healScore(
     const maxHp = effectiveStats(target).maxHp;
     if (maxHp <= 0) return 0;
 
-    const missing = 1 - clamp(target.currentHp / maxHp, 0, 1);
+    const missing = 1 - unitHpFraction(target);
     if (missing <= 0) return 0;
 
     const healed = previewHealOn(action, context.actor, target, context.state.units);

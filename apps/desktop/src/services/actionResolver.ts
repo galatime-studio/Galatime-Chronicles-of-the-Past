@@ -40,19 +40,20 @@ import {
     applyEffectResources,
     applyEffectToUnit,
     bonusVsHpBelowFromEffects,
-    captureRuneReturn,
     changeResource,
     claimTargetLock,
     confusionChance,
+    createBurnEffect,
     effectiveStats,
     expireStatusesOnElementHit,
-    interruptChantOnDamage,
     isHealBlocked,
     invertBuffsOn,
     liftLuxCurses,
-    recordRuneDamage,
+    removeEffect,
+    removeEffects,
     resolveEffectTargets,
     reviveUnit,
+    unitHpFraction,
 } from './combat/effectResolver';
 import {
     applyCleanse,
@@ -64,10 +65,10 @@ import {
     effectConditionSatisfied,
     readConditionRecord,
 } from './combat/effectMechanics';
-import { reachableTargets, scatterCandidates } from './combat/targetResolver';
+import { candidateTargets, reachableTargets, scatterCandidates } from './combat/targetResolver';
 import { effectiveTimePhase, setPhaseBlock } from './combat/phaseOverride';
 import { canPlaceInLine, moveUnitToLine, repositionWithinLine, wouldLeaveFrontLineEmpty } from './combat/positionRules';
-import { deferSuspendedDamage, recordEchoDamage } from './combat/spatiumMechanics';
+import { applyHealthDamage, reflectHealthDamage } from './combat/healthDamage';
 import { fleeChanceFor } from './combat/fleeRules';
 import {
     applyInstabilityCharge,
@@ -121,12 +122,11 @@ function resolveActionTargets(context: ActionResolutionContext): CombatUnit[] {
     }
     if (action.targeting === 'any_one' && target) return [target];
     // A lane-scoped action (`avalanche`) crashes over the aim's whole lane:
-    // every living member of the aim's side standing in its line.
+    // every living member of the aim's side standing in its line, honouring the
+    // same untargetability and element protections as any other target.
     if (action.targeting === 'enemies_lane' && target) {
-        return state.units.filter((unit) => (
-            unit.status === 'alive'
-            && unit.side === target.side
-            && unit.line === target.line
+        return candidateTargets(state.units, actor, action).filter((unit) => (
+            unit.side === target.side && unit.line === target.line
         ));
     }
     return reachableTargets(state.units, actor, action);
@@ -436,8 +436,7 @@ function consumeEvade(
         && random() < effect.evadeNext.chance);
     if (!evade) return null;
 
-    target.effects = target.effects.filter((effect) => effect !== evade);
-    events.push({ type: 'effect_expired', unitId: target.id, effectId: evade.effectId });
+    events.push(...removeEffect(target, evade));
     if (evade.evadeNext?.returnToFreeLane && action.targeting === 'any_one') {
         if (repositionWithinLine(units, target)) {
             events.push({ type: 'unit_line_changed', unitId: target.id, line: target.line, slot: target.slot });
@@ -524,9 +523,9 @@ function buildResolution(
         // The hour of the day decides what a solar or lunar action is worth.
         timePhase: effectiveTimePhase(state),
         // The wounded-target bonus reads how much of its health is left.
-        defenderHpFraction: hpFraction(recipient),
+        defenderHpFraction: unitHpFraction(recipient),
         // A status such as Blood Moon can add damage against wounded targets.
-        attackerTraits: bonusVsHpBelowFromEffects(actor, hpFraction(recipient)),
+        attackerTraits: bonusVsHpBelowFromEffects(actor, unitHpFraction(recipient)),
         modifier: foldAttackModifiers(
             recipient,
             { damageType: action.damageType, elementId: action.elementId },
@@ -564,31 +563,19 @@ function buildResolution(
         }
     }
     const shield = absorbShieldDamage(recipient, reduced, random);
-    let healthDamage = shield.leftover;
     // `time_lock` banks the hit and pays it when the suspension ends; `stasis`
-    // voids it outright.
-    if (healthDamage > 0 && deferSuspendedDamage(recipient, healthDamage)) {
-        healthDamage = 0;
-    }
-    if (healthDamage > 0 && captureRuneReturn(
-        recipient,
-        healthDamage,
-        'damage',
-        actor.id,
-        action.elementId,
-    )) {
-        // `rune_of_return` swallows the first swing; it is paid back on expiry.
-        healthDamage = 0;
-    }
-    if (healthDamage > 0) {
-        recipient.currentHp = Math.max(0, recipient.currentHp - healthDamage);
-        recipient.eventCounts.damage_taken = (recipient.eventCounts.damage_taken ?? 0) + healthDamage;
-        recordEchoDamage(recipient, healthDamage, action.echoBurst?.percent ?? 0);
-        recordRuneDamage(recipient, healthDamage);
-        context.events?.push(...interruptChantOnDamage(recipient, random));
-        if (recipient.currentHp <= 0 && action.ignoreRescue) {
-            recipient.flags.rescueIgnored = true;
-        }
+    // voids it outright. `rune_of_return` swallows the first swing and pays it
+    // back on expiry. Both live in the shared health-damage sink.
+    const dealt = applyHealthDamage(recipient, shield.leftover, {
+        sourceId: actor.id,
+        elementId: action.elementId,
+        echoPercent: action.echoBurst?.percent ?? 0,
+        random,
+    });
+    const healthDamage = dealt.damage;
+    context.events?.push(...dealt.events);
+    if (recipient.currentHp <= 0 && action.ignoreRescue) {
+        recipient.flags.rescueIgnored = true;
     }
 
     return {
@@ -614,12 +601,6 @@ function findCover(units: readonly CombatUnit[], target: CombatUnit): CombatUnit
         && unit.effects.some((effect) => effect.damageRedirect
             && (effect.damageRedirect.scope === 'allies_all' || unit.line === target.line))
     )) ?? null;
-}
-
-/** How much of its maximum health a unit still has, as a fraction. */
-function hpFraction(unit: CombatUnit): number {
-    const max = effectiveStats(unit).maxHp;
-    return max > 0 ? unit.currentHp / max : 0;
 }
 
 /**
@@ -743,14 +724,7 @@ function consumeCharges(
     ));
     if (consumed.length === 0) return [];
 
-    const consumedIds = new Set(consumed.map((effect) => effect.effectId));
-    target.effects = target.effects.filter((effect) => !consumedIds.has(effect.effectId));
-
-    return consumed.map((effect) => ({
-        type: 'effect_expired' as const,
-        unitId: target.id,
-        effectId: effect.effectId,
-    }));
+    return removeEffects(target, (effect) => consumed.includes(effect));
 }
 
 /**
@@ -978,10 +952,7 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
                         const removed = ally.effects.filter((active) => active.rescueRune
                             && !(ally.id === scopeTarget.id && active.effectId === applied.effectId));
                         if (removed.length === 0) continue;
-                        ally.effects = ally.effects.filter((active) => !removed.includes(active));
-                        for (const old of removed) {
-                            events.push({ type: 'effect_expired', unitId: ally.id, effectId: old.effectId });
-                        }
+                        events.push(...removeEffects(ally, (active) => removed.includes(active)));
                     }
                 }
 
@@ -1102,8 +1073,7 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
         const lastStand = unit.effects.find((effect) => effect.onDeathBlast);
         if (!lastStand?.onDeathBlast) continue;
         dealFlatDamage(events, unit, actor, lastStand.onDeathBlast.power, action.id, 'physical', random);
-        unit.effects = unit.effects.filter((effect) => effect !== lastStand);
-        events.push({ type: 'effect_expired', unitId: unit.id, effectId: lastStand.effectId });
+        events.push(...removeEffect(unit, lastStand));
     }
 
     // Chaos aftermath: chains, shrapnel, recoil, marks, conductors and the
@@ -1125,10 +1095,10 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
 
             events.push(...applyMoveSpec(state, actor, target, moveClause.onMissMove));
             if (moveClause.onMissMove.breakAfter) {
-                target.effects = target.effects.filter(
-                    (effect) => effect.effectId !== moveClause.effectId,
-                );
-                events.push({ type: 'effect_expired', unitId: target.id, effectId: moveClause.effectId });
+                events.push(...removeEffects(
+                    target,
+                    (effect) => effect.effectId === moveClause.effectId,
+                ));
             }
         }
     }
@@ -1195,7 +1165,7 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
             const resolution = resolutions.get(target.id);
             const landed = resolution ? resolution.isHit : !action.dealsDamage;
             if (!landed || target.status !== 'alive') continue;
-            if (hpFraction(target) > fleeBelowHp) continue;
+            if (unitHpFraction(target) > fleeBelowHp) continue;
 
             target.status = 'defeated';
             events.push({ type: 'flee_attempted', unitId: target.id, escaped: true });
@@ -1245,8 +1215,7 @@ function consumeStacksOnHit(
             const amount = Math.round(effectiveStats(target).maxHp * spec.healPercentPerStack / 100 * stacks);
             if (amount > 0) events.push(...changeResource(target, 'hp', amount));
         }
-        target.effects = target.effects.filter((entry) => entry !== effect);
-        events.push({ type: 'effect_expired', unitId: target.id, effectId: effect.effectId });
+        events.push(...removeEffect(target, effect));
     }
 }
 
@@ -1260,15 +1229,7 @@ function applyBurn(
     random: CombatRandom,
 ): void {
     if (stacks <= 0 || turns <= 0 || unit.status !== 'alive') return;
-    const burn: AttackEffect = {
-        effect_id: 'burn',
-        status_effect: 'Burn',
-        turns,
-        polarity: 'negative',
-        damage_per_turn: 4,
-        damage_timing: 'turn_end',
-        stacking: { extend_turns: 1, initial: stacks },
-    };
+    const burn = createBurnEffect(stacks, turns);
     const applied = applyEffectToUnit(unit, burn, sourceId, 'ignis', random);
     if (applied) events.push(applied);
 }
@@ -1311,8 +1272,7 @@ function applyIgniteAndErosion(
             && effect.fireWall.erodeElements?.includes(action.elementId ?? '')) {
             effect.turns = effect.turns === null ? null : effect.turns - 1;
             if (effect.turns !== null && effect.turns <= 0) {
-                target.effects = target.effects.filter((entry) => entry !== effect);
-                events.push({ type: 'effect_expired', unitId: target.id, effectId: effect.effectId });
+                events.push(...removeEffect(target, effect));
             }
         }
     }
@@ -1498,8 +1458,7 @@ function resolveChaosFollowUp(
                         action.damageType,
                         random,
                     );
-                    neighbour.effects = neighbour.effects.filter((effect) => effect !== neighbourMark);
-                    events.push({ type: 'effect_expired', unitId: neighbour.id, effectId: neighbourMark.effectId });
+                    events.push(...removeEffect(neighbour, neighbourMark));
                     if (neighbourMark.chainDetonation.recoilPerTarget > 0) {
                         events.push(...changeResource(actor, 'hp', -neighbourMark.chainDetonation.recoilPerTarget));
                     }
@@ -1525,8 +1484,7 @@ function resolveChaosFollowUp(
                     );
                 }
             } else if (action.elementId === 'lapis') {
-                target.effects = target.effects.filter((effect) => effect !== conductor);
-                events.push({ type: 'effect_expired', unitId: target.id, effectId: conductor.effectId });
+                events.push(...removeEffect(target, conductor));
 
                 const shield = groundConductorShield(conductor);
                 const ally = [...state.units]
@@ -1554,32 +1512,22 @@ function resolveChaosFollowUp(
                     const extra = Math.round(resolution.finalDamage * Math.max(0, (spec.exceptionMultiplier ?? 1) - 1));
                     if (extra > 0) events.push(...changeResource(target, 'hp', -extra));
                     if (spec.exceptionBreaks) {
-                        target.effects = target.effects.filter((effect) => effect !== reflect);
-                        events.push({ type: 'effect_expired', unitId: target.id, effectId: reflect.effectId });
+                        events.push(...removeEffect(target, reflect));
                     }
                 } else {
                     const amount = spec.percentOfDamage > 0
                         ? Math.round(resolution.finalDamage * spec.percentOfDamage)
                         : Math.max(0, spec.power);
-                    actor.currentHp = Math.max(0, actor.currentHp - amount);
-                    events.push({
-                        type: 'damage_reflected',
-                        sourceId: target.id,
-                        targetId: actor.id,
+                    events.push(reflectHealthDamage(target, actor, amount, {
                         abilityId: reflect.effectId,
                         abilityName: reflect.statusEffect ?? 'Reflect',
-                        isHit: true,
-                        amount,
-                        targetHpAfter: actor.currentHp,
-                    });
+                    }));
                     if (spec.consume) {
-                        target.effects = target.effects.filter((effect) => effect !== reflect);
-                        events.push({ type: 'effect_expired', unitId: target.id, effectId: reflect.effectId });
+                        events.push(...removeEffect(target, reflect));
                     } else if (spec.charges !== undefined) {
                         spec.charges -= 1;
                         if (spec.charges <= 0) {
-                            target.effects = target.effects.filter((effect) => effect !== reflect);
-                            events.push({ type: 'effect_expired', unitId: target.id, effectId: reflect.effectId });
+                            events.push(...removeEffect(target, reflect));
                         }
                     }
                 }
@@ -1590,8 +1538,7 @@ function resolveChaosFollowUp(
         const shatter = target.effects.find((effect) => effect.shatterOnDamageType
             && effect.shatterOnDamageType.damageType === action.damageType);
         if (shatter?.shatterOnDamageType) {
-            target.effects = target.effects.filter((effect) => effect !== shatter);
-            events.push({ type: 'effect_expired', unitId: target.id, effectId: shatter.effectId });
+            events.push(...removeEffect(target, shatter));
             const bleed: AttackEffect = {
                 effect_id: 'bleeding',
                 status_effect: shatter.shatterOnDamageType.statusEffect,
@@ -1739,18 +1686,10 @@ function reflectCounter(
     if (counter.counterChance !== undefined) counter.counterChance = 0;
     else counter.counter = false;
 
-    attacker.currentHp = Math.max(0, attacker.currentHp - amount);
-
-    return [{
-        type: 'damage_reflected',
-        sourceId: reflector.id,
-        targetId: attacker.id,
+    return [reflectHealthDamage(reflector, attacker, amount, {
         abilityId: counter.effectId,
         abilityName: counter.statusEffect ?? 'Counter',
-        isHit: true,
-        amount,
-        targetHpAfter: attacker.currentHp,
-    }];
+    })];
 }
 
 /**

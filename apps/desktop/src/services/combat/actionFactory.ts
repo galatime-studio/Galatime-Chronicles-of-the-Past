@@ -31,7 +31,7 @@ import type {
 } from '../../types/CombatType';
 import type { WeaponDefinition, WeaponRuntimeState, WeaponTypeId } from '../../types/WeaponType';
 import { asRecord, clamp, readBoolean, readNumber, readPower, readString, readVariance } from '../../utils/combatUtils';
-import { effectHeals } from './effectResolver';
+import { readBonusVsHpBelow, readNumberRecord, effectHeals } from './effectResolver';
 
 /**
  * Maps every authored targeting word onto the runtime rule.
@@ -96,30 +96,9 @@ function readCosts(source: Record<string, unknown> | null, fallbackStamina: numb
     };
 }
 
-/** Reads a record of multipliers, keeping only the usable numbers. */
+/** Reads a record of multipliers, keeping every usable number (zero included). */
 function readMultiplierRecord(source: unknown): Record<string, number> {
-    const record = asRecord(source);
-    if (!record) return {};
-
-    const result: Record<string, number> = {};
-    for (const [key, raw] of Object.entries(record)) {
-        const value = readNumber(raw, Number.NaN);
-        if (Number.isFinite(value)) result[key] = value;
-    }
-
-    return result;
-}
-
-/** Reads the extra multiplier a skill gets against a wounded target. */
-function readBonusVsHpBelow(source: unknown): { threshold: number; multiplier: number } | null {
-    const record = asRecord(source);
-    if (!record) return null;
-
-    const threshold = readNumber(record.threshold, Number.NaN);
-    const multiplier = readNumber(record.multiplier, Number.NaN);
-    if (!Number.isFinite(threshold) || !Number.isFinite(multiplier)) return null;
-
-    return { threshold, multiplier };
+    return readNumberRecord(source, { keepZero: true }) ?? {};
 }
 
 /** Reads a `bonus_vs_status` trait (object or list); every entry folds in. */

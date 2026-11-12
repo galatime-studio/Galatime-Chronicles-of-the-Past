@@ -63,6 +63,7 @@ import {
     resolveEffectTargets,
     tickUnitEffects,
     tickTurnEndEffects,
+    unitHpFraction,
 } from './combat/effectResolver';
 import { recordTimelineSnapshot, rewindUnit } from './combat/rewind';
 import {
@@ -211,12 +212,6 @@ function currentUnit(state: CombatState): CombatUnit | null {
 /** Whether a live status grants its holder a free line change (`Cloudstep`/`Windborne`). */
 function laneChangeFree(unit: CombatUnit): boolean {
     return unit.effects.some((effect) => effect.laneChangeFree === true);
-}
-
-/** How much of its maximum health a unit still has, as a fraction. */
-function hpFraction(unit: CombatUnit): number {
-    const stats = effectiveStats(unit);
-    return stats.maxHp > 0 ? unit.currentHp / stats.maxHp : 0;
 }
 
 function findUnit(state: CombatState, unitId: string): CombatUnit | null {
@@ -1104,7 +1099,7 @@ export function previewCombatDamage(
         random,
         timePhase: effectiveTimePhase(state),
         weather: state.weather ?? null,
-        defenderHpFraction: hpFraction(target),
+        defenderHpFraction: unitHpFraction(target),
     }));
 }
 

@@ -33,6 +33,16 @@ export function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
 }
 
+/**
+ * How much of a maximum a current value represents, clamped to `0 … 1`.
+ *
+ * Health gates, flee odds and damage previews all ask the same question, so the
+ * guard against a zero maximum lives here instead of each caller re-deriving it.
+ */
+export function hpFraction(current: number, max: number): number {
+    return max > 0 ? clamp(current / max, 0, 1) : 0;
+}
+
 /** Returns the value only when it is a usable number. */
 export function readNumber(value: unknown, fallback = 0): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;

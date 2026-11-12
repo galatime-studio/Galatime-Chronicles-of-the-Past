@@ -8,11 +8,7 @@
  * without copying the Chaos catalogue.
  */
 
-import type {
-    AttackEffect,
-    AttackDetonateOnTurnSpec,
-    AttackReflectSpec,
-} from '../../types/AttackDataType';
+import type { AttackEffect } from '../../types/AttackDataType';
 import type {
     AttackResolution,
     CombatAction,
@@ -28,25 +24,18 @@ import type {
 import {
     absorbShieldDamage,
     applyEffectToUnit,
-    captureRuneReturn,
     carriesStatusNamed,
     changeResource,
-    interruptChantOnDamage,
-    recordRuneDamage,
+    findStatusEffect,
+    removeEffect,
+    statusKey,
 } from './effectResolver';
-
-/** Normalises a status id/label for comparisons. */
-function statusKey(value: string | null | undefined): string {
-    return (value ?? '').trim().toLowerCase().replace(/\s+/g, '_');
-}
+import { applyHealthDamage } from './healthDamage';
+import { unitsInLine } from './positionRules';
 
 /** Whether a unit carries a status by id or authored label. */
 export function hasStatusLabel(unit: CombatUnit, label: string): boolean {
-    const wanted = statusKey(label);
-    if (!wanted) return false;
-    return unit.effects.some((effect) => (
-        statusKey(effect.statusEffect) === wanted || statusKey(effect.effectId) === wanted
-    ));
+    return findStatusEffect(unit, label) !== null;
 }
 
 /** The live charge holder of a status family, if any. */
@@ -59,11 +48,6 @@ function chargeHolder(unit: CombatUnit, label: string): CombatEffectInstance | n
 }
 
 /** Living units in one line, in slot order. */
-function lineUnits(units: readonly CombatUnit[], side: CombatUnit['side'], line: CombatUnit['line']): CombatUnit[] {
-    return units
-        .filter((unit) => unit.status === 'alive' && unit.side === side && unit.line === line)
-        .sort((a, b) => a.slot - b.slot);
-}
 
 /**
  * Applies flat, defence-ignoring damage and reports it as a normal hit.
@@ -87,17 +71,13 @@ export function dealFlatDamage(
     const absorbed = absorbShieldDamage(target, power, random);
     events.push(...absorbed.events);
 
-    const healthDamage = Math.max(0, Math.round(absorbed.leftover));
-    let resolvedDamage = healthDamage;
-    if (resolvedDamage > 0 && captureRuneReturn(target, resolvedDamage, 'damage', source.id, null)) {
-        resolvedDamage = 0;
-    }
-    target.currentHp = Math.max(0, target.currentHp - resolvedDamage);
-    if (resolvedDamage > 0) {
-        target.eventCounts.damage_taken = (target.eventCounts.damage_taken ?? 0) + resolvedDamage;
-        recordRuneDamage(target, resolvedDamage);
-        events.push(...interruptChantOnDamage(target, random));
-    }
+    const dealt = applyHealthDamage(target, absorbed.leftover, {
+        sourceId: source.id,
+        elementId: null,
+        random,
+    });
+    const resolvedDamage = dealt.damage;
+    events.push(...dealt.events);
 
     const resolution: AttackResolution = {
         attackerId: source.id,
@@ -154,7 +134,7 @@ export function resolveTurnStartMechanics(
         const power = Math.max(0, Math.min(spec.maxPower ?? scaled, scaled));
 
         const targets = spec.includeLine
-            ? [unit, ...lineUnits(state.units, unit.side, unit.line).filter((target) => target.id !== unit.id)]
+            ? [unit, ...unitsInLine(state.units, unit.side, unit.line, { aliveOnly: true }).filter((target) => target.id !== unit.id)]
             : [unit];
 
         for (const target of targets) {
@@ -169,8 +149,7 @@ export function resolveTurnStartMechanics(
             );
         }
 
-        unit.effects = unit.effects.filter((effect) => effect !== mark);
-        events.push({ type: 'effect_expired', unitId: unit.id, effectId: mark.effectId });
+        events.push(...removeEffect(unit, mark));
 
         if ((spec.turnSkipChance ?? 0) > 0 && random() < (spec.turnSkipChance ?? 0)) {
             unit.flags.skipTurn = true;
@@ -206,8 +185,7 @@ export function applyInstabilityCharge(
         if ((spec.selfDamage ?? 0) > 0 && random() < (spec.selfDamageChance ?? 0)) {
             events.push(...changeResource(actor, 'hp', -(spec.selfDamage ?? 0)));
         }
-        actor.effects = actor.effects.filter((effect) => effect !== holder);
-        events.push({ type: 'effect_expired', unitId: actor.id, effectId: holder.effectId });
+        events.push(...removeEffect(actor, holder));
         return events;
     }
 
@@ -404,16 +382,4 @@ export function groundConductorShield(
     };
 }
 
-/** Flat reflect damage paid by a status, clamped to the authored power. */
-export function reflectPower(spec: AttackReflectSpec | null | undefined): number {
-    return Math.max(0, Math.round(spec?.power ?? 0));
-}
 
-/**
- * A convenience bundle for a detonation mark's authored spec.
- *
- * Kept exported so tests and the forger parity notes can read the same shape.
- */
-export function readDetonation(spec: AttackDetonateOnTurnSpec | null | undefined): AttackDetonateOnTurnSpec | null {
-    return spec ?? null;
-}

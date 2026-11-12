@@ -28,6 +28,7 @@ import { readNumber, readString } from '../../utils/combatUtils';
 import { createAbilityInstances } from './abilityFactory';
 import { createFleeAction } from './actionFactory';
 import { createAiProfile } from './ai/aiProfileFactory';
+import { createStatusEffect } from './effectResolver';
 import { recordTimelineSnapshot } from './rewind';
 
 /** An entity as loaded from the catalogue; characters and mobs both carry a name. */
@@ -59,8 +60,6 @@ export interface CreateUnitParams {
     hp?: number;
     /** The equipped weapon's runtime state (cloned per unit). */
     weapon?: WeaponRuntimeState | null;
-    /** Stat modifiers the weapon applies while equipped. */
-    weaponStats?: WeaponStatDelta | null;
 }
 
 /**
@@ -71,34 +70,12 @@ export interface CreateUnitParams {
  * other buff.
  */
 export function createWeaponStatEffect(weaponId: string, stats: WeaponStatDelta): CombatEffectInstance {
-    return {
+    return createStatusEffect({
         effectId: `weapon:${weaponId}:stats`,
         sourceId: `weapon:${weaponId}`,
-        statusEffect: null,
-        elementId: null,
-        turns: null,
-        applyTo: null,
-        buff: stats as CombatEffectInstance['buff'],
-        debuff: null,
-        statMultipliers: null,
+        buff: stats,
         polarity: 'positive',
-        regenPerTurn: null,
-        selfUpkeep: null,
-        deferredCost: null,
-        immunities: null,
-        preventActions: null,
-        preventSkills: false,
-        untargetable: false,
-        healBlock: false,
-        counter: false,
-        turnOffset: 0,
-        cooldownTick: 0,
-        move: null,
-        rewind: null,
-        damagePerTurn: 0,
-        stacks: 1,
-        canStack: false,
-    };
+    });
 }
 
 /** Reads an entity's `base_stats` into the runtime stat block. */
@@ -179,13 +156,6 @@ export function createCombatUnit(params: CreateUnitParams): CombatUnit {
     // The fight opens with one snapshot of the unit, so a rewind that goes all
     // the way back lands on the state the unit started the fight in.
     recordTimelineSnapshot(unit);
-
-    // A weapon's `stats:` become one permanent effect, so the flat deltas flow
-    // through `effectiveStats` exactly like a skill's buff — the modifier chips
-    // on the tooltip pick them up for free.
-    if (params.weaponStats && Object.keys(params.weaponStats).length > 0) {
-        unit.effects.push(createWeaponStatEffect(params.weapon?.id ?? 'weapon', params.weaponStats));
-    }
 
     return unit;
 }

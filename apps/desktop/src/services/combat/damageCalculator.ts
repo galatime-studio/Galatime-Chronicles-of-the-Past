@@ -66,7 +66,12 @@ import type {
 import type { ElementData } from '../../types/ElementDataType';
 import { clamp } from '../../utils/combatUtils';
 import { elementDefenseScore, scoreToMultiplier } from '../../utils/elementUtils';
-import { elementModulationFor, isImmuneToDamageType, critDamageTakenFor } from './effectResolver';
+import {
+    critDamageTakenFor,
+    elementModulationFor,
+    hasStatusEffect,
+    isImmuneToDamageType,
+} from './effectResolver';
 import { positionDamageModifier } from './positionRules';
 import { weatherElementMultiplierFor } from './weather';
 
@@ -333,13 +338,6 @@ export function bonusVsHpBelowMultiplier(
 export function piercedDefense(defenseValue: number, pierce: number): number {
     const fraction = clamp(pierce ?? 0, 0, 1);
     return defenseValue * (1 - fraction);
-}
-
-/** Whether a unit carries a status, by id or by label. */
-function hasStatusEffect(unit: CombatUnit, statusId: string): boolean {
-    return unit.effects.some(
-        (effect) => effect.effectId === statusId || effect.statusEffect === statusId,
-    );
 }
 
 /** Damage before the lane, bracing and variance steps. */

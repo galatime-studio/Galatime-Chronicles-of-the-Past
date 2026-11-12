@@ -16,7 +16,7 @@ import { MAX_UNITS_PER_LINE } from '../../constants/CombatConstants';
 import type { CombatEvent, CombatRandom, CombatSide, CombatState, CombatUnit } from '../../types/CombatType';
 import { passiveTriggerContext } from './abilityContext';
 import { resolveAbilityEvent } from './abilityTriggers';
-import { changeResource, effectiveStats } from './effectResolver';
+import { changeResource, effectiveStats, removeEffect } from './effectResolver';
 
 /** Passes allowed while reaping: a reflection or a split can kill again. */
 const MAX_REAP_PASSES = 8;
@@ -85,11 +85,10 @@ function tryRescueRune(unit: CombatUnit, events: CombatEvent[]): boolean {
     const rune = unit.effects.find((effect) => effect.rescueRune);
     if (!rune?.rescueRune) return false;
 
-    unit.effects = unit.effects.filter((effect) => effect !== rune);
     unit.currentHp = 0;
     const stats = effectiveStats(unit);
 
-    events.push({ type: 'effect_expired', unitId: unit.id, effectId: rune.effectId });
+    events.push(...removeEffect(unit, rune));
     events.push(...changeResource(unit, 'hp', 1));
     events.push(...changeResource(
         unit,

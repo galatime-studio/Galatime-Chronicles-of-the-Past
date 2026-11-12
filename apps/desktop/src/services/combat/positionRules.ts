@@ -44,9 +44,12 @@ export function unitsInLine(
     units: readonly CombatUnit[],
     side: CombatSide,
     line: CombatLine,
+    options: { aliveOnly?: boolean } = {},
 ): CombatUnit[] {
     return units
-        .filter((unit) => unit.side === side && unit.line === line)
+        .filter((unit) => unit.side === side
+            && unit.line === line
+            && (!options.aliveOnly || unit.status === 'alive'))
         .sort((a, b) => a.slot - b.slot);
 }
 

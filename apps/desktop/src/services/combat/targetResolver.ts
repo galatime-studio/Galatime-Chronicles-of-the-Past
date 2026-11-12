@@ -218,9 +218,6 @@ export function validateTargetRule(
             !target
             || (target.status !== 'alive' && !resurrectionTarget)
             || (action.resurrect && !resurrectionTarget)
-            || (target.id !== actor.id && isUntargetable(target))
-            || (target.id !== actor.id && untargetableRangesFor(target).includes(action.range))
-            || (target.id !== actor.id && untargetableElementsFor(target).includes(action.elementId))
         ) {
             return {
                 target: null,
@@ -231,18 +228,7 @@ export function validateTargetRule(
             };
         }
 
-        // A taunt (Challenger Stance) pulls hostile single-target actions onto
-        // the taunter whenever it can be reached.
-        if (target.side !== actor.side && action.dealsDamage) {
-            const taunter = liveTaunter(state.units, target.side);
-            if (taunter && taunter.id !== target.id && rangeReachesLine(action.range, taunter.line)) {
-                return { target: taunter, error: null };
-            }
-        }
-
-        // Reach only limits what the action can cross towards the other side; a
-        // unit on the actor's own side is always an arm's length away. A
-        // lane-scoped aim must name an enemy: the lane belongs to the aim.
+        // A lane-scoped aim must name an enemy: the lane belongs to the aim.
         if (action.targeting === 'enemies_lane' && target.side === actor.side) {
             return {
                 target: null,
@@ -252,18 +238,41 @@ export function validateTargetRule(
                 }),
             };
         }
-        if (target.side !== actor.side && !rangeReachesLine(action.range, target.line)) {
+
+        // Reach, untargetability and taunt all live in `reachableTargets`; if the
+        // aim is not in that list the action cannot legally address it.
+        const reachable = reachableTargets(state.units, actor, action);
+        const resolved = reachable.find((unit) => unit.id === target.id) ?? null;
+        if (!resolved) {
+            // A taunting defender pulls hostile single-target attacks onto itself.
+            const taunter = action.targeting === 'any_one' && action.dealsDamage
+                ? liveTaunter(state.units, target.side)
+                : null;
+            if (taunter && rangeReachesLine(action.range, taunter.line)) {
+                return { target: taunter, error: null };
+            }
+
+            if (target.side !== actor.side && !rangeReachesLine(action.range, target.line)) {
+                return {
+                    target: null,
+                    error: createCombatError(
+                        'out_of_range',
+                        `A ${action.range}-range action cannot reach the ${target.line} line.`,
+                        { actionId: action.id, targetId },
+                    ),
+                };
+            }
+
             return {
                 target: null,
-                error: createCombatError(
-                    'out_of_range',
-                    `A ${action.range}-range action cannot reach the ${target.line} line.`,
-                    { actionId: action.id, targetId },
-                ),
+                error: createCombatError('target_invalid', 'That unit cannot be targeted.', {
+                    actionId: action.id,
+                    targetId,
+                }),
             };
         }
 
-        return { target, error: null };
+        return { target: resolved, error: null };
     }
 
     if (reachableTargets(state.units, actor, action).length === 0) {

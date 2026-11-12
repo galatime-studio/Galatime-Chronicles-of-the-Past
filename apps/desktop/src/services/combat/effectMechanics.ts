@@ -36,6 +36,7 @@ export function readConditionRecord(source: unknown): AttackEffectCondition | nu
 
     const line = readString(record.target_line, '');
     const noSpace = readString(record.requires_no_space, '');
+    const minNegatives = readNumber(record.min_negative_statuses, Number.NaN);
     const condition: AttackEffectCondition = {
         requires_pending: readBoolean(record.requires_pending, false) || undefined,
         requires_acted: readBoolean(record.requires_acted, false) || undefined,
@@ -43,9 +44,13 @@ export function readConditionRecord(source: unknown): AttackEffectCondition | nu
         requires_no_status: readString(record.requires_no_status, '') || undefined,
         target_line: line === 'front' || line === 'rear' ? line : undefined,
         requires_no_space: noSpace === 'front' || noSpace === 'rear' ? noSpace : undefined,
+        min_negative_statuses: Number.isFinite(minNegatives)
+            ? Math.max(0, Math.round(minNegatives))
+            : undefined,
     };
     return !condition.requires_pending && !condition.requires_acted && !condition.target_line
         && !condition.requires_no_space && !condition.requires_status && !condition.requires_no_status
+        && condition.min_negative_statuses === undefined
         ? null
         : condition;
 }

@@ -27,6 +27,7 @@ import type {
 import {
     asRecord,
     clamp,
+    hpFraction,
     readBoolean,
     readNumber,
     readStatDelta,
@@ -143,19 +144,33 @@ export function hasStatusEffect(unit: CombatUnit, statusId: string): boolean {
     );
 }
 
-/** Whether the unit carries a status matching `wanted` by id or label (case-insensitive). */
-export function carriesStatusNamed(unit: CombatUnit, wanted: string): boolean {
-    const wantedKey = normalizeStatusKey(wanted);
-    if (!wantedKey) return false;
-    return unit.effects.some((effect) => (
-        normalizeStatusKey(effect.statusEffect ?? '') === wantedKey
-        || normalizeStatusKey(effect.effectId) === wantedKey
-    ));
+/** How much of its effective maximum health the unit still has, in `0 … 1`. */
+export function unitHpFraction(unit: CombatUnit): number {
+    return hpFraction(unit.currentHp, effectiveStats(unit).maxHp);
 }
 
-/** Normalises a status name for label matching (case-insensitive, trimmed). */
-function normalizeStatusKey(value: string): string {
-    return value.trim().toLowerCase();
+/**
+ * Normalises a status name for id/label matching.
+ *
+ * Ids are authored both in `snake_case` and as display labels (`Fire Wall`), so
+ * whitespace and dashes collapse to `_` before the case is folded.
+ */
+export function statusKey(value: string | null | undefined): string {
+    return (value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+/** The live effect matching a status id or label, or `null`. */
+export function findStatusEffect(unit: CombatUnit, wanted: string): CombatEffectInstance | null {
+    const wantedKey = statusKey(wanted);
+    if (!wantedKey) return null;
+    return unit.effects.find((effect) => (
+        statusKey(effect.statusEffect) === wantedKey || statusKey(effect.effectId) === wantedKey
+    )) ?? null;
+}
+
+/** Whether the unit carries a status matching `wanted` by id or label (case-insensitive). */
+export function carriesStatusNamed(unit: CombatUnit, wanted: string): boolean {
+    return findStatusEffect(unit, wanted) !== null;
 }
 
 /**
@@ -469,7 +484,7 @@ function mergeDeltas(
 }
 
 /** Reads an effect's `bonus_vs_hp_below` spec. */
-function readBonusVsHpBelow(source: unknown): { threshold: number; multiplier: number } | null {
+export function readBonusVsHpBelow(source: unknown): { threshold: number; multiplier: number } | null {
     const record = asRecord(source);
     if (!record) return null;
 
@@ -502,14 +517,17 @@ function readDamageChannels(source: unknown): DamageType[] | null {
 }
 
 /** Reads a flat `element_id → multiplier` record (`element_modulation`). */
-export function readNumberRecord(source: unknown): Record<string, number> | null {
+export function readNumberRecord(
+    source: unknown,
+    options: { keepZero?: boolean } = {},
+): Record<string, number> | null {
     const record = asRecord(source);
     if (!record) return null;
 
     const result: Record<string, number> = {};
     for (const [key, value] of Object.entries(record)) {
         const amount = readNumber(value, Number.NaN);
-        if (Number.isFinite(amount) && amount !== 0) result[key.trim()] = amount;
+        if (Number.isFinite(amount) && (options.keepZero || amount !== 0)) result[key.trim()] = amount;
     }
     return Object.keys(result).length > 0 ? result : null;
 }
@@ -1270,6 +1288,25 @@ function readRiftMark(source: unknown): CombatEffectInstance['riftMark'] {
  *
  * `random` is only consumed by `random_debuff`, which rolls the stats it lowers.
  */
+/**
+ * Builds the authored `burn` status both Ignis' end-of-turn rider and the
+ * on-hit Burn stacks share.
+ *
+ * One builder keeps the damage-per-turn, timing and stacking contract in one
+ * place instead of two literals that can drift apart.
+ */
+export function createBurnEffect(stacks: number, turns: number): AttackEffect {
+    return {
+        effect_id: 'burn',
+        status_effect: 'Burn',
+        turns,
+        polarity: 'negative',
+        damage_per_turn: 4,
+        damage_timing: 'turn_end',
+        stacking: { extend_turns: 1, initial: stacks },
+    };
+}
+
 export function createEffectInstance(
     effect: AttackEffect,
     sourceId: string,
@@ -1477,6 +1514,61 @@ export function createEffectInstance(
 
     instance.polarity = readPolarity(effect, instance);
     return instance;
+}
+
+/** The fields a programmatic status sets; every other clause takes its inert default. */
+export interface StatusEffectInit {
+    effectId: string;
+    sourceId: string;
+    statusEffect?: string | null;
+    turns?: number | null;
+    buff?: CombatStatDelta | null;
+    debuff?: CombatStatDelta | null;
+    statMultipliers?: CombatStatDelta | null;
+    polarity?: CombatEffectPolarity;
+    preventActions?: string[] | null;
+    damagePerTurn?: number;
+    stacks?: number;
+    canStack?: boolean;
+}
+
+/**
+ * Builds a {@link CombatEffectInstance} for a status created outside the attack
+ * content parser — abilities and weapon stat passives.
+ *
+ * This is the one place those effects are shaped: the canonical writer
+ * ({@link applyEffectToUnit}) and the stacking/refresh checks all read the same
+ * fields, so a programmatic status behaves exactly like an authored one.
+ */
+export function createStatusEffect(init: StatusEffectInit): CombatEffectInstance {
+    return {
+        effectId: init.effectId,
+        sourceId: init.sourceId,
+        statusEffect: init.statusEffect ?? null,
+        elementId: null,
+        turns: init.turns ?? null,
+        applyTo: null,
+        buff: init.buff ?? null,
+        debuff: init.debuff ?? null,
+        statMultipliers: init.statMultipliers ?? null,
+        polarity: init.polarity ?? 'neutral',
+        regenPerTurn: null,
+        selfUpkeep: null,
+        deferredCost: null,
+        immunities: null,
+        preventActions: init.preventActions ?? null,
+        preventSkills: false,
+        untargetable: false,
+        healBlock: false,
+        counter: false,
+        turnOffset: 0,
+        cooldownTick: 0,
+        move: null,
+        rewind: null,
+        damagePerTurn: init.damagePerTurn ?? 0,
+        stacks: init.stacks ?? 1,
+        canStack: init.canStack ?? false,
+    };
 }
 
 /**
@@ -1849,17 +1941,17 @@ export function applyEffectToUnit(
     // target) removes every match by label or effect id before applying.
     const strip = readTrimmedStringList((asRecord(effect) ?? {}).also_remove_status);
     if (strip) {
-        const wanted = strip.map((entry) => normalizeStatusKey(entry));
+        const wanted = strip.map((entry) => statusKey(entry));
         unit.effects = unit.effects.filter((active) => (
-            !wanted.includes(normalizeStatusKey(active.statusEffect ?? ''))
-            && !wanted.includes(normalizeStatusKey(active.effectId))
+            !wanted.includes(statusKey(active.statusEffect ?? ''))
+            && !wanted.includes(statusKey(active.effectId))
         ));
     }
 
 
     // The immunity bites on the status the effect carries, by id or by label.
-    const statusKey = instance.statusEffect ?? instance.effectId;
-    if (statusKey && isImmuneToStatus(unit, statusKey)) {
+    const statusName = instance.statusEffect ?? instance.effectId;
+    if (statusName && isImmuneToStatus(unit, statusName)) {
         return {
             type: 'effect_resisted',
             unitId: unit.id,
@@ -1882,11 +1974,11 @@ export function applyEffectToUnit(
     // bearer instead of replacing it: stacks rise and the remaining duration is
     // extended, exactly as the fire catalogue describes.
     if (instance.mergeOnApply && instance.statusEffect) {
-        const label = normalizeStatusKey(instance.statusEffect);
+        const label = statusKey(instance.statusEffect);
         const holder = unit.effects.find((active) => (
             active.mergeOnApply
             && active.statusEffect
-            && normalizeStatusKey(active.statusEffect) === label
+            && statusKey(active.statusEffect) === label
         ));
         if (holder) {
             holder.stacks = Math.max(1, holder.stacks) + Math.max(1, instance.stacks);
@@ -1957,9 +2049,9 @@ export function applyEffectToUnit(
     // A `refresh_status` landing replaces any other status carrying the same
     // label, so a new Wet refreshes an older Wet from a different skill.
     if (readBoolean((asRecord(effect) ?? {}).refresh_status, false) && instance.statusEffect) {
-        const label = normalizeStatusKey(instance.statusEffect);
+        const label = statusKey(instance.statusEffect);
         unit.effects = unit.effects.filter((active) => (
-            !active.statusEffect || normalizeStatusKey(active.statusEffect) !== label
+            !active.statusEffect || statusKey(active.statusEffect) !== label
         ));
     }
     // A shielded landing tops up to its own value: shields are not additive,
@@ -2546,15 +2638,7 @@ export function tickTurnEndEffects(
         }
 
         if (effect.turnEndBurn && random() < effect.turnEndBurn.chance) {
-            const burn: AttackEffect = {
-                effect_id: 'burn',
-                status_effect: 'Burn',
-                turns: effect.turnEndBurn.burnTurns,
-                polarity: 'negative',
-                damage_per_turn: 4,
-                damage_timing: 'turn_end',
-                stacking: { extend_turns: 1, initial: effect.turnEndBurn.burnStacks },
-            };
+            const burn = createBurnEffect(effect.turnEndBurn.burnStacks, effect.turnEndBurn.burnTurns);
             const applied = applyEffectToUnit(unit, burn, effect.sourceId, effect.elementId, random);
             if (applied) events.push(applied);
         }
@@ -3160,20 +3244,40 @@ export function reviveUnit(unit: CombatUnit, hpPercent: number): CombatEvent[] {
 }
 
 /**
+ * Removes every live effect matching `predicate`.
+ *
+ * Returns one `effect_expired` per removed status, matching `tickUnitEffects`,
+ * so every removal path reads the same in the log. Identity-based selection means
+ * two effects that share an `effectId` are never removed by accident.
+ */
+export function removeEffects(
+    unit: CombatUnit,
+    predicate: (effect: CombatEffectInstance) => boolean,
+): CombatEvent[] {
+    const removed = unit.effects.filter(predicate);
+    if (removed.length === 0) return [];
+
+    unit.effects = unit.effects.filter((effect) => !removed.includes(effect));
+    return removed.map((effect) => ({
+        type: 'effect_expired',
+        unitId: unit.id,
+        effectId: effect.effectId,
+    }));
+}
+
+/** Removes one live effect by identity. */
+export function removeEffect(unit: CombatUnit, effect: CombatEffectInstance): CombatEvent[] {
+    return removeEffects(unit, (entry) => entry === effect);
+}
+
+/**
  * Removes every live status from a unit.
  *
  * Returns one `effect_expired` per status, matching `tickUnitEffects`, so the log
  * reads the same whether a status ended by time or by a cleanse.
  */
 export function clearUnitEffects(unit: CombatUnit): CombatEvent[] {
-    const events: CombatEvent[] = unit.effects.map((effect) => ({
-        type: 'effect_expired',
-        unitId: unit.id,
-        effectId: effect.effectId,
-    }));
-
-    unit.effects = [];
-    return events;
+    return removeEffects(unit, () => true);
 }
 
 /**
@@ -3197,14 +3301,7 @@ export function cleanseEffects(
 
     if (chosen.length === 0) return [];
 
-    const chosenIds = new Set(chosen.map((effect) => effect.effectId));
-    unit.effects = unit.effects.filter((effect) => !chosenIds.has(effect.effectId));
-
-    return chosen.map((effect) => ({
-        type: 'effect_expired',
-        unitId: unit.id,
-        effectId: effect.effectId,
-    }));
+    return removeEffects(unit, (effect) => chosen.includes(effect));
 }
 
 /**
@@ -3219,13 +3316,11 @@ export function dispelEffects(
     options: { count?: number; all?: boolean; statusId?: string } = {},
 ): CombatEvent[] {
     if (options.statusId) {
-        const target = unit.effects.find(
-            (effect) => effect.effectId === options.statusId || effect.statusEffect === options.statusId,
-        );
-        if (!target) return [];
-
-        unit.effects = unit.effects.filter((effect) => effect !== target);
-        return [{ type: 'effect_expired', unitId: unit.id, effectId: target.effectId }];
+        const wantedKey = statusKey(options.statusId);
+        if (!wantedKey) return [];
+        return removeEffects(unit, (effect) => (
+            statusKey(effect.effectId) === wantedKey || statusKey(effect.statusEffect) === wantedKey
+        ));
     }
 
     const removable = unit.effects.filter((effect) => effect.polarity === 'positive');
@@ -3235,14 +3330,7 @@ export function dispelEffects(
 
     if (chosen.length === 0) return [];
 
-    const chosenIds = new Set(chosen.map((effect) => effect.effectId));
-    unit.effects = unit.effects.filter((effect) => !chosenIds.has(effect.effectId));
-
-    return chosen.map((effect) => ({
-        type: 'effect_expired',
-        unitId: unit.id,
-        effectId: effect.effectId,
-    }));
+    return removeEffects(unit, (effect) => chosen.includes(effect));
 }
 
 /** Whether a unit is blocked from being healed by anybody else. */

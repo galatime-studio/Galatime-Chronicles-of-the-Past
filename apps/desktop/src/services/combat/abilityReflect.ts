@@ -14,6 +14,7 @@ import type { AbilityTriggerContext } from './abilityContext';
 import { abilityNotFired } from './abilityResult';
 import type { AbilityActionResult } from './abilityResult';
 import { rollHit } from './damageCalculator';
+import { reflectHealthDamage } from './healthDamage';
 
 /** Parameters: `fraction` (0 … 1 of the hit) and `accuracy` (0 … 100). */
 export function reflectDamage(
@@ -29,20 +30,14 @@ export function reflectDamage(
 
     const isHit = rollHit(context.random, accuracy);
     const amount = isHit ? Math.max(1, Math.round(context.damage * fraction)) : 0;
-    if (amount > 0) attacker.currentHp = Math.max(0, attacker.currentHp - amount);
 
     return {
         fired: true,
         targetIds: [attacker.id],
-        events: [{
-            type: 'damage_reflected',
-            sourceId: reflector.id,
-            targetId: attacker.id,
+        events: [reflectHealthDamage(reflector, attacker, amount, {
             abilityId: definition.id,
             abilityName: definition.name,
             isHit,
-            amount,
-            targetHpAfter: attacker.currentHp,
-        }],
+        })],
     };
 }

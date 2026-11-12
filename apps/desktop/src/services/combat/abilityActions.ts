@@ -14,11 +14,11 @@
  */
 
 import type { AbilityDefinition, CombatAbilityInstance } from '../../types/AbilityType';
-import type { CombatEffectInstance, CombatState, CombatUnit } from '../../types/CombatType';
+import type { CombatEffectPolarity, CombatState, CombatUnit } from '../../types/CombatType';
 import { readStatDelta, readString, asRecord, readNumber } from '../../utils/combatUtils';
 import type { AbilityTriggerContext } from './abilityContext';
 import { abilityEffectTurns } from './abilityDuration';
-import { effectiveStats, scaleStatDelta } from './effectResolver';
+import { createStatusEffect, effectiveStats, scaleStatDelta } from './effectResolver';
 import { reflectDamage } from './abilityReflect';
 import { dealDamageAbility, healAbility } from './abilityResources';
 import { abilityNotFired } from './abilityResult';
@@ -87,34 +87,19 @@ function applyStatAbility(
             : null;
         if (!delta && !statMultipliers) continue;
 
-        const effect: CombatEffectInstance = {
+        const polarity: CombatEffectPolarity = delta
+            && Object.values(delta).every((value) => value < 0)
+            ? 'negative'
+            : 'positive';
+
+        const effect = createStatusEffect({
             effectId: definition.id,
             sourceId: definition.id,
-            statusEffect: null,
-            elementId: null,
             turns,
-            applyTo: null,
             buff: delta,
-            debuff: null,
             statMultipliers,
-            polarity: 'positive',
-            regenPerTurn: null,
-            selfUpkeep: null,
-            deferredCost: null,
-            immunities: null,
-            preventActions: null,
-            preventSkills: false,
-            untargetable: false,
-            healBlock: false,
-            counter: false,
-            turnOffset: 0,
-            cooldownTick: 0,
-            move: null,
-            rewind: null,
-            damagePerTurn: 0,
-            stacks: 1,
-            canStack: false,
-        };
+            polarity,
+        });
 
         const index = target.effects.findIndex((active) => active.effectId === effect.effectId);
         if (index >= 0) target.effects[index] = effect;
@@ -126,7 +111,7 @@ function applyStatAbility(
             unitId: target.id,
             effectId: effect.effectId,
             statusEffect: null,
-            turns,
+            turns: effect.turns,
         });
     }
 

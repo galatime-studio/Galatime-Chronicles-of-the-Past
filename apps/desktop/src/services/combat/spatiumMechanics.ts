@@ -19,8 +19,8 @@ import type {
     CombatState,
     CombatUnit,
 } from '../../types/CombatType';
-import { asRecord, clamp, readBoolean, readNumber, readString } from '../../utils/combatUtils';
-import { applyEffectToUnit, changeResource, effectiveStats } from './effectResolver';
+import { asRecord, clamp, readNumber } from '../../utils/combatUtils';
+import { applyEffectToUnit, changeResource, effectiveStats, removeEffect, removeEffects } from './effectResolver';
 
 /** The first live suspension on a unit. */
 export function suspensionOf(unit: CombatUnit): CombatEffectInstance | null {
@@ -72,8 +72,7 @@ export function tickSuspension(
     }
 
     const suspend = effect.suspend;
-    unit.effects = unit.effects.filter((active) => active !== effect);
-    events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+    events.push(...removeEffect(unit, effect));
 
     if (suspend.deferredDamage > 0) {
         events.push({
@@ -188,10 +187,7 @@ export function resolveTurnEndEchoes(
     }
 
     if (consumed.size > 0) {
-        unit.effects = unit.effects.filter((effect) => !consumed.has(effect));
-        for (const effect of consumed) {
-            events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
-        }
+        events.push(...removeEffects(unit, (effect) => consumed.has(effect)));
     }
 
     void random;
@@ -231,10 +227,7 @@ export function resolveCasterEchoes(
         }
 
         if (consumed.size > 0) {
-            unit.effects = unit.effects.filter((effect) => !consumed.has(effect));
-            for (const effect of consumed) {
-                events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
-            }
+            events.push(...removeEffects(unit, (effect) => consumed.has(effect)));
         }
     }
 }
@@ -283,8 +276,7 @@ export function resolveRiftMarks(
                 sourceId: source.id,
             });
             events.push(...changeResource(unit, 'hp', -amount));
-            unit.effects = unit.effects.filter((active) => active !== effect);
-            events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+            events.push(...removeEffect(unit, effect));
         }
     }
 }
@@ -308,7 +300,7 @@ export function nextActionBonusFor(
     bonus.charges -= 1;
     const result = { effect, accuracy: bonus.accuracy, cooldown: bonus.cooldown };
     if (bonus.charges <= 0) {
-        unit.effects = unit.effects.filter((active) => active !== effect);
+        removeEffect(unit, effect);
     }
     return result;
 }
@@ -326,24 +318,4 @@ export function laneCascadeSpec(action: { lane_cascade?: unknown }): { first: nu
     };
 }
 
-/** Reads a next-action bonus authored on an effect (for the forger/export path). */
-export function readNextActionBonusSource(source: unknown): {
-    element: string | null;
-    accuracy: number;
-    cooldown: number;
-    charges: number;
-} | null {
-    const record = asRecord(source);
-    if (!record) return null;
-    return {
-        element: readString(record.element, '') || null,
-        accuracy: Math.max(0, readNumber(record.accuracy, 0)),
-        cooldown: Math.max(0, Math.round(readNumber(record.cooldown, 0))),
-        charges: Math.max(1, Math.round(readNumber(record.charges, 1))),
-    };
-}
 
-/** Guards a boolean field used by the forger normaliser. */
-export function readSuspendFlag(source: unknown, key: string, fallback = false): boolean {
-    return readBoolean(asRecord(source)?.[key], fallback);
-}

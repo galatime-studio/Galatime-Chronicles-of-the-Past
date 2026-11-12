@@ -16,7 +16,9 @@ import {
 import type { AiFleeRule } from '../../types/AiType';
 import type { CombatUnit } from '../../types/CombatType';
 import { clamp } from '../../utils/combatUtils';
-import { effectiveStats } from './effectResolver';
+import { unitHpFraction } from './effectResolver';
+
+export { unitHpFraction };
 
 /** The shared rule for units the player controls. */
 const PLAYER_FLEE_RULE: AiFleeRule = {
@@ -29,12 +31,6 @@ export function fleeRuleFor(unit: CombatUnit): AiFleeRule | null {
     return unit.isPlayerControlled
         ? PLAYER_FLEE_RULE
         : unit.aiProfile?.flee ?? null;
-}
-
-/** How much of its maximum health the unit still has, as a fraction. */
-export function unitHpFraction(unit: CombatUnit): number {
-    const maxHp = effectiveStats(unit).maxHp;
-    return maxHp > 0 ? clamp(unit.currentHp / maxHp, 0, 1) : 0;
 }
 
 /** Whether the unit is wounded enough to be allowed to run. */

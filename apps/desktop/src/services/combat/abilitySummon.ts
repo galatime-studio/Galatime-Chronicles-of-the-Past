@@ -19,6 +19,7 @@ import { readNumber } from '../../utils/combatUtils';
 import { readAbilityEntityTarget } from './abilityFactory';
 import { abilityNotFired } from './abilityResult';
 import type { AbilityActionResult } from './abilityResult';
+import { canPlaceInLine, unitsInLine } from './positionRules';
 import { getUnitBlueprint, instantiateUnit } from './unitBlueprint';
 
 interface SummonPlacement {
@@ -29,11 +30,7 @@ interface SummonPlacement {
 
 /** Slot indices already taken in one line, dead units included. */
 function occupiedSlots(state: CombatState, side: CombatSide, line: CombatLine): Set<number> {
-    const slots = new Set<number>();
-    for (const unit of state.units) {
-        if (unit.side === side && unit.line === line) slots.add(unit.slot);
-    }
-    return slots;
+    return new Set(unitsInLine(state.units, side, line).map((unit) => unit.slot));
 }
 
 function firstFreeSlot(occupied: Set<number>): number | null {
@@ -56,10 +53,9 @@ export function findSummonPlacement(
     const order: CombatLine[] = preferredLine === 'front' ? ['front', 'rear'] : ['rear', 'front'];
 
     for (const line of order) {
-        const occupied = occupiedSlots(state, summoner.side, line);
-        if (occupied.size >= MAX_UNITS_PER_LINE) continue;
+        if (!canPlaceInLine(state.units, summoner.side, line)) continue;
 
-        const slot = firstFreeSlot(occupied);
+        const slot = firstFreeSlot(occupiedSlots(state, summoner.side, line));
         if (slot !== null) return { side: summoner.side, line, slot };
     }
 
@@ -76,7 +72,7 @@ export function findSummonPlacement(
  */
 function findFlankingPlacement(state: CombatState, summoner: CombatUnit): SummonPlacement | null {
     const occupied = occupiedSlots(state, summoner.side, summoner.line);
-    if (occupied.size >= MAX_UNITS_PER_LINE) return null;
+    if (!canPlaceInLine(state.units, summoner.side, summoner.line)) return null;
 
     for (let offset = 1; offset <= MAX_UNITS_PER_LINE; offset += 1) {
         for (const slot of [summoner.slot - offset, summoner.slot + offset]) {

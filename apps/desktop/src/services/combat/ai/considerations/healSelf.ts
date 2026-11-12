@@ -8,7 +8,7 @@
 
 import type { AiConsideration } from '../../../../types/AiType';
 import { clamp } from '../../../../utils/combatUtils';
-import { effectiveStats } from '../../effectResolver';
+import { unitHpFraction } from '../../effectResolver';
 import { healScore } from '../aiHealing';
 
 export const healSelf: AiConsideration = {
@@ -21,8 +21,7 @@ export const healSelf: AiConsideration = {
         const score = healScore(context, candidate.action, actor);
         if (score <= 0) return 0;
 
-        const maxHp = Math.max(1, effectiveStats(actor).maxHp);
-        const wounded = actor.currentHp / maxHp < thresholds.wounded;
+        const wounded = unitHpFraction(actor) < thresholds.wounded;
 
         return clamp(score * (wounded ? 1.5 : 1), 0, 1);
     },

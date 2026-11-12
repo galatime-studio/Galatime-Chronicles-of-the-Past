@@ -8,12 +8,22 @@
  */
 
 import type { AbilityDefinition, AbilityStacking, AbilityStatusEffect } from '../../types/AbilityType';
-import type { CombatEffectInstance, CombatStatDelta, CombatUnit } from '../../types/CombatType';
+import type {
+    CombatEffectPolarity,
+    CombatStatDelta,
+    CombatUnit,
+} from '../../types/CombatType';
 import { asRecord, readNumber, readString } from '../../utils/combatUtils';
 import { abilityEffectTurns } from './abilityDuration';
 import { abilityNotFired } from './abilityResult';
 import type { AbilityActionResult } from './abilityResult';
 import type { EffectAppliedEvent } from './effectResolver';
+import {
+    clearUnitEffects,
+    createStatusEffect,
+    dispelEffects,
+    findStatusEffect,
+} from './effectResolver';
 
 /** Reads `parameters.effects[]` into additive deltas and multipliers. */
 function readStatusEffects(raw: unknown, outputMultiplier = 1): {
@@ -71,7 +81,13 @@ interface StatusSpec {
     damagePerTurn: number;
     stacks: number;
     stacking: AbilityStacking;
+    polarity: CombatEffectPolarity;
     sourceId: string;
+}
+
+/** Reads the authored polarity, falling back to what the status actually does. */
+function readStatusPolarity(value: unknown, fallback: CombatEffectPolarity): CombatEffectPolarity {
+    return value === 'positive' || value === 'negative' || value === 'neutral' ? value : fallback;
 }
 
 /**
@@ -85,53 +101,40 @@ interface StatusSpec {
  * Returns the feedback event, or `null` when `ignore` swallowed the write.
  */
 function writeStatus(unit: CombatUnit, spec: StatusSpec): EffectAppliedEvent | null {
-    const incoming: CombatEffectInstance = {
+    const incoming = createStatusEffect({
         effectId: spec.statusId,
         sourceId: spec.sourceId,
         statusEffect: spec.label,
-        elementId: null,
         turns: spec.turns,
-        applyTo: null,
         buff: spec.buff,
-        debuff: null,
         statMultipliers: spec.multipliers,
-        // A status is a gift when it buffs and a curse when it weakens; the
-        // author may say otherwise through the status' own polarity.
-        polarity: spec.buff ? 'positive' : 'neutral',
-        regenPerTurn: null,
-        selfUpkeep: null,
-        deferredCost: null,
-        immunities: null,
+        polarity: spec.polarity,
         preventActions: spec.preventActions,
-        preventSkills: false,
-        untargetable: false,
-        healBlock: false,
-        counter: false,
-        turnOffset: 0,
-        cooldownTick: 0,
-        move: null,
-        rewind: null,
         damagePerTurn: spec.damagePerTurn,
         stacks: spec.stacks,
         canStack: spec.stacking === 'stack',
-    };
+    });
 
-    const index = unit.effects.findIndex((active) => active.effectId === spec.statusId);
+    const active = findStatusEffect(unit, spec.statusId);
+    const index = active ? unit.effects.indexOf(active) : -1;
+    let written = incoming;
 
     if (index < 0) {
         unit.effects.push(incoming);
     } else if (spec.stacking === 'ignore') {
         return null;
     } else if (spec.stacking === 'refresh') {
-        unit.effects[index] = { ...unit.effects[index], turns: incoming.turns };
+        written = { ...unit.effects[index], turns: incoming.turns };
+        unit.effects[index] = written;
     } else if (spec.stacking === 'stack') {
         const current = unit.effects[index];
         const longest = Math.max(current.turns ?? incoming.turns ?? 0, incoming.turns ?? 0);
-        unit.effects[index] = {
+        written = {
             ...incoming,
             stacks: current.stacks + incoming.stacks,
             turns: longest > 0 ? longest : null,
         };
+        unit.effects[index] = written;
     } else {
         unit.effects[index] = incoming;
     }
@@ -141,7 +144,7 @@ function writeStatus(unit: CombatUnit, spec: StatusSpec): EffectAppliedEvent | n
         unitId: unit.id,
         effectId: spec.statusId,
         statusEffect: spec.label,
-        turns: spec.turns,
+        turns: written.turns,
     };
 }
 
@@ -158,7 +161,7 @@ function applyStatusToTargets(
     const parameters = definition.action.parameters ?? {};
     const { buff, multipliers } = readStatusEffects(parameters.effects, outputMultiplier);
 
-    const spec: StatusSpec = {
+    const merged: Omit<StatusSpec, 'polarity'> = {
         statusId,
         label: readString(parameters.status_label, '') || statusId,
         turns: abilityEffectTurns(definition),
@@ -172,11 +175,21 @@ function applyStatusToTargets(
         ...overrides,
     };
 
+    // A status is a gift when it buffs and a curse when it hurts or forbids; the
+    // author may override that through `parameters.polarity`.
+    const spec: StatusSpec = {
+        ...merged,
+        polarity: readStatusPolarity(
+            parameters.polarity,
+            merged.damagePerTurn > 0 || merged.preventActions ? 'negative' : merged.buff ? 'positive' : 'neutral',
+        ),
+    };
+
     const events: EffectAppliedEvent[] = [];
     const targetIds: string[] = [];
 
     for (const target of targets) {
-        const applied = writeStatus(target, { ...spec, statusId });
+        const applied = writeStatus(target, spec);
         if (!applied) continue;
         events.push(applied);
         targetIds.push(target.id);
@@ -226,13 +239,10 @@ export function removeStatusAbility(
     const targetIds: string[] = [];
 
     for (const target of targets) {
-        const before = target.effects.length;
-        target.effects = target.effects.filter(
-            (effect) => effect.effectId !== statusId && effect.statusEffect !== statusId,
-        );
-        if (target.effects.length === before) continue;
+        const removed = dispelEffects(target, { statusId });
+        if (removed.length === 0) continue;
 
-        events.push({ type: 'effect_expired', unitId: target.id, effectId: statusId });
+        events.push(...removed);
         targetIds.push(target.id);
     }
 
@@ -246,13 +256,10 @@ export function dispelAbility(targets: readonly CombatUnit[]): AbilityActionResu
     const targetIds: string[] = [];
 
     for (const target of targets) {
-        if (target.effects.length === 0) continue;
+        const removed = clearUnitEffects(target);
+        if (removed.length === 0) continue;
 
-        for (const effect of target.effects) {
-            events.push({ type: 'effect_expired', unitId: target.id, effectId: effect.effectId });
-        }
-
-        target.effects = [];
+        events.push(...removed);
         targetIds.push(target.id);
     }
 

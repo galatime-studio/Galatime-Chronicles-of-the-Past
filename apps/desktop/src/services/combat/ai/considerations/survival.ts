@@ -12,7 +12,7 @@ import { DEFEND_DAMAGE_REDUCTION } from '../../../../constants/CombatConstants';
 import { AI_MIN_THREAT } from '../../../../constants/AiConstants';
 import type { AiConsideration } from '../../../../types/AiType';
 import { clamp } from '../../../../utils/combatUtils';
-import { effectiveStats } from '../../effectResolver';
+import { effectiveStats, unitHpFraction } from '../../effectResolver';
 import { candidateTargetUnits } from '../aiCandidates';
 import { expectedDamageFor } from '../aiImpacts';
 import { estimateThreatAgainst, threatFrom } from '../aiThreat';
@@ -44,7 +44,7 @@ export const survival: AiConsideration = {
         if (removed <= 0) return 0;
 
         const value = clamp(removed / Math.max(AI_MIN_THREAT, threat), 0, 1);
-        const wounded = actor.currentHp / maxHp < thresholds.wounded;
+        const wounded = unitHpFraction(actor) < thresholds.wounded;
         const urgency = wounded ? 1 : danger;
 
         return clamp(value * urgency, 0, 1);

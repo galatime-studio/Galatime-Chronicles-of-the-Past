@@ -11,12 +11,8 @@
 import { AI_MIN_THREAT } from '../../../../constants/AiConstants';
 import type { AiConsideration } from '../../../../types/AiType';
 import { clamp } from '../../../../utils/combatUtils';
-import { effectiveStats } from '../../effectResolver';
-import {
-    fleeChanceFor,
-    fleeRuleFor,
-    unitHpFraction,
-} from '../../fleeRules';
+import { effectiveStats, unitHpFraction } from '../../effectResolver';
+import { fleeChanceFor, fleeRuleFor } from '../../fleeRules';
 import { estimateThreatAgainst } from '../aiThreat';
 
 export const fleeValue: AiConsideration = {
