@@ -21,6 +21,7 @@ import type {
     CombatStatDelta,
     CombatStats,
     CombatUnit,
+    CombatSide,
     DamageType,
 } from '../../types/CombatType';
 import {
@@ -605,6 +606,10 @@ function readTripOnAction(
         turns: Math.max(1, Math.round(readNumber(spawnRecord.turns, 1))),
         debuff: (readStatDelta(spawnRecord.debuff) ?? null) as CombatStatDelta | null,
         preventActions: readTrimmedStringList(spawnRecord.prevent_actions),
+        stacking: readBoolean(spawnRecord.stacking, false)
+            ? { initial: 1, extendTurns: 1 }
+            : null,
+        canStack: readBoolean(spawnRecord.can_stack, false),
     } : null;
 
     return {
@@ -636,12 +641,14 @@ function readDetonateOnTurn(
     if (power <= 0) return null;
 
     const maxPower = readNumber(record.max_power, 0);
+    const includeLine = readBoolean(record.include_line, false);
     return {
         power,
         scalePerTurn: Math.max(0, readNumber(record.scale_per_turn, 0)),
         // No authored cap means the mark can keep growing with time.
         maxPower: maxPower > 0 ? Math.max(power, maxPower) : Number.POSITIVE_INFINITY,
-        includeLine: readBoolean(record.include_line, false),
+        includeLine,
+        splashChance: clamp(readNumber(record.splash_chance, includeLine ? 1 : 0), 0, 1),
         turnSkipChance: clamp(readNumber(record.turn_skip_chance, 0), 0, 1),
     };
 }
@@ -697,13 +704,19 @@ function readReflect(source: unknown): CombatEffectInstance['reflect'] {
     if (!record) return null;
 
     const power = Math.max(0, readNumber(record.power, 0));
-    if (power <= 0) return null;
+    const percentOfDamage = clamp(readNumber(record.percent_of_damage, 0), 0, 1);
+    if (power <= 0 && percentOfDamage <= 0) return null;
 
     return {
         power,
         chance: clamp(readNumber(record.chance, 1), 0, 1),
         consume: readBoolean(record.consume, true),
         charges: readOptionalPositive(record.charges) ?? undefined,
+        damageTypes: (readTrimmedStringList(record.damage_types) as DamageType[] | null) ?? null,
+        percentOfDamage,
+        exceptElements: readTrimmedStringList(record.except_elements),
+        exceptionMultiplier: Math.max(1, readNumber(record.exception_multiplier, 1)),
+        exceptionBreaks: readBoolean(record.exception_breaks, false),
     };
 }
 
@@ -775,6 +788,90 @@ function readOnDeathBlast(source: unknown): CombatEffectInstance['onDeathBlast']
     if (!record) return null;
     const power = Math.max(0, readNumber(record.power, 0));
     return power > 0 ? { power } : null;
+}
+
+/** Reads the chance a mud seal refuses any new status. */
+function readStatusResistChance(source: unknown): number | undefined {
+    const value = clamp(readNumber(source, 0), 0, 1);
+    return value > 0 ? value : undefined;
+}
+
+/** Reads an incoming buff/debuff magnitude multiplier (`erosion`). */
+function readEffectMagnitudeMultiplier(source: unknown): number | undefined {
+    const value = readNumber(source, 1);
+    return Number.isFinite(value) && value >= 0 && value !== 1 ? value : undefined;
+}
+
+/** Reads a reach-band prevention list. */
+function readRangeList(source: unknown): Array<'short' | 'medium' | 'long'> | undefined {
+    if (!Array.isArray(source)) return undefined;
+    const ranges = source.filter((entry): entry is 'short' | 'medium' | 'long' =>
+        entry === 'short' || entry === 'medium' || entry === 'long');
+    return ranges.length > 0 ? ranges : undefined;
+}
+
+/** Reads a wall break clause (`stone_wall`, `crystal_aegis`). */
+function readBarrier(source: unknown): CombatEffectInstance['barrier'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const breakOnCrit = readBoolean(record.break_on_crit, false);
+    const breakOnSuperEffective = readBoolean(record.break_on_super_effective, false);
+    return breakOnCrit || breakOnSuperEffective
+        ? { breakOnCrit, breakOnSuperEffective }
+        : null;
+}
+
+/** Reads an intercept shield (`clay_doll`, `clay_sentinel`). */
+function readIntercept(source: unknown): CombatEffectInstance['intercept'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    return {
+        hits: Math.max(1, Math.round(readNumber(record.hits, 1))),
+        breakChance: clamp(readNumber(record.break_chance, 0), 0, 1),
+    };
+}
+
+/** Reads a shatter-into-bleed clause (`crystalize`). */
+function readShatterOnDamageType(
+    source: unknown,
+): CombatEffectInstance['shatterOnDamageType'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const damageType = readString(record.damage_type, '') === 'magical' ? 'magical' : 'physical';
+    const statusEffect = readString(record.status_effect, 'Bleeding') || 'Bleeding';
+    return {
+        damageType,
+        statusEffect,
+        turns: Math.max(1, Math.round(readNumber(record.turns, 3))),
+        damagePerTurn: Math.max(0, readNumber(record.damage_per_turn, 7)),
+    };
+}
+
+/** Reads the fossilization payload of a petrify-class status (`fossil`). */
+function readFossilizeOnExpiry(
+    source: unknown,
+): CombatEffectInstance['fossilizeOnExpiry'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    return {
+        statusEffect: readString(record.status_effect, 'Fossil') || 'Fossil',
+        turns: Math.max(1, Math.round(readNumber(record.turns, 3))),
+        debuff: (readStatDelta(record.debuff) ?? null) as CombatStatDelta | null,
+        critDamageTaken: Math.max(0, readNumber(record.crit_damage_taken, 0)),
+        preventActions: readTrimmedStringList(record.prevent_actions),
+        preventRanges: readRangeList(record.prevent_ranges) ?? null,
+        preventElements: readTrimmedStringList(record.prevent_elements),
+        breakPower: Math.max(0, readNumber(record.break_power, 0)),
+    };
+}
+
+/** Reads flat damage paid when a status expires (`fossil`). */
+function readOnExpiryDamage(source: unknown): CombatEffectInstance['onExpiryDamage'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const power = Math.max(0, readNumber(record.power, 0));
+    if (power <= 0) return null;
+    return { power, scope: readString(record.scope, 'self') === 'all' ? 'all' : 'self' };
 }
 
 /** Reads the merge behaviour of a stack status (`burn`, `overheat`, `fuel`). */
@@ -1118,6 +1215,20 @@ export function createEffectInstance(
         costMultiplier: readCostMultiplier(record.cost_multiplier),
         endCost: readEndCost(record.end_cost),
         onDeathBlast: readOnDeathBlast(record.on_death_blast),
+        statusResistChance: readStatusResistChance(record.status_resist_chance),
+        effectMagnitudeMultiplier: readEffectMagnitudeMultiplier(record.effect_magnitude_multiplier),
+        preventRanges: readRangeList(record.prevent_ranges),
+        preventElements: readTrimmedStringList(record.prevent_elements) ?? undefined,
+        untargetableRanges: readRangeList(record.untargetable_ranges),
+        untargetableElements: readTrimmedStringList(record.untargetable_elements) ?? undefined,
+        barrier: readBarrier(record.barrier),
+        taunt: readBoolean(record.taunt, false) || undefined,
+        critDamageTaken: Math.max(0, readNumber(record.crit_damage_taken, 0)) || undefined,
+        intercept: readIntercept(record.intercept),
+        shatterOnDamageType: readShatterOnDamageType(record.shatter_on_damage_type),
+        petrifyClass: readBoolean(record.petrify_class, false) || undefined,
+        fossilizeOnExpiry: readFossilizeOnExpiry(record.fossilize_on_expiry),
+        onExpiryDamage: readOnExpiryDamage(record.on_expiry_damage),
         mergeOnApply: readStacking(record.stacking).merge,
         extendOnApply: readStacking(record.stacking).extend,
         damageTiming: readString(record.damage_timing, 'turn_start') === 'turn_end' ? 'turn_end' : 'turn_start',
@@ -1230,8 +1341,55 @@ export function isImmuneToStatus(unit: CombatUnit, statusId: string): boolean {
     if (wanted === '') return false;
 
     return unit.effects.some((effect) => (
-        effect.immunities?.some((immune) => immune.trim().toLowerCase() === wanted) ?? false
+        effect.immunities?.some((immune) => {
+            const entry = immune.trim().toLowerCase();
+            return entry === wanted || entry === '*';
+        }) ?? false
     ));
+}
+
+/** Highest chance a mud-like seal refuses any new status. */
+export function statusResistChanceFor(unit: CombatUnit): number {
+    return unit.effects.reduce((best, effect) => Math.max(best, effect.statusResistChance ?? 0), 0);
+}
+
+/** Compound multiplier a unit applies to incoming buff/debuff magnitudes. */
+export function effectMagnitudeMultiplierFor(unit: CombatUnit): number {
+    return unit.effects.reduce(
+        (product, effect) => product * (effect.effectMagnitudeMultiplier ?? 1),
+        1,
+    );
+}
+
+/** Reach bands the unit cannot use (`earth_hole` and buried variants). */
+export function preventedActionRanges(unit: CombatUnit): Array<'short' | 'medium' | 'long'> {
+    return unit.effects.flatMap((effect) => effect.preventRanges ?? []);
+}
+
+/** Action elements the unit cannot use (`earth_hole` blocks corporis). */
+export function preventedActionElements(unit: CombatUnit): string[] {
+    return unit.effects.flatMap((effect) => effect.preventElements ?? []);
+}
+
+/** Reach bands that cannot target the unit (`burrow`). */
+export function untargetableRangesFor(unit: CombatUnit): Array<'short' | 'medium' | 'long'> {
+    return unit.effects.flatMap((effect) => effect.untargetableRanges ?? []);
+}
+
+/** Action elements that cannot target the unit (`burrow`). */
+export function untargetableElementsFor(unit: CombatUnit): string[] {
+    return unit.effects.flatMap((effect) => effect.untargetableElements ?? []);
+}
+
+/** Extra critical damage the unit takes, additive across statuses. */
+export function critDamageTakenFor(unit: CombatUnit | null | undefined): number {
+    if (!unit) return 0;
+    return unit.effects.reduce((total, effect) => total + (effect.critDamageTaken ?? 0), 0);
+}
+
+/** The first live taunting unit on a side (`challenger_stance`). */
+export function liveTaunter(units: readonly CombatUnit[], side: CombatSide): CombatUnit | null {
+    return units.find((unit) => unit.status === 'alive' && unit.side === side && unit.effects.some((effect) => effect.taunt)) ?? null;
 }
 
 /**
@@ -1318,7 +1476,21 @@ function carriesStatusPayload(instance: CombatEffectInstance): boolean {
         || instance.damageReduction
         || instance.drainPercentOfMaxHp
         || instance.drainPerTurn
-        || instance.movementImmunity,
+        || instance.movementImmunity
+        || instance.statusResistChance !== undefined
+        || instance.effectMagnitudeMultiplier !== undefined
+        || instance.preventRanges
+        || instance.preventElements
+        || instance.untargetableRanges
+        || instance.untargetableElements
+        || instance.barrier
+        || instance.taunt
+        || (instance.critDamageTaken ?? 0) > 0
+        || instance.intercept
+        || instance.shatterOnDamageType
+        || instance.petrifyClass
+        || instance.fossilizeOnExpiry
+        || instance.onExpiryDamage,
     );
 }
 
@@ -1352,6 +1524,24 @@ export function applyEffectToUnit(
     // Detonations scale from the bearer's own turn count, so stamp the landing
     // turn while the target is still in hand.
     instance.appliedTurnCount = unit.turnCount;
+
+    // Mud seals refuse a share of incoming statuses, and erosion makes every
+    // buff/debuff that does land weaker. Both read live statuses on the target.
+    const resistChance = statusResistChanceFor(unit);
+    if (instance.statusEffect && resistChance > 0 && random() < resistChance) {
+        return {
+            type: 'effect_resisted',
+            unitId: unit.id,
+            effectId: instance.effectId,
+            statusEffect: instance.statusEffect,
+        };
+    }
+    const magnitudeMultiplier = effectMagnitudeMultiplierFor(unit);
+    if (magnitudeMultiplier !== 1) {
+        instance.buff = scaleStatDelta(instance.buff, magnitudeMultiplier);
+        instance.debuff = scaleStatDelta(instance.debuff, magnitudeMultiplier);
+    }
+
     if (instance.refundSpent) {
         instance.refundSpent.baseline = {
             mana: unit.eventCounts.mana_spent_total ?? 0,
@@ -1531,6 +1721,62 @@ export function applyEffectToUnit(
 }
 
 /**
+ * Applies a status's final damage when it expires (`fossil` can end in a
+ * shattering blow). Without a state the blast only reaches its bearer.
+ */
+function applyOnExpiryDamage(
+    unit: CombatUnit,
+    effect: CombatEffectInstance,
+    events: CombatEvent[],
+    state?: Pick<CombatState, 'units'>,
+): void {
+    const spec = effect.onExpiryDamage;
+    if (!spec || spec.power <= 0) return;
+
+    const targets = spec.scope === 'all' && state
+        ? state.units.filter((target) => target.status === 'alive')
+        : [unit];
+
+    for (const target of targets) {
+        events.push(...changeResource(target, 'hp', -spec.power));
+    }
+}
+
+/**
+ * Hardens a petrify-class effect into its fossil when it expires.
+ *
+ * The fossil inherits the authored lockout and crit vulnerability, and may
+ * carry a `break_power` blast for when the fossil itself ends.
+ */
+function applyFossilizeOnExpiry(
+    unit: CombatUnit,
+    effect: CombatEffectInstance,
+    random: CombatRandom,
+    events: CombatEvent[],
+): void {
+    const spec = effect.fossilizeOnExpiry;
+    if (!spec) return;
+
+    const synthetic: AttackEffect = {
+        effect_id: 'fossil',
+        status_effect: spec.statusEffect,
+        turns: spec.turns,
+        polarity: 'negative',
+        ...(spec.debuff ? { debuff: spec.debuff as unknown as Record<string, number> } : {}),
+        ...(spec.critDamageTaken ? { crit_damage_taken: spec.critDamageTaken } : {}),
+        ...(spec.preventActions ? { prevent_actions: spec.preventActions } : {}),
+        ...(spec.preventRanges ? { prevent_ranges: spec.preventRanges } : {}),
+        ...(spec.preventElements ? { prevent_elements: spec.preventElements } : {}),
+        ...(spec.breakPower > 0
+            ? { on_expiry_damage: { power: spec.breakPower, scope: 'self' as const } }
+            : {}),
+    };
+
+    const applied = applyEffectToUnit(unit, synthetic, effect.sourceId, effect.elementId, random);
+    if (applied) events.push(applied);
+}
+
+/**
  * Decrements every timed effect on a unit, expiring the finished ones.
  *
  * A damaging status (`damage_per_turn`) pays out first, so a poison that kills
@@ -1650,6 +1896,7 @@ export function tickUnitEffects(
     }
 
     const expiring: CombatEffectInstance[] = [];
+    const fossilized: CombatEffectInstance[] = [];
     for (const effect of remaining) {
         if (shedThisTick.has(effect.effectId)) continue;
         // A `turn_start` status ends the very moment its holder's turn begins
@@ -1673,6 +1920,10 @@ export function tickUnitEffects(
         if ((effect.tripOnAction?.expireDamage ?? 0) > 0) {
             events.push(...changeResource(unit, 'hp', -(effect.tripOnAction?.expireDamage ?? 0)));
         }
+
+        applyOnExpiryDamage(unit, effect, events, state);
+        if (effect.fossilizeOnExpiry) fossilized.push(effect);
+
         if (effect.locksTarget && unit.lockedByEffectId === effect.effectId) {
             unit.lockedTargetId = null;
             unit.lockedByEffectId = null;
@@ -1680,6 +1931,13 @@ export function tickUnitEffects(
     }
 
     unit.effects = expiring;
+
+    // A petrify status that ends hardens into its fossil. This runs after the
+    // new status list is installed so the fossil is not immediately swept away.
+    for (const effect of fossilized) {
+        applyFossilizeOnExpiry(unit, effect, random, events);
+    }
+
     return events;
 }
 
@@ -1781,15 +2039,21 @@ export function expireRoundBoundEffects(units: CombatUnit[]): CombatEvent[] {
 
     for (const unit of units) {
         const kept: CombatEffectInstance[] = [];
+        const fossilized: CombatEffectInstance[] = [];
         for (const effect of unit.effects) {
             if (effect.expiresMode === 'round_end') {
                 events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
                 events.push(...applyEndCost(unit, effect));
+                applyOnExpiryDamage(unit, effect, events);
+                if (effect.fossilizeOnExpiry) fossilized.push(effect);
                 continue;
             }
             kept.push(effect);
         }
         unit.effects = kept;
+        for (const effect of fossilized) {
+            applyFossilizeOnExpiry(unit, effect, Math.random, events);
+        }
     }
 
     return events;
@@ -1803,16 +2067,22 @@ export function expireRoundBoundEffects(units: CombatUnit[]): CombatEvent[] {
 export function expireTurnEndEffects(unit: CombatUnit): CombatEvent[] {
     const events: CombatEvent[] = [];
     const kept: CombatEffectInstance[] = [];
+    const fossilized: CombatEffectInstance[] = [];
 
     for (const effect of unit.effects) {
         if (effect.expiresMode === 'turn_end') {
             events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
             events.push(...applyEndCost(unit, effect));
+            applyOnExpiryDamage(unit, effect, events);
+            if (effect.fossilizeOnExpiry) fossilized.push(effect);
             continue;
         }
         kept.push(effect);
     }
     unit.effects = kept;
+    for (const effect of fossilized) {
+        applyFossilizeOnExpiry(unit, effect, Math.random, events);
+    }
 
     return events;
 }
@@ -2573,7 +2843,27 @@ export function applyActionTriggers(
                 ...(trap.spawn.preventActions ? { prevent_actions: trap.spawn.preventActions } : {}),
                 ...(trap.spawn.debuff ? { debuff: trap.spawn.debuff as unknown as Record<string, number> } : {}),
             };
-            actor.effects.push(createEffectInstance(synthetic, effect.sourceId, effect.elementId, 1, 1, random));
+            const spawned = createEffectInstance(synthetic, effect.sourceId, effect.elementId, 1, 1, random);
+            if (trap.spawn.canStack) {
+                spawned.canStack = true;
+                spawned.stacks = Math.max(1, trap.spawn.stacking?.initial ?? 1);
+                const holder = actor.effects.find((active) => (
+                    active.statusEffect
+                    && spawned.statusEffect
+                    && active.statusEffect.toLowerCase() === spawned.statusEffect.toLowerCase()
+                ));
+                if (holder) {
+                    holder.stacks = Math.max(1, holder.stacks) + spawned.stacks;
+                    if (spawned.turns !== null) {
+                        const extend = trap.spawn.stacking?.extendTurns ?? 0;
+                        holder.turns = Math.max(holder.turns ?? 0, spawned.turns) + extend;
+                    }
+                } else {
+                    actor.effects.push(spawned);
+                }
+            } else {
+                actor.effects.push(spawned);
+            }
         }
 
         trap.triggers = (trap.triggers ?? 0) + 1;

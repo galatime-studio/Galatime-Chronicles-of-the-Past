@@ -64,6 +64,15 @@
         ['drain_turn', 'Drenar % por turno'],
         ['movement_immune', 'Imune a movimento'],
         ['stat_multipliers', 'Multiplicadores de atributos'],
+        ['status_resist', 'Resistir novos estados (lama)'],
+        ['effect_magnitude', 'Reduzir magnitude de estados (erosão)'],
+        ['intercept', 'Intercetar ataques (boneco de barro)'],
+        ['barrier', 'Barreira que só cai a crítico'],
+        ['taunt', 'Provocar inimigos'],
+        ['untargetable_ranges', 'Intangível a alcances'],
+        ['shatter', 'Estilhaçar em sangramento'],
+        ['fossilize', 'Fossilizar ao expirar'],
+        ['on_expiry', 'Dano ao expirar'],
     ];
     var TARGET_LABELS = {
         any_one: 'qualquer personagem', enemies_all: 'todos os inimigos',
@@ -472,6 +481,11 @@
         if (form.elements.consume_per_stack) form.elements.consume_per_stack.value = consume?.per_stack ?? '';
         if (form.elements.consume_heal_percent) form.elements.consume_heal_percent.value = consume?.heal_percent_per_stack ?? '';
         if (form.elements.consume_ignore_defense) form.elements.consume_ignore_defense.checked = Boolean(consume?.ignore_defense);
+        if (form.elements.aftershock_power) form.elements.aftershock_power.value = skill.aftershock?.power ?? '';
+        if (form.elements.aftershock_min) form.elements.aftershock_min.value = skill.aftershock?.min_turns ?? '';
+        if (form.elements.aftershock_max) form.elements.aftershock_max.value = skill.aftershock?.max_turns ?? '';
+        if (form.elements.shuffle_chance) form.elements.shuffle_chance.value = percentOf(skill.shuffle_positions?.chance);
+        if (form.elements.shuffle_lane_chance) form.elements.shuffle_lane_chance.value = percentOf(skill.shuffle_positions?.lane_chance);
         updatePowerFields(false);
         if (form.elements.power_kind.value === 'random' && form.elements.power_max) form.elements.power_max.value = power?.max ?? form.elements.power_value.value;
         if (form.elements.power_kind.value === 'attribute' && form.elements.power_stat) form.elements.power_stat.value = skill.power_scaling?.stat || 'speed';
@@ -1326,6 +1340,30 @@
         } else {
             delete skill.consume_stacks;
         }
+
+        var aftershockPower = form.elements.aftershock_power
+            ? numberValue(form.elements.aftershock_power.value, 0) : 0;
+        if (aftershockPower > 0) {
+            skill.aftershock = {
+                power: aftershockPower,
+                min_turns: Math.max(1, numberValue(form.elements.aftershock_min.value, 2)),
+                max_turns: Math.max(1, numberValue(form.elements.aftershock_max.value, 4)),
+            };
+        } else {
+            delete skill.aftershock;
+        }
+
+        var shuffleChance = form.elements.shuffle_chance
+            ? numberValue(form.elements.shuffle_chance.value, 0) / 100 : 0;
+        if (shuffleChance > 0) {
+            skill.shuffle_positions = {
+                chance: Math.min(1, shuffleChance),
+                lane_chance: Math.min(1, Math.max(0,
+                    numberValue(form.elements.shuffle_lane_chance.value, 25) / 100)),
+            };
+        } else {
+            delete skill.shuffle_positions;
+        }
         syncBonusVs(skill);
 
         if (form.elements.direct_action.value === 'damage') {
@@ -1717,6 +1755,57 @@
             var deathBlast = effect.on_death_blast || {};
             return '<label class="effect-field"><span>Poder da explosão</span><input class="control" data-effect-field="on_death_blast.power" type="number" min="0" value="' + escapeHtml(deathBlast.power ?? 40) + '"><small>Dano físico fixo a quem desferiu o golpe direto que derrubou o portador.</small></label>';
         }
+        if (pattern === 'status_resist') {
+            return '<label class="effect-field"><span>Chance de recusar novos estados</span><div class="input-suffix"><input class="control" data-effect-field="status_resist_chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(effect.status_resist_chance)) + '" placeholder="35"><span>%</span></div><small>Lama, lama endurecida e banho de lama usam isto; Aqua lava o estado.</small></label>';
+        }
+        if (pattern === 'effect_magnitude') {
+            return '<label class="effect-field"><span>Multiplicador de buffs/debuffs recebidos</span><div class="input-suffix"><input class="control" data-effect-field="effect_magnitude_multiplier" type="number" min="0" step="0.05" value="' + escapeHtml(effect.effect_magnitude_multiplier ?? 1) + '"><span>×</span></div><small>Erosão usa 0.6: novos buffs e debuffs valem 60%.</small></label>';
+        }
+        if (pattern === 'intercept') {
+            var intercept = effect.intercept || {};
+            return '<label class="effect-field"><span>Golpes intercetados</span><input class="control" data-effect-field="intercept.hits" type="number" min="1" value="' + escapeHtml(intercept.hits ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Chance do golpe passar</span><div class="input-suffix"><input class="control" data-effect-field="intercept.break_chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(intercept.break_chance)) + '" placeholder="35"><span>%</span></div><small>Boneco e sentinela de barro.</small></label>';
+        }
+        if (pattern === 'barrier') {
+            var barrier = effect.barrier || {};
+            return '<label class="effect-stack"><input type="checkbox" data-effect-field="barrier.break_on_crit" ' + (barrier.break_on_crit ? 'checked' : '') + '> Quebra com crítico</label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="barrier.break_on_super_effective" ' + (barrier.break_on_super_effective ? 'checked' : '') + '> Quebra com acerto supereficaz</label>'
+                + '<small>Muros de pedra/cristal ignoram dano normal; só caem por crítico, supereficácia ou duração.</small>';
+        }
+        if (pattern === 'taunt') {
+            return '<label class="effect-stack"><input type="checkbox" data-effect-field="taunt" ' + (effect.taunt ? 'checked' : '') + '> Provoca os inimigos</label><small>Postura de Desafiante: ataques de alvo único passam a apontar ao portador quando possível.</small>';
+        }
+        if (pattern === 'untargetable_ranges') {
+            return '<label class="effect-field"><span>Alcances que não o atingem</span><input class="control" data-effect-field="untargetable_ranges" value="' + escapeHtml(listValue(effect.untargetable_ranges)) + '" placeholder="short"><small>Lista separada por vírgulas (short, medium, long).</small></label>'
+                + '<label class="effect-field"><span>Elementos que não o atingem</span><input class="control" data-effect-field="untargetable_elements" value="' + escapeHtml(listValue(effect.untargetable_elements)) + '" placeholder="corporis"><small>Lista separada por vírgulas.</small></label>';
+        }
+        if (pattern === 'shatter') {
+            var shatter = effect.shatter_on_damage_type || {};
+            return '<label class="effect-field"><span>Canal que estilhaça</span><select class="control" data-effect-field="shatter_on_damage_type.damage_type">'
+                + optionMarkup('physical', 'Físico', (shatter.damage_type || 'physical') === 'physical')
+                + optionMarkup('magical', 'Mágico', shatter.damage_type === 'magical') + '</select></label>'
+                + '<label class="effect-field"><span>Estado deixado</span><input class="control" data-effect-field="shatter_on_damage_type.status_effect" value="' + escapeHtml(shatter.status_effect || 'Bleeding') + '"></label>'
+                + '<label class="effect-field"><span>Duração</span><input class="control" data-effect-field="shatter_on_damage_type.turns" type="number" min="1" value="' + escapeHtml(shatter.turns ?? 3) + '"></label>'
+                + '<label class="effect-field"><span>Dano por turno</span><input class="control" data-effect-field="shatter_on_damage_type.damage_per_turn" type="number" min="0" value="' + escapeHtml(shatter.damage_per_turn ?? 7) + '"></label>';
+        }
+        if (pattern === 'fossilize') {
+            var fossil = effect.fossilize_on_expiry || {};
+            return '<label class="effect-field"><span>Estado seguinte</span><input class="control" data-effect-field="fossilize_on_expiry.status_effect" value="' + escapeHtml(fossil.status_effect || 'Fossil') + '"></label>'
+                + '<label class="effect-field"><span>Duração</span><input class="control" data-effect-field="fossilize_on_expiry.turns" type="number" min="1" value="' + escapeHtml(fossil.turns ?? 3) + '"></label>'
+                + '<label class="effect-field"><span>Crítico recebido extra</span><div class="input-suffix"><input class="control" data-effect-field="fossilize_on_expiry.crit_damage_taken" type="number" min="0" step="0.05" value="' + escapeHtml(fossil.crit_damage_taken ?? '') + '" placeholder="0.2"><span>×</span></div></label>'
+                + '<label class="effect-field"><span>Dano ao quebrar</span><input class="control" data-effect-field="fossilize_on_expiry.break_power" type="number" min="0" value="' + escapeHtml(fossil.break_power ?? '') + '" placeholder="14"></label>'
+                + '<label class="effect-field"><span>Proibido</span><input class="control" data-effect-field="fossilize_on_expiry.prevent_actions" value="' + escapeHtml(listValue(fossil.prevent_actions)) + '" placeholder="switch_line"></label>'
+                + '<label class="effect-field"><span>Alcances proibidos</span><input class="control" data-effect-field="fossilize_on_expiry.prevent_ranges" value="' + escapeHtml(listValue(fossil.prevent_ranges)) + '" placeholder="short"></label>'
+                + '<label class="effect-field"><span>Elementos proibidos</span><input class="control" data-effect-field="fossilize_on_expiry.prevent_elements" value="' + escapeHtml(listValue(fossil.prevent_elements)) + '" placeholder="corporis"></label>'
+                + statRowsPicker(fossil, 'fossilize_on_expiry.debuff', 'Debuff do fóssil');
+        }
+        if (pattern === 'on_expiry') {
+            var expiry = effect.on_expiry_damage || {};
+            return '<label class="effect-field"><span>Dano ao expirar</span><input class="control" data-effect-field="on_expiry_damage.power" type="number" min="0" value="' + escapeHtml(expiry.power ?? '') + '" placeholder="14"></label>'
+                + '<label class="effect-field"><span>Alvo</span><select class="control" data-effect-field="on_expiry_damage.scope">'
+                + optionMarkup('self', 'O portador', (expiry.scope || 'self') === 'self')
+                + optionMarkup('all', 'Todo o campo', expiry.scope === 'all') + '</select></label>';
+        }
         if (pattern === 'stack_dot') {
             var stackDot = effect.stacking || {};
             return '<label class="effect-field"><span>Dano por stack</span><input class="control" data-effect-field="damage_per_turn" type="number" min="0" value="' + escapeHtml(effect.damage_per_turn ?? 4) + '"></label>'
@@ -2088,6 +2177,15 @@
     }
 
     function detectPattern(effect) {
+        if (effect.status_resist_chance !== undefined) return 'status_resist';
+        if (effect.effect_magnitude_multiplier !== undefined) return 'effect_magnitude';
+        if (effect.intercept) return 'intercept';
+        if (effect.barrier) return 'barrier';
+        if (effect.taunt) return 'taunt';
+        if (effect.untargetable_ranges || effect.untargetable_elements) return 'untargetable_ranges';
+        if (effect.shatter_on_damage_type) return 'shatter';
+        if (effect.fossilize_on_expiry) return 'fossilize';
+        if (effect.on_expiry_damage) return 'on_expiry';
         if (effect.damage_reduction) return 'damage_reduction';
         if (effect.cleanse_on_heal) return 'cleanse_on_heal';
         if (effect.cleanse_dot) return 'cleanse_dot';
@@ -2273,6 +2371,15 @@
         if (pattern === 'cost_multiplier') properties.cost_multiplier = { mana: 0.5, stamina: 0.5 };
         if (pattern === 'end_cost') properties.end_cost = { resource: 'stamina', percent_of_max: 50, shortfall: 'hp' };
         if (pattern === 'on_death_blast') properties.on_death_blast = { power: 40 };
+        if (pattern === 'status_resist') properties.status_resist_chance = 0.35;
+        if (pattern === 'effect_magnitude') properties.effect_magnitude_multiplier = 0.6;
+        if (pattern === 'intercept') properties.intercept = { hits: 1, break_chance: 0.35 };
+        if (pattern === 'barrier') properties.barrier = { break_on_crit: true, break_on_super_effective: true };
+        if (pattern === 'taunt') properties.taunt = true;
+        if (pattern === 'untargetable_ranges') { properties.untargetable_ranges = ['short']; properties.untargetable_elements = ['corporis']; }
+        if (pattern === 'shatter') properties.shatter_on_damage_type = { damage_type: 'physical', status_effect: 'Bleeding', turns: 3, damage_per_turn: 7 };
+        if (pattern === 'fossilize') properties.fossilize_on_expiry = { status_effect: 'Fossil', turns: 3, crit_damage_taken: 0.2, break_power: 14, prevent_actions: ['switch_line'], prevent_ranges: ['short'], prevent_elements: ['corporis'] };
+        if (pattern === 'on_expiry') properties.on_expiry_damage = { power: 14, scope: 'self' };
         if (pattern === 'stack_dot') properties.stacking = { initial: 1, extend_turns: 1 };
         if (pattern === 'stack_dot') properties.damage_per_turn = 4;
         if (pattern === 'stack_dot') properties.damage_timing = 'turn_end';
@@ -2335,7 +2442,7 @@
         if (!skill || !card) return;
         var effect = skill.effects.find(function (item) { return item.effect_id === card.dataset.effectId; });
         if (!effect) return;
-        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent', 'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction', 'drain_percent_of_max_hp', 'drain_per_turn', 'movement_immunity', 'stat_multipliers'].forEach(function (key) { delete effect[key]; });
+        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent', 'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction', 'drain_percent_of_max_hp', 'drain_per_turn', 'movement_immunity', 'stat_multipliers', 'status_resist_chance', 'effect_magnitude_multiplier', 'intercept', 'barrier', 'taunt', 'untargetable_ranges', 'untargetable_elements', 'shatter_on_damage_type', 'fossilize_on_expiry', 'on_expiry_damage'].forEach(function (key) { delete effect[key]; });
         var type = select.value;
         if (type === 'regen') effect.resource_regen = { hp: 15 };
         if (type === 'regen_turn') effect.regen_per_turn = { hp: 10 };
@@ -2380,6 +2487,15 @@
         if (type === 'cost_multiplier') effect.cost_multiplier = { mana: 0.5, stamina: 0.5 };
         if (type === 'end_cost') effect.end_cost = { resource: 'stamina', percent_of_max: 50, shortfall: 'hp' };
         if (type === 'on_death_blast') effect.on_death_blast = { power: 40 };
+        if (type === 'status_resist') effect.status_resist_chance = 0.35;
+        if (type === 'effect_magnitude') effect.effect_magnitude_multiplier = 0.6;
+        if (type === 'intercept') effect.intercept = { hits: 1, break_chance: 0.35 };
+        if (type === 'barrier') effect.barrier = { break_on_crit: true, break_on_super_effective: true };
+        if (type === 'taunt') effect.taunt = true;
+        if (type === 'untargetable_ranges') { effect.untargetable_ranges = ['short']; effect.untargetable_elements = ['corporis']; }
+        if (type === 'shatter') effect.shatter_on_damage_type = { damage_type: 'physical', status_effect: 'Bleeding', turns: 3, damage_per_turn: 7 };
+        if (type === 'fossilize') effect.fossilize_on_expiry = { status_effect: 'Fossil', turns: 3, crit_damage_taken: 0.2, break_power: 14, prevent_actions: ['switch_line'], prevent_ranges: ['short'], prevent_elements: ['corporis'] };
+        if (type === 'on_expiry') effect.on_expiry_damage = { power: 14, scope: 'self' };
         if (type === 'stack_dot') effect.stacking = { initial: 1, extend_turns: 1 };
         if (type === 'stack_dot') effect.damage_per_turn = 4;
         if (type === 'stack_dot') effect.damage_timing = 'turn_end';
@@ -2488,7 +2604,8 @@
                     || key === 'spend_steal.percent' || key === 'evade_next.chance'
                     || key === 'refund_spent.percent' || key === 'damage_reduction.percent'
                     || key === 'drain_per_turn.chance' || key === 'ignite_attacker_on_hit.chance'
-                    || key === 'turn_end_burn.chance') {
+                    || key === 'turn_end_burn.chance' || key === 'status_resist_chance'
+                    || key === 'intercept.break_chance' || key === 'detonate_on_turn.splash_chance') {
                     // Mostram-se em percentagem mas guardam-se como fração.
                     var fractionLeaf = key.split('.');
                     var fractionParent = readNested(effect, fractionLeaf.slice(0, -1).join('.')) || {};
@@ -2507,7 +2624,11 @@
                     || key === 'trip_on_action.spawn.prevent_actions'
                     || key === 'conductor.grounded_by_elements' || key === 'interrupt.actions'
                     || key === 'evade_next.damage_types' || key === 'refund_spent.resources'
-                    || key === 'fire_wall.erode_elements' || key === 'ignite_attacker_on_hit.damage_types') {
+                    || key === 'fire_wall.erode_elements' || key === 'ignite_attacker_on_hit.damage_types'
+                    || key === 'untargetable_ranges' || key === 'untargetable_elements'
+                    || key === 'fossilize_on_expiry.prevent_actions'
+                    || key === 'fossilize_on_expiry.prevent_ranges'
+                    || key === 'fossilize_on_expiry.prevent_elements') {
                     var commaLeaf = key.split('.');
                     var commaName = commaLeaf[commaLeaf.length - 1];
                     var commaList = String(field.value || '').split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
@@ -3057,6 +3178,8 @@
         if (skill.damage_taken_scaling) result.damage_taken_scaling = Model.clone(skill.damage_taken_scaling);
         if (skill.element_effectiveness) result.element_effectiveness = Model.clone(skill.element_effectiveness);
         if (skill.consume_stacks) result.consume_stacks = Model.clone(skill.consume_stacks);
+        if (skill.aftershock) result.aftershock = Model.clone(skill.aftershock);
+        if (skill.shuffle_positions) result.shuffle_positions = Model.clone(skill.shuffle_positions);
         if (skill.bonus_vs_elements && Object.keys(skill.bonus_vs_elements).length) {
             result.bonus_vs_elements = Model.clone(skill.bonus_vs_elements);
         }

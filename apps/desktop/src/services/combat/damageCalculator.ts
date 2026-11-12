@@ -66,7 +66,7 @@ import type {
 import type { ElementData } from '../../types/ElementDataType';
 import { clamp } from '../../utils/combatUtils';
 import { elementDefenseScore, scoreToMultiplier } from '../../utils/elementUtils';
-import { elementModulationFor, isImmuneToDamageType } from './effectResolver';
+import { elementModulationFor, isImmuneToDamageType, critDamageTakenFor } from './effectResolver';
 import { positionDamageModifier } from './positionRules';
 import { weatherElementMultiplierFor } from './weather';
 
@@ -707,7 +707,9 @@ export function resolveDamage(request: DamageRequest): DamageResult {
             attackMultiplier: request.modifier.multiplier,
             immune,
             atkDefRatio,
-            traits: traitMultiplier * (critical ? critMultiplier : 1),
+            traits: traitMultiplier * (critical
+                ? critMultiplier * (1 + critDamageTakenFor(request.defender ?? null))
+                : 1),
         });
 
         baseDamage = breakdown.base;

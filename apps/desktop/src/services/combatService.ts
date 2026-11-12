@@ -44,7 +44,7 @@ import {
 import { buildElementDamageIndex } from './combat/damageCalculator';
 import { previewImpact } from './combat/damagePreview';
 import { reapDefeated } from './combat/defeatResolver';
-import { checkInterrupt, resolveTurnStartMechanics } from './combat/chaosMechanics';
+import { checkInterrupt, dealFlatDamage, resolveTurnStartMechanics } from './combat/chaosMechanics';
 import {
     changeResource,
     applyActionTriggers,
@@ -56,6 +56,8 @@ import {
     isActionPrevented,
     isHealBlocked,
     preventedActionKinds,
+    preventedActionRanges,
+    preventedActionElements,
     preventedDamageChannels,
     readResourceTransferSpec,
     resolveEffectTargets,
@@ -285,6 +287,10 @@ export function actionAvailability(state: CombatState, actor: CombatUnit, action
     // A harbour-bound status forbids its channel outright (the ice wall stops
     // physical attacks while it stands).
     if (preventedDamageChannels(actor).includes(action.damageType)) return 'action_unavailable';
+    // An earth trap forbids a reach or an element outright (buried units cannot
+    // use short-range or Corporis actions).
+    if (preventedActionRanges(actor).includes(action.range)) return 'action_unavailable';
+    if (preventedActionElements(actor).includes(action.elementId)) return 'action_unavailable';
     // A sealed unit may not use its skills, though it may still brace or rest.
     if (action.kind === 'skill' && areSkillsPrevented(actor)) return 'action_unavailable';
     // Running is a panic move: only a unit below its own health gate may pick it.
@@ -405,6 +411,38 @@ function beginUnitTurn(state: CombatState, unit: CombatUnit, random: CombatRando
 }
 
 /**
+ * Pays the delayed aftershocks scheduled by `tremor` at the round boundary.
+ *
+ * Every living unit is caught, allies and caster included — the same
+ * battlefield-wide identity the tremor itself has.
+ */
+function tickAftershocks(
+    state: CombatState,
+    events: CombatEvent[],
+    random: CombatRandom,
+): void {
+    if (!state.pendingAftershocks?.length) return;
+
+    const due: typeof state.pendingAftershocks = [];
+    const remaining: typeof state.pendingAftershocks = [];
+    for (const pending of state.pendingAftershocks) {
+        pending.rounds -= 1;
+        if (pending.rounds <= 0) due.push(pending);
+        else remaining.push(pending);
+    }
+    state.pendingAftershocks = remaining;
+
+    for (const pending of due) {
+        const source = state.units.find((unit) => unit.id === pending.sourceId);
+        if (!source) continue;
+        for (const target of state.units) {
+            if (target.status !== 'alive') continue;
+            dealFlatDamage(events, source, target, pending.power, 'aftershock', 'magical', random);
+        }
+    }
+}
+
+/**
  * Moves the queue to the next unit that can actually act.
  *
  * A unit can be dropped by its own status damage the moment its turn begins, so
@@ -442,6 +480,7 @@ function advanceToNextUnit(
                     events.push(...resolveAbilityEvent(state, bearer, 'on_status_removed', passiveTriggerContext(random, state.units)));
                 }
             }
+            tickAftershocks(state, events, random);
         }
 
         if (!advance.unit) return { events, unit: null };

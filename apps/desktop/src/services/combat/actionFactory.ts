@@ -350,6 +350,27 @@ function readConsumeStacks(source: Record<string, unknown>): CombatAction['consu
     return specs.length > 0 ? specs : null;
 }
 
+/** Reads a delayed battlefield-wide aftershock (`tremor`). */
+function readAftershock(source: Record<string, unknown>): CombatAction['aftershock'] {
+    const record = asRecord(source.aftershock);
+    if (!record) return null;
+    const power = Math.max(0, readNumber(record.power, 0));
+    if (power <= 0) return null;
+    const minTurns = Math.max(1, Math.round(readNumber(record.min_turns, 2)));
+    const maxTurns = Math.max(minTurns, Math.round(readNumber(record.max_turns, 4)));
+    return { power, minTurns, maxTurns };
+}
+
+/** Reads an earthquake-style position shuffle. */
+function readShufflePositions(source: Record<string, unknown>): CombatAction['shufflePositions'] {
+    const record = asRecord(source.shuffle_positions);
+    if (!record) return null;
+    return {
+        chance: clamp(readNumber(record.chance, 0.4), 0, 1),
+        laneChance: clamp(readNumber(record.lane_chance, 0.25), 0, 1),
+    };
+}
+
 /**
  * The traits every action carries, whatever it came from.
  *
@@ -369,6 +390,8 @@ function defaultTraits(): Pick<
     | 'damageTakenScaling'
     | 'elementEffectiveness'
     | 'consumeStacks'
+    | 'aftershock'
+    | 'shufflePositions'
 > {
     return {
         solar: false,
@@ -404,6 +427,8 @@ function defaultTraits(): Pick<
         damageTakenScaling: null,
         elementEffectiveness: null,
         consumeStacks: null,
+        aftershock: null,
+        shufflePositions: null,
     };
 }
 
@@ -486,6 +511,8 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
         damageTakenScaling: readDamageTakenScaling(raw),
         elementEffectiveness: readElementEffectiveness(raw),
         consumeStacks: readConsumeStacks(raw),
+        aftershock: readAftershock(raw),
+        shufflePositions: readShufflePositions(raw),
     };
 }
 

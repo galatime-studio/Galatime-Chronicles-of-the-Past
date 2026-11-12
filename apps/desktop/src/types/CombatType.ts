@@ -282,7 +282,7 @@ export interface CombatEffectInstance {
         damageTypes?: string[] | null;
         chance: number;
         damage: number;
-        spawn: { statusEffect: string; effectId: string; turns: number; debuff: CombatStatDelta | null; preventActions?: string[] | null } | null;
+        spawn: { statusEffect: string; effectId: string; turns: number; debuff: CombatStatDelta | null; preventActions?: string[] | null; stacking?: { initial: number; extendTurns: number } | null; canStack?: boolean } | null;
         maxTriggers?: number | null;
         triggers?: number;
         expireDamage?: number;
@@ -349,6 +349,34 @@ export interface CombatEffectInstance {
     endCost?: { resource: CombatResourceId; percentOfMax: number; shortfall: 'hp' } | null;
     /** Direct-damage retaliation when the bearer falls. */
     onDeathBlast?: { power: number } | null;
+    /** Chance the bearer refuses any new status before it lands (mud seals). */
+    statusResistChance?: number;
+    /** Multiplier applied to buff/debuff magnitudes landing on the bearer. */
+    effectMagnitudeMultiplier?: number;
+    /** Reach bands the holder cannot use (`buried`). */
+    preventRanges?: Array<'short' | 'medium' | 'long'> | null;
+    /** Elements the holder cannot use (`buried`). */
+    preventElements?: string[] | null;
+    /** Reach bands that cannot target the holder. */
+    untargetableRanges?: Array<'short' | 'medium' | 'long'> | null;
+    /** Elements whose actions cannot target the holder. */
+    untargetableElements?: string[] | null;
+    /** A wall that only breaks to crit/super-effective hits or expiry. */
+    barrier?: { breakOnCrit: boolean; breakOnSuperEffective: boolean } | null;
+    /** Single-target attacks must be aimed at this bearer when possible. */
+    taunt?: boolean;
+    /** Extra critical damage taken (`fossil` +20% = 0.2). */
+    critDamageTaken?: number;
+    /** A shield that soaks a number of hits with a break chance. */
+    intercept?: CombatInterceptSpec | null;
+    /** The status shatters into a bleed when hit by the named channel. */
+    shatterOnDamageType?: CombatShatterSpec | null;
+    /** Marks the status as petrify-family. */
+    petrifyClass?: boolean;
+    /** When this status expires, the bearer hardens into another status. */
+    fossilizeOnExpiry?: CombatFossilizeSpec | null;
+    /** Flat damage paid when this status expires. */
+    onExpiryDamage?: { power: number; scope: 'self' | 'all' } | null;
     /** Merge repeated landings into one stack status. */
     mergeOnApply?: boolean;
     /** Extra turns added when a landing merges into the existing stack. */
@@ -620,6 +648,7 @@ export interface CombatDetonateOnTurnSpec {
     scalePerTurn: number;
     maxPower: number | null;
     includeLine: boolean;
+    splashChance: number;
     turnSkipChance: number;
 }
 
@@ -645,6 +674,50 @@ export interface CombatReflectSpec {
     consume: boolean;
     /** Reflects left before the status falls; omitted means unlimited. */
     charges?: number;
+    /** Damage channels accepted; omitted means any. */
+    damageTypes: DamageType[] | null;
+    /** Fraction of the incoming hit thrown back instead of the flat power. */
+    percentOfDamage: number;
+    /** Elements that strike the bearer instead of being reflected. */
+    exceptElements: string[] | null;
+    /** Extra multiplier applied to an excepted element's hit. */
+    exceptionMultiplier: number;
+    /** The status breaks when an excepted element hits. */
+    exceptionBreaks: boolean;
+}
+
+export interface CombatInterceptSpec {
+    hits: number;
+    breakChance: number;
+}
+
+export interface CombatShatterSpec {
+    damageType: DamageType;
+    statusEffect: string;
+    turns: number;
+    damagePerTurn: number;
+}
+
+export interface CombatFossilizeSpec {
+    statusEffect: string;
+    turns: number;
+    debuff: CombatStatDelta | null;
+    critDamageTaken: number;
+    preventActions: string[] | null;
+    preventRanges: Array<'short' | 'medium' | 'long'> | null;
+    preventElements: string[] | null;
+    breakPower: number;
+}
+
+export interface CombatAftershockSpec {
+    power: number;
+    minTurns: number;
+    maxTurns: number;
+}
+
+export interface CombatShuffleSpec {
+    chance: number;
+    laneChance: number;
 }
 
 export interface CombatSpendStealSpec {
@@ -800,6 +873,10 @@ export interface CombatAction {
         ignoreDefense: boolean;
         healPercentPerStack: number;
     }> | null;
+    /** Schedules a battlefield-wide aftershock after a random delay (`tremor`). */
+    aftershock?: CombatAftershockSpec | null;
+    /** Shuffles the struck side's lane positions (`earthquake`). */
+    shufflePositions?: CombatShuffleSpec | null;
 }
 
 /**Damage-channel modifiers folded from a defender's passive abilities.
@@ -1170,6 +1247,13 @@ export interface CombatState {
      * clear sky. Lasts whole rounds and modulates elements while it holds.
      */
     weather?: CombatWeather | null;
+    /** Delayed battlefield-wide aftershocks scheduled by a skill (`tremor`). */
+    pendingAftershocks?: Array<{
+        sourceId: string;
+        power: number;
+        rounds: number;
+        elementId?: string;
+    }>;
     /**
      * Turn queue for the current round, fastest first.
      *

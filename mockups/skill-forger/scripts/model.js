@@ -238,6 +238,15 @@
         drain_turn: 'Dreno por turno',
         movement_immune: 'Raiz imóvel',
         stat_multipliers: 'Multiplicadores',
+        status_resist: 'Pele de lama',
+        effect_magnitude: 'Erosão',
+        intercept: 'Boneco de barro',
+        barrier: 'Muro de pedra',
+        taunt: 'Postura de desafiante',
+        untargetable_ranges: 'Enterrado',
+        shatter: 'Cristal estilhaçado',
+        fossilize: 'Fóssil',
+        on_expiry: 'Desmoronamento',
     };
 
     function patternStatusName(pattern) { return PATTERN_STATUS_NAMES[pattern] || 'Efeito'; }
@@ -864,6 +873,25 @@
         if (effect.ignite_attacker_on_hit) {
             fragments.push('Atacantes têm ' + Math.round((effect.ignite_attacker_on_hit.chance || 0) * 100) + '% de apanhar Burn.');
         }
+        if (effect.status_resist_chance !== undefined) {
+            fragments.push('Tem ' + Math.round(Number(effect.status_resist_chance) * 100) + '% de recusar novos estados.');
+        }
+        if (effect.effect_magnitude_multiplier !== undefined) {
+            fragments.push('Buffs e debuffs recebidos valem ×' + effect.effect_magnitude_multiplier + '.');
+        }
+        if (effect.intercept && typeof effect.intercept === 'object') {
+            fragments.push('Interceta ' + (effect.intercept.hits ?? 1) + ' golpe(s); em ' + Math.round((effect.intercept.break_chance ?? 0) * 100) + '% o golpe passa ao portador.');
+        }
+        if (effect.barrier) fragments.push('Só cai por crítico, acerto supereficaz ou duração.');
+        if (effect.taunt) fragments.push('Provoca ataques de alvo único contra o portador.');
+        if (effect.untargetable_ranges?.length || effect.untargetable_elements?.length) {
+            fragments.push('Não pode ser alvo de: ' + (effect.untargetable_ranges || []).concat(effect.untargetable_elements || []).join(', ') + '.');
+        }
+        if (effect.shatter_on_damage_type && typeof effect.shatter_on_damage_type === 'object') {
+            fragments.push('Estilhaça quando atinge por ' + effect.shatter_on_damage_type.damage_type + ', deixando ' + effect.shatter_on_damage_type.status_effect + '.');
+        }
+        if (effect.fossilize_on_expiry) fragments.push('Ao terminar, endurece em ' + (effect.fossilize_on_expiry.status_effect || 'Fossil') + '.');
+        if (effect.on_expiry_damage) fragments.push('Ao expirar, causa ' + effect.on_expiry_damage.power + ' PWR ' + (effect.on_expiry_damage.scope === 'all' ? 'a todo o campo' : 'ao portador') + '.');
         if (condition && condition.requires_no_space) {
             fragments.push('Só aplica se a linha ' + (condition.requires_no_space === 'front' ? 'da frente' : 'de trás')
                 + ' estiver cheia.');
@@ -941,6 +969,11 @@
             'stat_multipliers', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent',
             'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction',
             'drain_percent_of_max_hp', 'drain_per_turn', 'movement_immunity',
+            // Lapis: selos de lama, interceptação, muros, taunt, enterramento,
+            // estilhaço de cristal, fossilização e dano ao expirar.
+            'status_resist_chance', 'effect_magnitude_multiplier', 'prevent_ranges', 'prevent_elements',
+            'untargetable_ranges', 'untargetable_elements', 'barrier', 'taunt', 'crit_damage_taken',
+            'intercept', 'shatter_on_damage_type', 'petrify_class', 'fossilize_on_expiry', 'on_expiry_damage',
         ];
         var cleaned = {};
         allowed.forEach(function (key) {
@@ -968,7 +1001,8 @@
             'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast',
             'stat_multipliers', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent',
             'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction',
-            'drain_percent_of_max_hp', 'drain_per_turn'].forEach(function (key) {
+            'drain_percent_of_max_hp', 'drain_per_turn', 'barrier', 'intercept', 'shatter_on_damage_type',
+            'fossilize_on_expiry', 'on_expiry_damage'].forEach(function (key) {
             if (cleaned[key] && typeof cleaned[key] === 'object' && !Object.keys(cleaned[key]).length) {
                 delete cleaned[key];
             }
@@ -1058,7 +1092,7 @@
         }
         ['recoil', 'friendly_fire', 'backlane_splash', 'no_space_recoil', 'chain', 'shrapnel',
             'instability', 'on_kill_detonation', 'cooldown_reset', 'damage_taken_scaling',
-            'element_effectiveness', 'consume_stacks'].forEach(function (key) {
+            'element_effectiveness', 'consume_stacks', 'aftershock', 'shuffle_positions'].forEach(function (key) {
             if (source[key] && typeof source[key] === 'object') skill[key] = clone(source[key]);
         });
         if (Number(source.control_immune_damage) > 0) skill.control_immune_damage = Number(source.control_immune_damage);

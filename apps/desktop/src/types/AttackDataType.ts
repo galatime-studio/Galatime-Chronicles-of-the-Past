@@ -203,6 +203,8 @@ export interface AttackDetonateOnTurnSpec {
     max_power?: number;
     /** The blast also hits everybody else in the bearer's line. */
     include_line?: boolean;
+    /** Chance each other line member is caught (defaults to 1 when include_line). */
+    splash_chance?: number;
     /** Chance the bearer loses the turn to the detonation. */
     turn_skip_chance?: number;
 }
@@ -243,6 +245,16 @@ export interface AttackReflectSpec {
     consume?: boolean;
     /** Reflections the status can throw before falling; omitted means unlimited. */
     charges?: number;
+    /** Damage channels accepted (`physical`/`magical`); omitted means any. */
+    damage_types?: string[];
+    /** Fraction of the incoming hit thrown back instead of the flat power. */
+    percent_of_damage?: number;
+    /** Elements that are not reflected and instead strike the bearer. */
+    except_elements?: string[];
+    /** Extra multiplier applied to an excepted element's hit. */
+    exception_multiplier?: number;
+    /** The status breaks when an excepted element hits. */
+    exception_breaks?: boolean;
 }
 
 /** A portion of the bearer's next resource spend goes to the status source. */
@@ -456,7 +468,7 @@ export interface AttackEffect {
         /** Health the tripping holder pays. */
         damage?: number;
         /** Punishment status added on the trip (a `Slipped` SPD loss). */
-        spawn?: { status_effect?: string; turns?: number; prevent_actions?: string[]; debuff?: Record<string, number> };
+        spawn?: { status_effect?: string; turns?: number; prevent_actions?: string[]; debuff?: Record<string, number>; stacking?: boolean; can_stack?: boolean };
         /** The field disappears after this many trips. */
         max_triggers?: number;
         /** Flat damage the field deals when it expires still armed. */
@@ -559,6 +571,51 @@ export interface AttackEffect {
     };
     /** The bearer cannot be moved by forced movement (`rooted_bind`). */
     movement_immunity?: boolean;
+    /** Chance the bearer refuses any new status before it lands (mud seals). */
+    status_resist_chance?: number;
+    /** Multiplier applied to buff/debuff magnitudes landing on the bearer (erosion 0.6). */
+    effect_magnitude_multiplier?: number;
+    /** Action kinds the holder cannot use (`buried`: switch_line). */
+    prevent_actions?: string[];
+    /** Reach bands the holder cannot use (`buried`: short). */
+    prevent_ranges?: Array<'short' | 'medium' | 'long'>;
+    /** Elements the holder cannot use (`buried`: corporis). */
+    prevent_elements?: string[];
+    /** Reach bands that cannot target the holder. */
+    untargetable_ranges?: Array<'short' | 'medium' | 'long'>;
+    /** Elements whose actions cannot target the holder. */
+    untargetable_elements?: string[];
+    /** A wall that only breaks to a critical or super-effective hit, or expiry. */
+    barrier?: { break_on_crit?: boolean; break_on_super_effective?: boolean };
+    /** Single-target attacks must be aimed at this bearer when possible. */
+    taunt?: boolean;
+    /** Extra damage the bearer takes from critical hits (`fossil` +20% = 0.2). */
+    crit_damage_taken?: number;
+    /** An attack shield that soaks a number of incoming hits, with a break chance. */
+    intercept?: { hits?: number; break_chance?: number };
+    /** The status shatters into a bleed when hit by the named channel. */
+    shatter_on_damage_type?: {
+        damage_type: 'physical' | 'magical';
+        status_effect?: string;
+        turns?: number;
+        damage_per_turn?: number;
+    };
+    /** Marks the status as part of the petrify family (`fossil` interaction). */
+    petrify_class?: boolean;
+    /** When this status expires, the bearer hardens into the named status. */
+    fossilize_on_expiry?: {
+        status_effect?: string;
+        turns?: number;
+        debuff?: Record<string, number>;
+        crit_damage_taken?: number;
+        prevent_actions?: string[];
+        prevent_ranges?: Array<'short' | 'medium' | 'long'>;
+        prevent_elements?: string[];
+        /** Damage paid when the fossil breaks (mag 14 in the tree). */
+        break_power?: number;
+    };
+    /** Flat damage paid when this status expires. */
+    on_expiry_damage?: { power: number; scope?: 'self' | 'all' };
     /** Stat fields the holder cannot gain buffs to while the status lives. */
     block_stat_buffs?: string[];
     /** Incoming damage multipliers per channel (`frost_mirror` halves physical). */
@@ -679,6 +736,10 @@ export interface AttackSkill {
         ignore_defense?: boolean;
         heal_percent_per_stack?: number;
     }>;
+    /** Schedules a delayed battlefield-wide strike (`tremor` aftershock). */
+    aftershock?: { power: number; min_turns?: number; max_turns?: number };
+    /** Shuffles the positions of hit entities, sometimes across lanes (`earthquake`). */
+    shuffle_positions?: { chance?: number; lane_chance?: number };
     /**
      * SFX track id played when the skill is used.
      *
@@ -744,6 +805,8 @@ export type PublicAttack = Pick<AttackSkill,
     | 'damage_taken_scaling'
     | 'element_effectiveness'
     | 'consume_stacks'
+    | 'aftershock'
+    | 'shuffle_positions'
     | 'sfx'
 >;
 

@@ -12,7 +12,7 @@ import type {
     CombatUnit,
 } from '../../types/CombatType';
 import { createCombatError } from '../../utils/combatUtils';
-import { isUntargetable, liveTargetLockId } from './effectResolver';
+import { isUntargetable, liveTargetLockId, untargetableRangesFor, untargetableElementsFor, liveTaunter } from './effectResolver';
 import { isRangeAllowedFromLine, rangeReachesLine } from './positionRules';
 
 /**
@@ -51,7 +51,12 @@ export function candidateTargets(
         }
     })();
 
-    return reachable.filter((unit) => unit.id === actor.id || !isUntargetable(unit));
+    return reachable.filter((unit) => {
+        if (unit.id !== actor.id && isUntargetable(unit)) return false;
+        if (untargetableRangesFor(unit).includes(action.range)) return false;
+        if (untargetableElementsFor(unit).includes(action.elementId)) return false;
+        return true;
+    });
 }
 
 /**
@@ -78,6 +83,12 @@ export function reachableTargets(
     }
 
     if (!isRangeAllowedFromLine(action.range, actor.line)) return [];
+
+    // A taunting defender pulls hostile single-target attacks onto itself.
+    if (action.targeting === 'any_one' && action.dealsDamage) {
+        const taunter = liveTaunter(units, actor.side === 'allies' ? 'enemies' : 'allies');
+        if (taunter) return [taunter];
+    }
 
     return candidateTargets(units, actor, action).filter((unit) => {
         if (unit.side === actor.side) return true;
@@ -199,6 +210,8 @@ export function validateTargetRule(
             !target
             || target.status !== 'alive'
             || (target.id !== actor.id && isUntargetable(target))
+            || (target.id !== actor.id && untargetableRangesFor(target).includes(action.range))
+            || (target.id !== actor.id && untargetableElementsFor(target).includes(action.elementId))
         ) {
             return {
                 target: null,
@@ -207,6 +220,15 @@ export function validateTargetRule(
                     targetId,
                 }),
             };
+        }
+
+        // A taunt (Challenger Stance) pulls hostile single-target actions onto
+        // the taunter whenever it can be reached.
+        if (target.side !== actor.side && action.dealsDamage) {
+            const taunter = liveTaunter(state.units, target.side);
+            if (taunter && taunter.id !== target.id && rangeReachesLine(action.range, taunter.line)) {
+                return { target: taunter, error: null };
+            }
         }
 
         // Reach only limits what the action can cross towards the other side; a

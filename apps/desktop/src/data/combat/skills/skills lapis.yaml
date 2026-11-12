@@ -1,0 +1,944 @@
+# Lapis — Earth and Stone. Base level 1 only; the tree derives the _II … _V
+# mastery tiers from element_id, learning_requirements and learning_cost.
+# Earth bends mud, sand, dust, pits and tremors; Stone throws rock, raises
+# walls, grows crystal and hardens flesh into petrify and fossil.
+
+skills:
+  # ---------------------------------------------------------------------------
+  # Earth
+  # ---------------------------------------------------------------------------
+  - id: earth
+    name: Earth
+    description: "Draws a layer of packed earth around an ally, hardening its guard at the cost of a little speed."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    costs: { mana: 2, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: earth_guard
+        status_effect: Earthen Guard
+        apply_to: target
+        turns: 6
+        polarity: positive
+        buff: { physical_defense: 8, magical_defense: 4 }
+        debuff: { speed: 2 }
+
+  - id: mud
+    name: Mud
+    description: "Coats an ally in clinging mud, making new statuses less likely to take hold; an Aqua hit washes it away."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [earth] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: mud_seal
+        status_effect: Mud Seal
+        apply_to: target
+        turns: 4
+        polarity: positive
+        status_resist_chance: 0.35
+        expire_on_elements: [aqua]
+        debuff: { speed: 5 }
+
+  - id: mud_armor
+    name: Mud Armor
+    description: "Packs wet earth into armour: strong defence, but the bearer cannot change lanes; Aqua strips it away."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [mud] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: mud_armor
+        status_effect: Mud Armor
+        apply_to: target
+        turns: 4
+        polarity: positive
+        buff: { physical_defense: 10, magical_defense: 8 }
+        debuff: { speed: 14 }
+        status_resist_chance: 0.35
+        expire_on_elements: [aqua]
+        prevent_actions: [switch_line]
+
+  - id: mud_bath
+    name: Mud Bath
+    description: "Spreads a hardening bath through the caster's lane, shielding allies from new statuses at a small speed cost; Aqua washes each one clean."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [mud] }
+    learning_cost: { experience_points: 3 }
+    targeting: self
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: mud_bath
+        status_effect: Mud Bath
+        apply_to: allies_lane
+        turns: 3
+        polarity: positive
+        status_resist_chance: 0.3
+        expire_on_elements: [aqua]
+        debuff: { speed: 4 }
+
+  - id: erosion
+    name: Erosion
+    description: "Weathers every boon and curse on the target, reducing the magnitude of any new buff or debuff by 40%."
+    element_id: lapis
+    sfx: lapis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [mud] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: erosion
+        status_effect: Eroded
+        apply_to: target
+        turns: 5
+        polarity: negative
+        effect_magnitude_multiplier: 0.6
+
+  - id: clay_doll
+    name: Clay Doll
+    description: "Shapes a clay doll that intercepts the next attack on an ally; there is a 35% chance the blow breaks through."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [mud, stone] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: clay_doll
+        status_effect: Clay Doll
+        apply_to: target
+        turns: 5
+        polarity: positive
+        intercept: { hits: 1, break_chance: 0.35 }
+
+  - id: clay_sentinel
+    name: Clay Sentinel
+    description: "A larger clay sentinel intercepts the next two attacks, each with a 30% chance the blow still lands on the bearer."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [clay_doll] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 11, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: clay_sentinel
+        status_effect: Clay Sentinel
+        apply_to: target
+        turns: 6
+        polarity: positive
+        intercept: { hits: 2, break_chance: 0.3 }
+
+  - id: dirty_play
+    name: Dirty Play
+    description: "A handful of grit in the eyes; light damage and −12% accuracy for two turns."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [earth] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 2 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 3, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: dirty_play_accuracy
+        status_effect: Gritty Eyes
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { accuracy: 12 }
+
+  - id: sand_wave
+    name: Sand Wave
+    description: "A rolling wave of sand that slows the target for two turns."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [dirty_play] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 8 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: sand_wave_slow
+        status_effect: Sandlogged
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { speed: 8 }
+
+  - id: sand_cloud
+    name: Sand Cloud
+    description: "A blinding cloud of sand; −18% accuracy for three turns."
+    element_id: lapis
+    sfx: lapis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [dirty_play] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: sand_cloud
+        status_effect: Sand Cloud
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff: { accuracy: 18 }
+
+  - id: dust_devil
+    name: Dust Devil
+    description: "Two whirling strikes of dust; each rakes accuracy and evasion for two turns."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [sand_wave, sand_cloud] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 9 }
+    accuracy: 85
+    hit_count: 2
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: dust_devil
+        status_effect: Dust-Raked
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { accuracy: 6, evasion: 8 }
+
+  - id: sand_storm
+    name: Sand Storm
+    description: "A storm over every enemy: −15% accuracy for three turns. Allies have a 30% chance to lose 8% accuracy as well."
+    element_id: lapis
+    sfx: lapis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [sand_cloud] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_all
+    costs: { mana: 13, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: sand_storm_enemy
+        status_effect: Sand-Blinded
+        apply_to: enemies_all
+        turns: 3
+        polarity: negative
+        debuff: { accuracy: 15 }
+      - effect_id: sand_storm_ally
+        status_effect: Sand-Blinded
+        apply_to: allies_all
+        turns: 3
+        polarity: negative
+        effect_hit_chance: 0.3
+        debuff: { accuracy: 8 }
+
+  - id: rough_terrain
+    name: Rough Terrain
+    description: "Breaks up the ground in the enemy lane for four turns; every skill used there costs 30% more stamina."
+    element_id: lapis
+    sfx: lapis
+    kind: utility
+    learning_requirements: { required_attack_ids: [earth] }
+    learning_cost: { experience_points: 2 }
+    targeting: enemies_lane
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: rough_terrain
+        status_effect: Rough Terrain
+        apply_to: target
+        turns: 4
+        polarity: negative
+        cost_multiplier: { stamina: 1.3 }
+
+  - id: quicksand
+    name: Quicksand
+    description: "Turns the enemy lane into sucking sand for four turns: +60% stamina costs, −8 speed and −8 evasion. Entrants are caught too."
+    element_id: lapis
+    sfx: lapis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [rough_terrain] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_lane
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: quicksand_sink
+        status_effect: Quicksand
+        apply_to: target
+        turns: 4
+        polarity: negative
+        cost_multiplier: { stamina: 1.6 }
+        debuff: { speed: 8, evasion: 8 }
+
+  - id: earth_hole
+    name: Earth Hole
+    description: "Opens a pit under one enemy: light damage and three turns trapped, unable to change lanes or use short-range/Corporis actions."
+    element_id: lapis
+    sfx: lapis
+    kind: control
+    learning_requirements: { required_attack_ids: [earth] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 8 }
+    accuracy: 100
+    hit_count: 1
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: earth_hole
+        status_effect: In the Pit
+        apply_to: target
+        turns: 3
+        polarity: negative
+        prevent_actions: [switch_line]
+        prevent_ranges: [short]
+        prevent_elements: [corporis]
+
+  - id: collapse
+    name: Collapse
+    description: "The pit collapses when the target's turn comes: 50% chance of 15 PWR and losing the turn. Neighbours have a 25% chance to be caught."
+    element_id: lapis
+    sfx: lapis
+    kind: control
+    learning_requirements: { required_attack_ids: [earth_hole] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: collapse
+        status_effect: Collapsing Pit
+        apply_to: target
+        turns: 2
+        polarity: negative
+        detonate_on_turn:
+          power: 15
+          turn_skip_chance: 0.5
+          include_line: true
+          splash_chance: 0.25
+
+  - id: fissure
+    name: Fissure
+    description: "Cracks the field for four turns. Any entity that changes lanes or is forced to move takes 16 PWR and is trapped for two turns."
+    element_id: lapis
+    sfx: lapis
+    kind: control
+    learning_requirements: { required_attack_ids: [earth_hole] }
+    learning_cost: { experience_points: 5 }
+    targeting: both_teams
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: fissure
+        status_effect: Fissure
+        apply_to: both_teams
+        turns: 4
+        polarity: negative
+        trip_on_action:
+          actions: [switch_line]
+          chance: 1
+          damage: 16
+          spawn:
+            status_effect: Trapped
+            turns: 2
+            prevent_actions: [switch_line]
+            prevent_ranges: [short]
+            prevent_elements: [corporis]
+
+  - id: sinkhole
+    name: Sinkhole
+    description: "The lane gives way: every enemy there takes 12 PWR and is trapped for two turns."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [earth_hole, quicksand] }
+    learning_cost: { experience_points: 5 }
+    targeting: enemies_lane
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 12 }
+    accuracy: 100
+    hit_count: 1
+    costs: { mana: 15, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: sinkhole
+        status_effect: Buried
+        apply_to: target
+        turns: 2
+        polarity: negative
+        prevent_actions: [switch_line]
+        prevent_ranges: [short]
+        prevent_elements: [corporis]
+
+  - id: burrow
+    name: Burrow
+    description: "Allies in the caster's lane burrow for two turns: +15 evasion, impossible to hit with short-range or Corporis actions, but they cannot move or use physical attacks."
+    element_id: lapis
+    sfx: lapis
+    kind: utility
+    learning_requirements: { required_attack_ids: [mud, earth_hole] }
+    learning_cost: { experience_points: 3 }
+    targeting: self
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: burrow
+        status_effect: Burrowed
+        apply_to: allies_lane
+        turns: 2
+        polarity: positive
+        buff: { evasion: 15 }
+        prevent_actions: [switch_line]
+        prevent_damage_channels: [physical]
+        untargetable_ranges: [short]
+        untargetable_elements: [corporis]
+
+  - id: tremor
+    name: Tremor
+    description: "Shakes the whole field, allies and caster included. The caster loses accuracy for a turn; after 2–4 turns an aftershock hits every entity again."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [earth] }
+    learning_cost: { experience_points: 2 }
+    targeting: both_teams
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 6 }
+    accuracy: 100
+    hit_count: 1
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+    aftershock: { power: 4, min_turns: 2, max_turns: 4 }
+    effects:
+      - effect_id: tremor_recoil
+        status_effect: Shaken Caster
+        apply_to: self
+        turns: 1
+        polarity: negative
+        debuff: { accuracy: 10 }
+
+  - id: earthquake
+    name: Earthquake
+    description: "A full quake hits both teams. The caster loses accuracy for two turns; survivors may be shuffled within their line or thrown into the other one."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [tremor] }
+    learning_cost: { experience_points: 6 }
+    targeting: both_teams
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 14 }
+    accuracy: 100
+    hit_count: 1
+    costs: { mana: 16, stamina: 0, cooldown: 4 }
+    shuffle_positions: { chance: 0.4, lane_chance: 0.25 }
+    effects:
+      - effect_id: earthquake_recoil
+        status_effect: Quake Recoil
+        apply_to: self
+        turns: 2
+        polarity: negative
+        debuff: { accuracy: 15 }
+
+  - id: mudslide
+    name: Mudslide
+    description: "A wall of mud buries the enemy lane: heavy damage, −10 speed, and no lane changes or short-range/Corporis actions for three turns."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [mud, tremor] }
+    learning_cost: { experience_points: 5 }
+    targeting: enemies_lane
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 10 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: mudslide
+        status_effect: Buried in Mud
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff: { speed: 10 }
+        prevent_actions: [switch_line]
+        prevent_ranges: [short]
+        prevent_elements: [corporis]
+
+  # ---------------------------------------------------------------------------
+  # Stone
+  # ---------------------------------------------------------------------------
+  - id: stone
+    name: Stone
+    description: "Hurls a fist-sized stone at one enemy."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 5 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 2, stamina: 0, cooldown: 0 }
+
+  - id: rock_throw
+    name: Rock Throw
+    description: "A heavier, perfectly aimed throw. The mastery example of the tree uses this 14-power, 4-mana base."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [stone] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 14 }
+    accuracy: 100
+    hit_count: 1
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
+
+  - id: boulder_toss
+    name: Boulder Toss
+    description: "Lifts and throws a boulder; heavy damage and −6 speed for two turns."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [rock_throw] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 22 }
+    accuracy: 85
+    hit_count: 1
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: boulder_toss_slow
+        status_effect: Crushed
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { speed: 6 }
+
+  - id: rock_fall
+    name: Rock Fall
+    description: "Two rocks fall into the enemy lane, each swinging wildly between one fifth and twice their power."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [rock_throw] }
+    learning_cost: { experience_points: 2 }
+    targeting: enemies_lane
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 10 }
+    accuracy: 90
+    hit_count: 2
+    damage_variance: [0.2, 2.0]
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+
+  - id: rock_spike
+    name: Rock Spike
+    description: "A spear of stone erupts through the target, ignoring part of its physical and magical defence."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [stone] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 12 }
+    accuracy: 90
+    hit_count: 1
+    defense_pierce: 0.2
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+
+  - id: stone_pillar
+    name: Stone Pillar
+    description: "A pillar punches the target into the other battle line, following the normal lane rules."
+    element_id: lapis
+    sfx: lapis
+    kind: control
+    learning_requirements: { required_attack_ids: [rock_spike] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 15 }
+    accuracy: 85
+    hit_count: 1
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: stone_pillar_move
+        apply_to: target
+        move: { who: target, to_line: other }
+
+  - id: rocky_terrain
+    name: Rocky Terrain
+    description: "Fills the enemy lane with jagged stone for four turns: −6 speed, −8 evasion, and moving or using physical actions cuts the mover for 5 PWR."
+    element_id: lapis
+    sfx: lapis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [stone] }
+    learning_cost: { experience_points: 2 }
+    targeting: enemies_lane
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: rocky_terrain
+        status_effect: Rocky Terrain
+        apply_to: target
+        turns: 4
+        polarity: negative
+        debuff: { speed: 6, evasion: 8 }
+        trip_on_action:
+          actions: [switch_line, weapon, skill]
+          damage_types: [physical]
+          chance: 1
+          damage: 5
+
+  - id: debris
+    name: Debris
+    description: "A lane of shifting debris for four turns. Moving through it or using physical actions cuts for 7 PWR and stacks −4 speed up to −12; leaving the lane sheds the stacks."
+    element_id: lapis
+    sfx: lapis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [rock_spike, rocky_terrain] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_lane
+    costs: { mana: 13, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: debris
+        status_effect: Debris
+        apply_to: target
+        turns: 4
+        polarity: negative
+        trip_on_action:
+          actions: [switch_line, weapon, skill]
+          damage_types: [physical]
+          chance: 1
+          damage: 7
+          spawn:
+            status_effect: Debris Slowed
+            turns: 4
+            debuff: { speed: 4 }
+            can_stack: true
+
+  - id: crystal
+    name: Crystal
+    description: "A shard of raw crystal cuts through part of the target's magical defence."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [stone] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 9 }
+    accuracy: 95
+    hit_count: 1
+    defense_pierce: 0.1
+    costs: { mana: 5, stamina: 0, cooldown: 0 }
+
+  - id: stone_wall
+    name: Stone Wall
+    description: "Raises a wall around one ally: +14 physical defence and +8 magical defence. Only a critical or super-effective hit, or five turns, brings it down."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [stone] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: stone_wall
+        status_effect: Stone Wall
+        apply_to: target
+        turns: 5
+        polarity: positive
+        buff: { physical_defense: 14, magical_defense: 8 }
+        barrier: { break_on_crit: true, break_on_super_effective: true }
+
+  - id: stone_fortress
+    name: Stone Fortress
+    description: "Raises a wall across the caster's lane: +11 physical defence and +7 magical defence for every ally there."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [stone_wall] }
+    learning_cost: { experience_points: 4 }
+    targeting: self
+    costs: { mana: 15, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: stone_fortress
+        status_effect: Stone Fortress
+        apply_to: allies_lane
+        turns: 5
+        polarity: positive
+        buff: { physical_defense: 11, magical_defense: 7 }
+        barrier: { break_on_crit: true, break_on_super_effective: true }
+
+  - id: crystal_wall
+    name: Crystal Wall
+    description: "A crystal barrier around one ally: +22 physical defence, +15 magical defence, and no new status can touch the bearer while it stands."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [stone_wall, crystal] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    costs: { mana: 18, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: crystal_wall
+        status_effect: Crystal Wall
+        apply_to: target
+        turns: 5
+        polarity: positive
+        buff: { physical_defense: 22, magical_defense: 15 }
+        status_immunities: ['*']
+        barrier: { break_on_crit: true, break_on_super_effective: true }
+
+  - id: crystal_mirror
+    name: Crystal Mirror
+    description: "A mirror that reflects the next magic attack back at its source. Lux burns through instead: the bearer takes ×1.5 damage and the mirror shatters."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [stone_wall, crystal] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: crystal_mirror
+        status_effect: Crystal Mirror
+        apply_to: target
+        turns: 4
+        polarity: positive
+        reflect:
+          percent_of_damage: 1
+          damage_types: [magical]
+          except_elements: [lux]
+          exception_multiplier: 1.5
+          exception_breaks: true
+          charges: 1
+          consume: false
+
+  - id: challenger_stance
+    name: Challenger Stance
+    description: "For two turns every enemy must aim single-target attacks at the bearer whenever it can; +10 physical defence."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [stone_wall] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 11, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: challenger_stance
+        status_effect: Challenger Stance
+        apply_to: target
+        turns: 2
+        polarity: positive
+        taunt: true
+        buff: { physical_defense: 10 }
+
+  - id: stone_skin
+    name: Stone Skin
+    description: "Hardens the skin for three turns: physical attacks against the bearer deal 20% less, at −3 speed."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [stone_wall] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: stone_skin
+        status_effect: Stone Skin
+        apply_to: target
+        turns: 3
+        polarity: positive
+        damage_channel_modulation: { physical: 0.8 }
+        debuff: { speed: 3 }
+
+  - id: granite_hide
+    name: Granite Hide
+    description: "Thicker than stone skin: physical attacks against the bearer deal 35% less, +6 physical defence, at −6 speed."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [stone_skin] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 13, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: granite_hide
+        status_effect: Granite Hide
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 6 }
+        damage_channel_modulation: { physical: 0.65 }
+        debuff: { speed: 6 }
+
+  - id: crystal_amplifier
+    name: Crystal Amplifier
+    description: "For three turns the ally's magical attacks deal +25% damage; Lux magic deals +50%."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [crystal] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 11, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: crystal_amplifier
+        status_effect: Crystal Amplifier
+        apply_to: target
+        turns: 3
+        polarity: positive
+        stat_multipliers: { magical_attack: 1.25 }
+        element_damage: { lux: 1.5 }
+
+  - id: crystal_aegis
+    name: Crystal Aegis
+    description: "A four-turn crystal aegis: +16 physical defence, +12 magical defence, immunity to new statuses, and +30% magical damage. Crits or super-effective hits shatter it early."
+    element_id: lapis
+    sfx: lapis
+    kind: buff
+    learning_requirements: { required_attack_ids: [crystal_wall, crystal_amplifier] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    costs: { mana: 20, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: crystal_aegis
+        status_effect: Crystal Aegis
+        apply_to: target
+        turns: 4
+        polarity: positive
+        buff: { physical_defense: 16, magical_defense: 12 }
+        status_immunities: ['*']
+        stat_multipliers: { magical_attack: 1.3 }
+        barrier: { break_on_crit: true, break_on_super_effective: true }
+
+  - id: petrify
+    name: Petrify
+    description: "Stone creeps into the target for three turns: −10 speed, no lane change for one turn, and physical attacks against it deal +10% damage."
+    element_id: lapis
+    sfx: lapis
+    kind: control
+    learning_requirements: { required_attack_ids: [stone] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 6 }
+    accuracy: 85
+    hit_count: 1
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: petrify
+        status_effect: Petrified
+        apply_to: target
+        turns: 3
+        polarity: negative
+        petrify_class: true
+        prevent_actions: [switch_line]
+        debuff: { speed: 10 }
+        damage_channel_modulation: { physical: 1.1 }
+
+  - id: crystalize
+    name: Crystalize
+    description: "Crystallizes the target for four turns: −12 physical and magical defence, and Lux attacks deal ×1.5. A physical hit shatters it, leaving a three-turn bleed."
+    element_id: lapis
+    sfx: lapis
+    kind: attack
+    learning_requirements: { required_attack_ids: [petrify, crystal] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 8 }
+    accuracy: 85
+    hit_count: 1
+    costs: { mana: 18, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: crystalize
+        status_effect: Crystalized
+        apply_to: target
+        turns: 4
+        polarity: negative
+        petrify_class: true
+        element_modulation: { lux: 1.5 }
+        debuff: { physical_defense: 12, magical_defense: 12 }
+        shatter_on_damage_type:
+          damage_type: physical
+          status_effect: Bleeding
+          turns: 3
+          damage_per_turn: 7
+
+  - id: fossil
+    name: Fossil
+    description: "Hardens a petrified foe into fossil for three turns: movement locked, −15 speed, +20% critical damage taken. When it breaks, the target takes 14 PWR."
+    element_id: lapis
+    sfx: lapis
+    kind: control
+    learning_requirements: { required_attack_ids: [petrify, erosion] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    costs: { mana: 15, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: fossil
+        status_effect: Fossil
+        apply_to: target
+        turns: 3
+        polarity: negative
+        petrify_class: true
+        crit_damage_taken: 0.2
+        debuff: { speed: 15 }
+        prevent_actions: [switch_line]
+        prevent_ranges: [short]
+        prevent_elements: [corporis]
+        on_expiry_damage: { power: 14, scope: self }

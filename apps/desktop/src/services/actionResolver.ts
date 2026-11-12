@@ -62,7 +62,7 @@ import {
 } from './combat/effectMechanics';
 import { reachableTargets, scatterCandidates } from './combat/targetResolver';
 import { effectiveTimePhase, setPhaseBlock } from './combat/phaseOverride';
-import { canPlaceInLine, moveUnitToLine } from './combat/positionRules';
+import { canPlaceInLine, moveUnitToLine, wouldLeaveFrontLineEmpty } from './combat/positionRules';
 import { fleeChanceFor } from './combat/fleeRules';
 import {
     applyInstabilityCharge,
@@ -373,9 +373,23 @@ function buildResolution(
 ): AttackResolution {
     const { actor, elementIndex, random, state } = context;
     const action = options.action ?? context.action;
-    // A `bulwark` ally takes the blow aimed at its protected friend.
+    // A `bulwark` ally takes the blow aimed at its protected friend; a clay
+    // doll intercepts it first, with a chance the blow breaks through.
     const cover = findCover(state.units, target);
     const recipient = cover ?? target;
+    // A clay doll/sentinel on the bearer absorbs the next hit(s); a roll may let
+    // the blow break through instead.
+    const interceptEffect = recipient.effects.find((effect) => effect.intercept
+        && effect.intercept.hits > 0);
+    let intercepted = false;
+    if (interceptEffect?.intercept) {
+        const spec = interceptEffect.intercept;
+        spec.hits -= 1;
+        intercepted = random() >= spec.breakChance;
+        if (spec.hits <= 0) {
+            recipient.effects = recipient.effects.filter((effect) => effect !== interceptEffect);
+        }
+    }
 
     const result = resolveDamage({
         action,
@@ -409,13 +423,24 @@ function buildResolution(
     });
 
     const targetHpBefore = recipient.currentHp;
+    // A wall status crumbles only to a critical or super-effective hit.
+    if (result.isCrit || result.elementMultiplier > 1) {
+        recipient.effects = recipient.effects.filter((effect) => {
+            if (!effect.barrier) return true;
+            if (result.isCrit && effect.barrier.breakOnCrit) return false;
+            if (result.elementMultiplier > 1 && effect.barrier.breakOnSuperEffective) return false;
+            return true;
+        });
+    }
     // A live status shield (Condensation, and later the ice walls) soaks the
     // hit before the holder's health pays: shields absorb first, health next.
     const ward = recipient.effects.find((effect) => effect.damageReduction
         && effect.damageReduction.charges > 0);
-    const reduced = ward?.damageReduction
-        ? Math.max(0, Math.round(result.finalDamage * (1 - ward.damageReduction.percent)))
-        : Math.max(0, result.finalDamage);
+    const reduced = intercepted
+        ? 0
+        : (ward?.damageReduction
+            ? Math.max(0, Math.round(result.finalDamage * (1 - ward.damageReduction.percent)))
+            : Math.max(0, result.finalDamage));
     if (ward?.damageReduction) {
         ward.damageReduction.charges -= 1;
         if (ward.damageReduction.charges <= 0) {
@@ -1330,31 +1355,106 @@ function resolveChaosFollowUp(
         // A flat reflect status throws authored PWR back at the attacker.
         const reflect = target.effects.find((effect) => effect.reflect);
         if (reflect?.reflect && (reflect.reflect.chance ?? 1) > 0 && resolution.finalDamage > 0) {
-            if ((reflect.reflect.chance ?? 1) >= 1 || random() < (reflect.reflect.chance ?? 1)) {
-                const amount = Math.max(0, reflect.reflect.power);
-                actor.currentHp = Math.max(0, actor.currentHp - amount);
-                events.push({
-                    type: 'damage_reflected',
-                    sourceId: target.id,
-                    targetId: actor.id,
-                    abilityId: reflect.effectId,
-                    abilityName: reflect.statusEffect ?? 'Reflect',
-                    isHit: true,
-                    amount,
-                    targetHpAfter: actor.currentHp,
-                });
-                if (reflect.reflect.consume) {
-                    target.effects = target.effects.filter((effect) => effect !== reflect);
-                    events.push({ type: 'effect_expired', unitId: target.id, effectId: reflect.effectId });
-                } else if (reflect.reflect.charges !== undefined) {
-                    reflect.reflect.charges -= 1;
-                    if (reflect.reflect.charges <= 0) {
+            const spec = reflect.reflect;
+            const typeAllowed = !spec.damageTypes?.length || spec.damageTypes.includes(action.damageType);
+            if (typeAllowed && ((spec.chance ?? 1) >= 1 || random() < (spec.chance ?? 1))) {
+                const exception = spec.exceptElements?.some(
+                    (entry) => entry.trim().toLowerCase() === action.elementId.trim().toLowerCase(),
+                );
+                if (exception) {
+                    // Lux burns through the mirror: the bearer takes extra and
+                    // the mirror shatters instead of reflecting.
+                    const extra = Math.round(resolution.finalDamage * Math.max(0, (spec.exceptionMultiplier ?? 1) - 1));
+                    if (extra > 0) events.push(...changeResource(target, 'hp', -extra));
+                    if (spec.exceptionBreaks) {
                         target.effects = target.effects.filter((effect) => effect !== reflect);
                         events.push({ type: 'effect_expired', unitId: target.id, effectId: reflect.effectId });
+                    }
+                } else {
+                    const amount = spec.percentOfDamage > 0
+                        ? Math.round(resolution.finalDamage * spec.percentOfDamage)
+                        : Math.max(0, spec.power);
+                    actor.currentHp = Math.max(0, actor.currentHp - amount);
+                    events.push({
+                        type: 'damage_reflected',
+                        sourceId: target.id,
+                        targetId: actor.id,
+                        abilityId: reflect.effectId,
+                        abilityName: reflect.statusEffect ?? 'Reflect',
+                        isHit: true,
+                        amount,
+                        targetHpAfter: actor.currentHp,
+                    });
+                    if (spec.consume) {
+                        target.effects = target.effects.filter((effect) => effect !== reflect);
+                        events.push({ type: 'effect_expired', unitId: target.id, effectId: reflect.effectId });
+                    } else if (spec.charges !== undefined) {
+                        spec.charges -= 1;
+                        if (spec.charges <= 0) {
+                            target.effects = target.effects.filter((effect) => effect !== reflect);
+                            events.push({ type: 'effect_expired', unitId: target.id, effectId: reflect.effectId });
+                        }
                     }
                 }
             }
         }
+        // A crystalised target shatters when a matching channel reaches it and
+        // leaves a bleed behind.
+        const shatter = target.effects.find((effect) => effect.shatterOnDamageType
+            && effect.shatterOnDamageType.damageType === action.damageType);
+        if (shatter?.shatterOnDamageType) {
+            target.effects = target.effects.filter((effect) => effect !== shatter);
+            events.push({ type: 'effect_expired', unitId: target.id, effectId: shatter.effectId });
+            const bleed: AttackEffect = {
+                effect_id: 'bleeding',
+                status_effect: shatter.shatterOnDamageType.statusEffect,
+                turns: shatter.shatterOnDamageType.turns,
+                polarity: 'negative',
+                damage_per_turn: shatter.shatterOnDamageType.damagePerTurn,
+            };
+            const applied = applyEffectToUnit(target, bleed, actor.id, action.elementId, random);
+            if (applied) events.push(applied);
+        }
+    }
+
+    // An earthquake throws the survivors around after the main blow.
+    if (action.shufflePositions && mainHit) {
+        const spec = action.shufflePositions;
+        for (const target of resolvedUnits) {
+            if (target.status !== 'alive') continue;
+            if (random() >= spec.chance) continue;
+            if (random() < spec.laneChance) {
+                const destination = target.line === 'front' ? 'rear' : 'front';
+                if (canPlaceInLine(state.units, target.side, destination)
+                    && !wouldLeaveFrontLineEmpty(state.units, target, destination)) {
+                    moveUnitToLine(state.units, target, destination);
+                    events.push({ type: 'unit_line_changed', unitId: target.id, line: target.line, slot: target.slot });
+                    continue;
+                }
+            }
+            const line = state.units
+                .filter((unit) => unit.status === 'alive' && unit.side === target.side && unit.line === target.line);
+            const slots = line.map((unit) => unit.slot);
+            for (let i = slots.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(random() * (i + 1));
+                [slots[i], slots[j]] = [slots[j], slots[i]];
+            }
+            line.forEach((unit, index) => { unit.slot = slots[index]; });
+            events.push({ type: 'unit_line_changed', unitId: target.id, line: target.line, slot: target.slot });
+        }
+    }
+
+    // Tremor schedules its delayed global aftershock.
+    if (action.aftershock && mainHit) {
+        const spec = action.aftershock;
+        const rounds = spec.minTurns + Math.floor(random() * (spec.maxTurns - spec.minTurns + 1));
+        state.pendingAftershocks = state.pendingAftershocks ?? [];
+        state.pendingAftershocks.push({
+            sourceId: actor.id,
+            power: spec.power,
+            rounds: Math.max(1, rounds),
+            elementId: action.elementId,
+        });
     }
 
     // A landed hit on a target carrying the authored status trims the caster's

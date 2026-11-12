@@ -58,6 +58,8 @@ const PUBLIC_SKILL_FIELDS = [
     'damage_taken_scaling',
     'element_effectiveness',
     'consume_stacks',
+    'aftershock',
+    'shuffle_positions',
     'sfx',
 ] as const;
 
@@ -188,6 +190,21 @@ const PUBLIC_EFFECT_FIELDS = [
     'drain_percent_of_max_hp',
     'drain_per_turn',
     'movement_immunity',
+    'status_resist_chance',
+    'effect_magnitude_multiplier',
+    'prevent_actions',
+    'prevent_ranges',
+    'prevent_elements',
+    'untargetable_ranges',
+    'untargetable_elements',
+    'barrier',
+    'taunt',
+    'crit_damage_taken',
+    'intercept',
+    'shatter_on_damage_type',
+    'petrify_class',
+    'fossilize_on_expiry',
+    'on_expiry_damage',
 ] as const;
 
 function clone(value: unknown): unknown {

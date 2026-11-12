@@ -212,6 +212,24 @@ function scaleEffect(effect: AttackEffect, factor: number): AttackEffect {
     if (effect.on_death_blast) {
         next.on_death_blast = { power: scaleRounded(effect.on_death_blast.power, factor) };
     }
+    if (effect.shatter_on_damage_type) {
+        next.shatter_on_damage_type = {
+            ...effect.shatter_on_damage_type,
+            damage_per_turn: scaleRounded(effect.shatter_on_damage_type.damage_per_turn ?? 0, factor),
+        };
+    }
+    if (effect.fossilize_on_expiry) {
+        next.fossilize_on_expiry = {
+            ...effect.fossilize_on_expiry,
+            break_power: scaleRounded(effect.fossilize_on_expiry.break_power ?? 0, factor),
+        };
+    }
+    if (effect.on_expiry_damage) {
+        next.on_expiry_damage = {
+            ...effect.on_expiry_damage,
+            power: scaleRounded(effect.on_expiry_damage.power, factor),
+        };
+    }
 
     return next;
 }
@@ -286,6 +304,12 @@ export function applySkillLevel(skill: PublicAttack, level: number): PublicAttac
         next.damage_taken_scaling = {
             ...skill.damage_taken_scaling,
             per_point: skill.damage_taken_scaling.per_point * powerFactor,
+        };
+    }
+    if (skill.aftershock) {
+        next.aftershock = {
+            ...skill.aftershock,
+            power: scaleRounded(skill.aftershock.power, powerFactor),
         };
     }
 
