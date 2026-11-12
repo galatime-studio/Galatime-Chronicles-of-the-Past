@@ -64,7 +64,16 @@ import {
     tickUnitEffects,
     tickTurnEndEffects,
 } from './combat/effectResolver';
-import { recordTimelineSnapshot } from './combat/rewind';
+import { recordTimelineSnapshot, rewindUnit } from './combat/rewind';
+import {
+    anchorForAction,
+    isSuspended,
+    nextActionBonusFor,
+    resolveCasterEchoes,
+    resolveRiftMarks,
+    resolveTurnEndEchoes,
+    tickSuspension,
+} from './combat/spatiumMechanics';
 import { tickWeather } from './combat/weather';
 import { effectiveTimePhase, tickPhaseOverride } from './combat/phaseOverride';
 import { canAttemptFlee, fleeRuleFor } from './combat/fleeRules';
@@ -377,13 +386,27 @@ function payCosts(actor: CombatUnit, action: CombatAction): CombatEvent[] {
 function beginUnitTurn(state: CombatState, unit: CombatUnit, random: CombatRandom): CombatEvent[] {
     unit.defending = false;
 
-    // The unit's own past is recorded before anything changes, so a rewind can
-    // put it back here.
+    // A suspended unit's turn is skipped whole: cooldowns and timed effects do
+    // not advance (`stasis`, `time_lock`). `advanceToNextUnit` pays the turn.
+    if (isSuspended(unit)) return [];
+
+    const events: CombatEvent[] = [];
+    // A perpetual rewind (`rewind`, `deep_rewind`, `fixed_rewind`) restores the
+    // bearer before its own turn is recorded, so the state it returns to stays
+    // one turn behind.
+    for (const effect of unit.effects) {
+        if (!effect.rewindEachTurn) continue;
+        events.push(...rewindUnit(unit, effect.rewindEachTurn));
+    }
     recordTimelineSnapshot(unit);
+
+    // Repeating echoes owned by this unit resolve when its turn opens.
+    resolveCasterEchoes(state, unit, events);
+    resolveRiftMarks(state, unit, events);
 
     // Idle regen pays FIRST: a status that drains mana this same turn must not
     // also erase the streak the regen was just paid from.
-    const events: CombatEvent[] = [...tickResourceRegen(unit)];
+    events.push(...tickResourceRegen(unit));
 
     for (const actionId of Object.keys(unit.cooldowns)) {
         const remaining = unit.cooldowns[actionId] - 1;
@@ -486,6 +509,11 @@ function advanceToNextUnit(
         if (!advance.unit) return { events, unit: null };
 
         events.push(...beginUnitTurn(state, advance.unit, random));
+        if (isSuspended(advance.unit)) {
+            tickSuspension(state, advance.unit, events, random);
+            events.push({ type: 'turn_skipped', unitId: advance.unit.id });
+            continue;
+        }
         if (advance.unit.currentHp > 0) {
             // A detonation mark may cost its bearer the turn outright
             // (`time_bomb`); the skip is set while the turn opens.
@@ -1129,6 +1157,38 @@ export function submitCombatAction(
     const validation = validateTargetRule(state, actor, action, request.targetId);
     if (validation.error) return combatFail(validation.error);
 
+    // An anchor mark consumes itself and cancels the bearer's action, spending
+    // the turn without paying costs.
+    const anchor = anchorForAction(actor, action.kind);
+    if (anchor) {
+        actor.effects = actor.effects.filter((effect) => effect !== anchor);
+        const events: CombatEvent[] = [
+            { type: 'effect_expired', unitId: actor.id, effectId: anchor.effectId },
+            { type: 'action_cancelled', unitId: actor.id, actionId: action.id, effectId: anchor.effectId },
+            { type: 'turn_ended', unitId: actor.id },
+        ];
+        const outcome = evaluateOutcome(state);
+        if (outcome) {
+            state.phase = 'finished';
+            state.outcome = outcome;
+            events.push({ type: 'combat_ended', outcome, reason: outcomeReason(outcome) });
+        } else {
+            const advance = advanceToNextUnit(state, random);
+            events.push(...advance.events);
+            if (advance.unit) events.push({ type: 'turn_started', unitId: advance.unit.id, round: state.round });
+        }
+        state.log.push(...events);
+        trimLog(state.log, MAX_LOG_ENTRIES);
+        return combatOk({ state, events, outcome: state.outcome });
+    }
+
+    // A stored impulse (`temporal_impulse`) sharpens the next matching skill or
+    // takes a turn off its cooldown.
+    const impulse = nextActionBonusFor(actor, action.elementId);
+    const effectiveAction = impulse && impulse.accuracy > 0
+        ? { ...action, accuracy: Math.min(100, action.accuracy + impulse.accuracy) }
+        : action;
+
     // A status granting a free crossing (`Cloudstep`, `Windborne`) lets its
     // holder step to the other line without spending the turn: the move
     // resolves on the spots and the turn keeps going, like a weapon switch.
@@ -1136,7 +1196,7 @@ export function submitCombatAction(
         const resolved = resolveCombatAction({
             state,
             actor,
-            action,
+            action: effectiveAction,
             target: validation.target,
             elementIndex,
             random,
@@ -1153,13 +1213,18 @@ export function submitCombatAction(
     // A `shock`-style status may interrupt the action as it begins. The costs
     // are still paid, the status is consumed and the turn ends without an
     // action resolving.
-    const interrupt = checkInterrupt(actor, action, random);
+    const interrupt = checkInterrupt(actor, effectiveAction, random);
 
     // The action's resource costs. A `hangover`-style status charges the
     // spender once the pools actually dropped: paying mana or stamina
     // triggers any spend trigger the payer carries.
     const poolsBefore = { mana: actor.currentMana, stamina: actor.currentStamina };
-    const events: CombatEvent[] = payCosts(actor, action);
+    const events: CombatEvent[] = payCosts(actor, effectiveAction);
+    if (impulse && impulse.cooldown > 0 && actor.cooldowns[action.id] !== undefined) {
+        const remaining = actor.cooldowns[action.id] - impulse.cooldown;
+        if (remaining <= 0) delete actor.cooldowns[action.id];
+        else actor.cooldowns[action.id] = remaining;
+    }
     const spentMana = Math.max(0, poolsBefore.mana - actor.currentMana);
     const spentStamina = Math.max(0, poolsBefore.stamina - actor.currentStamina);
     if (spentMana > 0 || spentStamina > 0) {
@@ -1180,11 +1245,11 @@ export function submitCombatAction(
     } else {
         // A field trap the actor carries (Standing On Thin Ice / Frozen Earth)
         // rolls as the action begins: the trip costs health, never the turn.
-        events.push(...applyActionTriggers(state, actor, action, random));
+        events.push(...applyActionTriggers(state, actor, effectiveAction, random));
         const resolved = resolveCombatAction({
             state,
             actor,
-            action,
+            action: effectiveAction,
             target: validation.target,
             elementIndex,
             random,
@@ -1204,6 +1269,8 @@ export function submitCombatAction(
         // Burn pays at the END of its bearer's turn; Overheat gains its stack
         // and may burst here.
         events.push(...tickTurnEndEffects(actor, random));
+        // Pending echo marks resolve at their bearer's turn end.
+        resolveTurnEndEchoes(actor, events, random);
         // `turn_end` statuses (`Ranged Veil`) expire right after their holder
         // acts — they guard exactly one of the holder's turns.
         events.push(...expireTurnEndEffects(actor));

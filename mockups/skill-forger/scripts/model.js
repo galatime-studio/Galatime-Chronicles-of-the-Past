@@ -247,6 +247,15 @@
         shatter: 'Cristal estilhaçado',
         fossilize: 'Fóssil',
         on_expiry: 'Desmoronamento',
+        // Spatium: tempo e espaço.
+        shift_effects: 'Ritmo temporal',
+        fatigue_delay: 'Fadiga atrasada',
+        suspend: 'Suspensão',
+        anchor: 'Âncora',
+        echo_mark: 'Eco',
+        impulse: 'Impulso',
+        gravity_zone: 'Zona de gravidade',
+        rift_mark: 'Marca de fenda',
     };
 
     function patternStatusName(pattern) { return PATTERN_STATUS_NAMES[pattern] || 'Efeito'; }
@@ -844,6 +853,40 @@
         if (effect.on_death_blast && typeof effect.on_death_blast === 'object') {
             fragments.push('Ao cair por dano direto, devolve ' + effect.on_death_blast.power + ' PWR a quem o derrubou.');
         }
+        if (effect.shift_other_effects) {
+            fragments.push((effect.shift_other_effects.direction === 'extend' ? 'Alonga' : 'Encurta')
+                + ' os outros estados do portador em ' + (effect.shift_other_effects.turns || 1) + ' turno(s).');
+        }
+        if (effect.fatigue_recovery_delay) {
+            fragments.push('Atrasa a recuperação de stamina em ' + effect.fatigue_recovery_delay + ' turno(s).');
+        }
+        if (effect.suspend) {
+            fragments.push('Suspende o portador: salta turnos'
+                + (effect.suspend.invulnerable ? ', fica invulnerável' : '')
+                + (effect.suspend.defer_damage ? ', adia o dano' : '')
+                + (effect.suspend.defer_statuses ? ' e os novos estados' : '') + '.');
+        }
+        if (effect.anchor) fragments.push('Cancela a próxima skill, arma ou troca de linha do portador.');
+        if (effect.echo_mark) {
+            fragments.push('Registra ' + effect.echo_mark.percent + '% do dano recebido e devolve-o '
+                + (effect.echo_mark.resolve === 'caster_next_turn' ? 'no início do próximo turno do lançador'
+                    : effect.echo_mark.resolve === 'deferred' ? 'após ' + (effect.echo_mark.delay_turns || 0) + ' turno(s)'
+                        : 'no fim do turno') + '.');
+        }
+        if (effect.next_action_bonus) {
+            fragments.push('A próxima ação de ' + (effect.next_action_bonus.element || 'qualquer elemento')
+                + ' ganha +' + (effect.next_action_bonus.accuracy || 0) + ' ACC e -'
+                + (effect.next_action_bonus.cooldown || 0) + ' cooldown.');
+        }
+        if (effect.gravity_zone) {
+            fragments.push('Zona de gravidade: -' + (effect.gravity_zone.speed_per_turn || 0) + ' SPD por turno'
+                + (effect.gravity_zone.prevent_exit ? ', impede sair' : '')
+                + (effect.gravity_zone.ignore_evasion ? ', ignora Evasão' : '') + '.');
+        }
+        if (effect.rift_mark) {
+            fragments.push('Marca a lane: ' + effect.rift_mark.power + ' de poder no primeiro alvo e '
+                + Math.round((effect.rift_mark.cascade ?? 0.6) * 100) + '% nos seguintes.');
+        }
         if (effect.stacking) {
             fragments.push('Empilha ' + (effect.stacking.initial ?? 1) + ' stack(s) e estende a duração em '
                 + (effect.stacking.extend_turns ?? 0) + ' turno(s) quando reaplicado.');
@@ -974,6 +1017,9 @@
             'status_resist_chance', 'effect_magnitude_multiplier', 'prevent_ranges', 'prevent_elements',
             'untargetable_ranges', 'untargetable_elements', 'barrier', 'taunt', 'crit_damage_taken',
             'intercept', 'shatter_on_damage_type', 'petrify_class', 'fossilize_on_expiry', 'on_expiry_damage',
+            // Spatium: duração, fadiga, suspensão, âncora, ecos, impulso e zonas.
+            'rewind_each_turn', 'shift_other_effects', 'fatigue_recovery_delay', 'suspend', 'anchor',
+            'echo_mark', 'next_action_bonus', 'gravity_zone', 'rift_mark',
         ];
         var cleaned = {};
         allowed.forEach(function (key) {
@@ -1002,7 +1048,8 @@
             'stat_multipliers', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent',
             'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction',
             'drain_percent_of_max_hp', 'drain_per_turn', 'barrier', 'intercept', 'shatter_on_damage_type',
-            'fossilize_on_expiry', 'on_expiry_damage'].forEach(function (key) {
+            'fossilize_on_expiry', 'on_expiry_damage', 'rewind_each_turn', 'shift_other_effects',
+            'suspend', 'anchor', 'echo_mark', 'next_action_bonus', 'gravity_zone', 'rift_mark'].forEach(function (key) {
             if (cleaned[key] && typeof cleaned[key] === 'object' && !Object.keys(cleaned[key]).length) {
                 delete cleaned[key];
             }
@@ -1092,8 +1139,16 @@
         }
         ['recoil', 'friendly_fire', 'backlane_splash', 'no_space_recoil', 'chain', 'shrapnel',
             'instability', 'on_kill_detonation', 'cooldown_reset', 'damage_taken_scaling',
-            'element_effectiveness', 'consume_stacks', 'aftershock', 'shuffle_positions'].forEach(function (key) {
+            'element_effectiveness', 'consume_stacks', 'aftershock', 'shuffle_positions',
+            'distance_scaling', 'lane_cascade', 'echo_burst'].forEach(function (key) {
             if (source[key] && typeof source[key] === 'object') skill[key] = clone(source[key]);
+        });
+        ['ignore_evasion', 'cannot_crit', 'fail_if_target_moves'].forEach(function (key) {
+            if (source[key] === true || source[key] === 'true') skill[key] = true;
+        });
+        ['fail_cost_fraction', 'front_lane_bonus', 'bonus_vs_immobile'].forEach(function (key) {
+            var value = Number(source[key]);
+            if (Number.isFinite(value)) skill[key] = value;
         });
         if (Number(source.control_immune_damage) > 0) skill.control_immune_damage = Number(source.control_immune_damage);
         if (typeof source.sfx === 'string' && source.sfx.trim()) skill.sfx = source.sfx.trim();

@@ -230,6 +230,12 @@ function scaleEffect(effect: AttackEffect, factor: number): AttackEffect {
             power: scaleRounded(effect.on_expiry_damage.power, factor),
         };
     }
+    if (effect.rift_mark) {
+        next.rift_mark = {
+            ...effect.rift_mark,
+            power: scaleRounded(effect.rift_mark.power, factor),
+        };
+    }
 
     return next;
 }

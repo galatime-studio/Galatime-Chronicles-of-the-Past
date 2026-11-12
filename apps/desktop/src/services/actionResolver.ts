@@ -62,7 +62,8 @@ import {
 } from './combat/effectMechanics';
 import { reachableTargets, scatterCandidates } from './combat/targetResolver';
 import { effectiveTimePhase, setPhaseBlock } from './combat/phaseOverride';
-import { canPlaceInLine, moveUnitToLine, wouldLeaveFrontLineEmpty } from './combat/positionRules';
+import { canPlaceInLine, moveUnitToLine, repositionWithinLine, wouldLeaveFrontLineEmpty } from './combat/positionRules';
+import { deferSuspendedDamage, recordEchoDamage } from './combat/spatiumMechanics';
 import { fleeChanceFor } from './combat/fleeRules';
 import {
     applyInstabilityCharge,
@@ -315,18 +316,28 @@ function resolveFlee(context: ActionResolutionContext, events: CombatEvent[]): C
 
 /** Consumes a live dodge status that answers this damage channel. */
 function consumeEvade(
+    units: readonly CombatUnit[],
     target: CombatUnit,
     damageType: DamageType,
     random: CombatRandom,
     events: CombatEvent[],
+    action: CombatAction,
 ): CombatEffectInstance | null {
+    // A blink strike bypasses ordinary dodge statuses entirely.
+    if (action.ignoreEvasion) return null;
     const evade = target.effects.find((effect) => effect.evadeNext
+        && (!effect.evadeNext.directOnly || action.targeting === 'any_one')
         && (!effect.evadeNext.damageTypes?.length || effect.evadeNext.damageTypes.includes(damageType))
         && random() < effect.evadeNext.chance);
     if (!evade) return null;
 
     target.effects = target.effects.filter((effect) => effect !== evade);
     events.push({ type: 'effect_expired', unitId: target.id, effectId: evade.effectId });
+    if (evade.evadeNext?.returnToFreeLane && action.targeting === 'any_one') {
+        if (repositionWithinLine(units, target)) {
+            events.push({ type: 'unit_line_changed', unitId: target.id, line: target.line, slot: target.slot });
+        }
+    }
     return evade;
 }
 
@@ -448,10 +459,16 @@ function buildResolution(
         }
     }
     const shield = absorbShieldDamage(recipient, reduced, random);
-    const healthDamage = shield.leftover;
+    let healthDamage = shield.leftover;
+    // `time_lock` banks the hit and pays it when the suspension ends; `stasis`
+    // voids it outright.
+    if (healthDamage > 0 && deferSuspendedDamage(recipient, healthDamage)) {
+        healthDamage = 0;
+    }
     if (healthDamage > 0) {
         recipient.currentHp = Math.max(0, recipient.currentHp - healthDamage);
         recipient.eventCounts.damage_taken = (recipient.eventCounts.damage_taken ?? 0) + healthDamage;
+        recordEchoDamage(recipient, healthDamage, action.echoBurst?.percent ?? 0);
     }
 
     return {
@@ -708,16 +725,28 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
         if (scatter) {
             rollScatter(context, actionTargets, resolutions);
         } else {
-            for (const target of actionTargets) {
-                const evade = consumeEvade(target, action.damageType, random, events);
+            // A lane cascade (`rift_breach`, `spatial_rend`) hits the first unit
+            // in slot order at full power, then each following unit at a share
+            // of the previous unit's damage.
+            const cascadeTargets = action.laneCascade && action.targeting === 'enemies_lane'
+                ? [...actionTargets].sort((a, b) => a.slot - b.slot)
+                : actionTargets;
+            let cascade = action.laneCascade?.first ?? 1;
+            for (const target of cascadeTargets) {
+                const evade = consumeEvade(state.units, target, action.damageType, random, events, action);
                 if (evade) {
                     resolutions.set(target.id, makeMissResolution(actor, target, action));
                     if ((evade.evadeNext?.power ?? 0) > 0) {
                         dealFlatDamage(events, target, actor, evade.evadeNext?.power ?? 0, action.id, 'physical', random);
                     }
+                    cascade *= action.laneCascade?.subsequent ?? 1;
                     continue;
                 }
-                resolutions.set(target.id, buildResolution(context, target));
+                const targetAction = action.laneCascade
+                    ? { ...action, power: action.power * cascade }
+                    : action;
+                resolutions.set(target.id, buildResolution(context, target, { action: targetAction }));
+                cascade *= action.laneCascade?.subsequent ?? 1;
             }
             // A single-shot projectile miss may be re-shot on the spot
             // (`Second Chance`): once per its bearer's turn, same target.

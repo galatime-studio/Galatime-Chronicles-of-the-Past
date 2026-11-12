@@ -340,7 +340,13 @@ export interface CombatEffectInstance {
     /** Steals part of the bearer's next resource spend for the status source. */
     spendSteal?: CombatSpendStealSpec | null;
     /** A one-shot dodge plus riposte against a matching damage channel. */
-    evadeNext?: { damageTypes: DamageType[] | null; power: number; chance: number } | null;
+    evadeNext?: {
+        damageTypes: DamageType[] | null;
+        power: number;
+        chance: number;
+        directOnly: boolean;
+        returnToFreeLane: boolean;
+    } | null;
     /** Redirects damage aimed at protected allies onto this unit. */
     damageRedirect?: { scope: 'allies_all' | 'allies_lane' } | null;
     /** Multipliers the bearer applies to its own action costs. */
@@ -452,6 +458,67 @@ export interface CombatEffectInstance {
     drainPerTurn?: { resource: 'hp' | 'mana'; percentOfMax: number; chance: number; healToSource: boolean } | null;
     /** The bearer cannot be moved by forced movement. */
     movementImmunity?: boolean;
+    /** Restores the holder at the start of each of its turns while the status lives. */
+    rewindEachTurn?: CombatRewindSpec | null;
+    /** Turns added/removed from other statuses when this one lands. */
+    shiftOtherEffects?: {
+        turns: number;
+        direction: 'shorten' | 'extend';
+        polarity: 'positive' | 'negative' | 'any';
+    } | null;
+    /** Turns the holder's stamina recovery is delayed. */
+    fatigueRecoveryDelay?: number;
+    /** Time suspension: skipped turns, invulnerability or deferred harm. */
+    suspend?: {
+        invulnerable: boolean;
+        deferDamage: boolean;
+        deferStatuses: boolean;
+        freezeCooldowns: boolean;
+        freezeEffects: boolean;
+        deferredDamage: number;
+        deferredStatuses: Array<{
+            effect: AttackEffect;
+            sourceId: string;
+            elementId: string | null;
+            outputMultiplier: number;
+            phaseMultiplier: number;
+        }>;
+    } | null;
+    /** Cancels the holder's next action. */
+    anchor?: { cancelActions: boolean } | null;
+    /** Records part of the holder's incoming damage into a delayed echo. */
+    echoMark?: {
+        percent: number;
+        maxPercent: number | null;
+        addPercentPerHit: number;
+        resolve: 'turn_end' | 'caster_next_turn' | 'deferred';
+        delayTurns: number;
+        deferStatuses: boolean;
+        canCrit: boolean;
+        cap: number | null;
+        pending: number;
+        currentPercent: number;
+        recorded: number;
+        readyTurn: number | null;
+    } | null;
+    /** A bonus the holder's next matching action consumes. */
+    nextActionBonus?: {
+        element: string | null;
+        accuracy: number;
+        cooldown: number;
+        charges: number;
+    } | null;
+    /** A gravity zone that slows and traps its holder. */
+    gravityZone?: {
+        speedPerTurn: number;
+        pull: boolean;
+        preventExit: boolean;
+        epicenterHits: boolean;
+        ignoreEvasion: boolean;
+        endsOnCasterInterrupt: boolean;
+    } | null;
+    /** A delayed cascading strike through the bearer's lane. */
+    riftMark?: { power: number; cascade: number } | null;
     /** Turn count when the status landed, used by detonations to scale. */
     appliedTurnCount?: number;
 }
@@ -877,6 +944,24 @@ export interface CombatAction {
     aftershock?: CombatAftershockSpec | null;
     /** Shuffles the struck side's lane positions (`earthquake`). */
     shufflePositions?: CombatShuffleSpec | null;
+    /** The hit ignores the defender's Evasion and ordinary dodge statuses. */
+    ignoreEvasion?: boolean;
+    /** The hit can never critically strike. */
+    cannotCrit?: boolean;
+    /** The hit fizzles when the target changes position before resolution. */
+    failIfTargetMoves?: boolean;
+    /** Fraction of the cost paid when the target-moved clause fizzles. */
+    failCostFraction?: number;
+    /** Extra damage multiplier while the caster is in the front line. */
+    frontLaneBonus?: number;
+    /** Extra damage per lane of distance between caster and target. */
+    distanceScaling?: { perLane: number; maxLanes: number } | null;
+    /** Cascading damage through an `enemies_lane` strike. */
+    laneCascade?: { first: number; subsequent: number } | null;
+    /** Extra multiplier against a target already unable to change lanes. */
+    bonusVsImmobile?: number;
+    /** Share of the hit added to a pending echo. */
+    echoBurst?: { percent: number } | null;
 }
 
 /**Damage-channel modifiers folded from a defender's passive abilities.
@@ -1107,6 +1192,12 @@ export type CombatEvent =
     }
     /** A unit whose every action was unavailable passed its turn untouched. */
     | { type: 'turn_skipped'; unitId: string }
+    /** An anchor mark consumed itself and cancelled the bearer's action. */
+    | { type: 'action_cancelled'; unitId: string; actionId: string; effectId: string }
+    /** A status was queued by a time suspension instead of landing. */
+    | { type: 'effect_deferred'; unitId: string; effectId: string; statusEffect: string | null }
+    /** A deferred echo or suspension released its stored damage. */
+    | { type: 'damage_deferred'; unitId: string; amount: number; sourceId: string }
     /** A status interrupted the unit's action (`Shock`); costs were still paid. */
     | {
         type: 'action_interrupted';

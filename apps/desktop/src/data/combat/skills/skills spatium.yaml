@@ -1,0 +1,1278 @@
+skills:
+  - id: time
+    name: Time
+    description: "The caster quickens their sense of time, moving faster and evading more easily; Grants +4 SPD and +5 Evasion for 2 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids: []
+    targeting: self
+    kind: buff
+    costs:
+      mana: 2
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: time_effect
+        status_effect: Quickened
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff:
+          speed: 4
+          evasion: 5
+
+  - id: haste
+    name: Haste
+    description: "The caster hastens an ally; Grants +8 SPD for 2 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - time
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 4
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: haste_effect
+        status_effect: Haste
+        apply_to: target
+        turns: 2
+        polarity: positive
+        buff:
+          speed: 8
+
+  - id: quickened_pulse
+    name: Quickened Pulse
+    description: "The caster surrounds an ally with a faster rhythm; Grants +12 SPD for 3 turns and shortens other temporary effects on the bearer by 1 turn when applied."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - haste
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 7
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: quickened_pulse_effect
+        status_effect: Quickened Pulse
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff:
+          speed: 12
+        shift_other_effects:
+          turns: 1
+          direction: shorten
+          polarity: any
+
+  - id: accelerated_rest
+    name: Accelerated Rest
+    description: "The caster lends an ally a swift, restorative rhythm; Grants +14 SPD for 3 turns, shortens other temporary effects by 1 turn when applied, and restores 10% of their fatigue resource at the start of each turn."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - quickened_pulse
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: accelerated_rest_effect
+        status_effect: Accelerated Rest
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff:
+          speed: 14
+        shift_other_effects:
+          turns: 1
+          direction: shorten
+          polarity: any
+        regen_per_turn_percent:
+          stamina: 10
+
+  - id: slowness
+    name: Slowness
+    description: "The caster weighs down an enemy's moment; Inflicts -8 SPD for 2 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - time
+    targeting: any_one
+    kind: debuff
+    costs:
+      mana: 4
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: slowness_effect
+        status_effect: Slowed
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 8
+
+  - id: dragging_moment
+    name: Dragging Moment
+    description: "The caster stretches an enemy's moment; Inflicts -12 SPD for 3 turns and extends other temporary effects on the target by 1 turn when applied."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - slowness
+    targeting: any_one
+    kind: debuff
+    costs:
+      mana: 7
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: dragging_moment_effect
+        status_effect: Dragging Moment
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff:
+          speed: 12
+        shift_other_effects:
+          turns: 1
+          direction: extend
+          polarity: any
+
+  - id: stolen_rest
+    name: Stolen Rest
+    description: "The caster traps an enemy in a sluggish rhythm; Inflicts -14 SPD for 3 turns, extends other temporary effects by 1 turn when applied, and delays the target's fatigue recovery by 1 turn."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - dragging_moment
+    targeting: any_one
+    kind: debuff
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: stolen_rest_effect
+        status_effect: Stolen Rest
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff:
+          speed: 14
+        shift_other_effects:
+          turns: 1
+          direction: extend
+          polarity: any
+        fatigue_recovery_delay: 1
+
+  - id: temporal_impulse
+    name: Temporal Impulse
+    description: "The caster steals a sliver of an enemy's lost pace and keeps it ready; When this caster applies a SPD reduction, stores one Impulse for 2 turns. Their next Spatium skill consumes it to gain +10 ACC or reduce its cooldown by 1 turn; cannot stack."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - haste
+        - slowness
+    targeting: any_one
+    kind: utility
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: temporal_impulse_effect
+        status_effect: Impulse
+        apply_to: self
+        turns: 2
+        polarity: positive
+        next_action_bonus:
+          element: spatium
+          accuracy: 10
+          cooldown: 1
+
+  - id: stasis
+    name: Stasis
+    description: "The caster holds an ally in a still, protected instant; Suspends the target for 1 turn: they cannot act or move, and cannot receive damage or new statuses. Their cooldowns and timed effects do not advance during suspension."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - time
+    targeting: any_one
+    kind: utility
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: stasis_effect
+        status_effect: Stasis
+        apply_to: target
+        turns: 1
+        polarity: positive
+        suspend:
+          invulnerable: true
+          defer_damage: false
+          defer_statuses: false
+          freeze_cooldowns: true
+          freeze_effects: true
+
+  - id: time_lock
+    name: Time Lock
+    description: "The caster suspends an ally in a guarded instant; Suspends them for 1 turn: they cannot act or move, while attacks may target them but damage is deferred until suspension ends. Cooldowns and timed effects do not advance; new statuses are deferred with damage."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - stasis
+    targeting: any_one
+    kind: utility
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: time_lock_effect
+        status_effect: Time Lock
+        apply_to: target
+        turns: 1
+        polarity: positive
+        suspend:
+          invulnerable: false
+          defer_damage: true
+          defer_statuses: true
+          freeze_cooldowns: true
+          freeze_effects: true
+
+  - id: anchor
+    name: Anchor
+    description: "The caster marks their own place in the moment; The mark remains until triggered. If the bearer attempts to use another skill or change lanes, the mark is consumed and that action is cancelled, costing their turn."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - time
+    targeting: self
+    kind: buff
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: anchor_effect
+        status_effect: Anchored
+        apply_to: self
+        turns: null
+        polarity: positive
+        anchor:
+          cancel_actions: true
+
+  - id: echo_mark
+    name: Echo Mark
+    description: "The caster marks an enemy's moment to remember its next wound; For 2 turns, records a fraction (20%) of the next damage the target takes, then deals that amount as a second impact at turn end. Consumed when it triggers; does not record damage from other echoes."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - time
+    targeting: any_one
+    kind: utility
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: echo_mark_effect
+        status_effect: Echo Mark
+        apply_to: target
+        turns: 2
+        polarity: negative
+        echo_mark:
+          percent: 20
+          resolve: turn_end
+
+  - id: echoing_wound
+    name: Echoing Wound
+    description: "The caster strikes an enemy and leaves a lingering echo; Marks the target for 2 turns. The next attack to hit records 20% of its damage, with later hits before resolution adding 10% each up to 40% total; the echo resolves at turn end and is then consumed. Echo damage cannot trigger another echo."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - echo_mark
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 5
+    accuracy: 95
+    hit_count: 1
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: echoing_wound_effect
+        status_effect: Echoing Wound
+        apply_to: target
+        turns: 2
+        polarity: negative
+        echo_mark:
+          percent: 20
+          max_percent: 40
+          add_percent_per_hit: 10
+          resolve: turn_end
+
+  - id: delayed_echo
+    name: Delayed Echo
+    description: "The caster sends a wound forward through time; Records 35% of this skill's damage against the target and repeats it at the start of the caster's next turn. It dissipates if the target leaves combat; it cannot critically hit or reapply the original skill's statuses."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - echoing_wound
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 7
+    accuracy: 90
+    hit_count: 1
+    costs:
+      mana: 11
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: delayed_echo_effect
+        status_effect: Delayed Echo
+        apply_to: target
+        turns: 2
+        polarity: negative
+        echo_mark:
+          percent: 35
+          resolve: caster_next_turn
+          can_crit: false
+
+  - id: suspended_harm
+    name: Suspended Harm
+    description: "The caster seals an enemy's next wound inside a delayed moment; Marks the target for 1 turn. Damage and status effects from the next hit are deferred for 3 turns, then applied together; the mark lasts 3 turns and is consumed when triggered."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - echo_mark
+    targeting: any_one
+    kind: utility
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: suspended_harm_effect
+        status_effect: Suspended Harm
+        apply_to: target
+        turns: 4
+        polarity: negative
+        echo_mark:
+          percent: 100
+          resolve: deferred
+          delay_turns: 3
+          defer_statuses: true
+
+  - id: rewind
+    name: Rewind
+    description: "The caster draws an ally back to a recent, safer moment; For 2 turns, restores the target at the start of their turn to their recorded state from 1 turn earlier, including health, resources and statuses; can revive a defeated ally."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - time
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: rewind_effect
+        status_effect: Rewinding
+        apply_to: target
+        turns: 2
+        polarity: positive
+        rewind_each_turn:
+          turns: 1
+          cleanse: true
+
+  - id: deep_rewind
+    name: Deep Rewind
+    description: "The caster pulls an ally farther back along their own timeline; For 3 turns, restores the target at the start of their turn to their recorded state from 3 turns earlier, including health, resources and statuses; can revive a defeated ally."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - rewind
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 16
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: deep_rewind_effect
+        status_effect: Deep Rewinding
+        apply_to: target
+        turns: 3
+        polarity: positive
+        rewind_each_turn:
+          turns: 3
+          cleanse: true
+
+  - id: fixed_rewind
+    name: Fixed Rewind
+    description: "The caster restores an ally to the moment they were strongest; Once applied, restores the target to their state from 1 turn earlier for the rest of combat, including health, resources and statuses; can revive a defeated ally."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 7
+    learning_requirements:
+      required_attack_ids:
+        - deep_rewind
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 22
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: fixed_rewind_effect
+        status_effect: Fixed Rewind
+        apply_to: target
+        turns: null
+        polarity: positive
+        rewind_each_turn:
+          turns: 1
+          cleanse: true
+
+  - id: borrowed_second
+    name: Borrowed Second
+    description: "The caster lends an ally a second chance to move; Grants +6 SPD and +8 Evasion for 2 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - haste
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 7
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: borrowed_second_effect
+        status_effect: Borrowed Second
+        apply_to: target
+        turns: 2
+        polarity: positive
+        buff:
+          speed: 6
+          evasion: 8
+
+  - id: lagging_step
+    name: Lagging Step
+    description: "The caster makes an enemy's next movement fall behind; Inflicts -6 SPD and -8 Evasion for 2 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - slowness
+    targeting: any_one
+    kind: debuff
+    costs:
+      mana: 7
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: lagging_step_effect
+        status_effect: Lagging Step
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 6
+          evasion: 8
+
+  - id: stasis_bubble
+    name: Stasis Bubble
+    description: "The caster seals an ally inside a calm pocket of time; Suspends them for 1 turn, preventing actions, movement, damage and new statuses; their cooldowns and temporary effects do not advance."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - stasis
+    targeting: any_one
+    kind: utility
+    costs:
+      mana: 11
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: stasis_bubble_effect
+        status_effect: Stasis Bubble
+        apply_to: target
+        turns: 1
+        polarity: positive
+        suspend:
+          invulnerable: true
+          defer_damage: false
+          defer_statuses: false
+          freeze_cooldowns: true
+          freeze_effects: true
+
+  - id: echo_burst
+    name: Echo Burst
+    description: "The caster releases several remembered blows as one strike; Deals magical damage and adds 15% of the damage to a pending echo on the target, up to that echo's limit."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - echoing_wound
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 8
+    accuracy: 90
+    hit_count: 1
+    costs:
+      mana: 12
+      stamina: 0
+      cooldown: 0
+    echo_burst:
+      percent: 15
+
+  - id: last_moment
+    name: Last Moment
+    description: "The caster catches an ally just before their final moment; Restores the ally to their recorded state from 1 turn earlier, including health, resources and statuses, and can revive them."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - rewind
+        - anchor
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 18
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: last_moment_effect
+        status_effect: Last Moment
+        apply_to: target
+        turns: 1
+        polarity: positive
+        rewind:
+          turns: 1
+          cleanse: true
+
+  - id: space
+    name: Space
+    description: "The caster opens their awareness to the space around them; Grants +8 Evasion for 2 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids: []
+    targeting: self
+    kind: buff
+    costs:
+      mana: 2
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: space_effect
+        status_effect: Spaced
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff:
+          evasion: 8
+
+  - id: blink_strike
+    name: Blink Strike
+    description: "The caster vanishes and reappears beside an enemy with a sudden strike; Makes a normal physical attack that ignores Evasion and ordinary dodge checks, cannot critically hit, and fails at reduced cost if the target changes position before resolution."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - space
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: physical
+      damage_type: physical
+      power:
+        kind: fixed
+        value: 8
+    accuracy: 100
+    hit_count: 1
+    ignore_evasion: true
+    cannot_crit: true
+    fail_if_target_moves: true
+    fail_cost_fraction: 0.5
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+
+  - id: phase_step
+    name: Phase Step
+    description: "The caster slips out of the next attack's path and reappears nearby; For 1 turn, evades the next direct attack and returns to a free position in the same lane; area attacks still hit."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - space
+    targeting: self
+    kind: buff
+    costs:
+      mana: 6
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: phase_step_effect
+        status_effect: Phase Step
+        apply_to: self
+        turns: 1
+        polarity: positive
+        evade_next:
+          direct_only: true
+          return_to_free_lane: true
+          chance: 1
+
+  - id: ambush_phase
+    name: Ambush Phase
+    description: "The caster slips through space and prepares to strike from the opening; For 1 turn, evades the next direct attack and reappears in a free position in the same lane; area attacks still hit. For 3 turns, if in the front lane, their next attack deals +30% damage."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - phase_step
+    targeting: self
+    kind: buff
+    costs:
+      mana: 9
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: ambush_phase_effect
+        status_effect: Ambush Phase
+        apply_to: self
+        turns: 1
+        polarity: positive
+        evade_next:
+          direct_only: true
+          return_to_free_lane: true
+          chance: 1
+      - effect_id: ambush_phase_power
+        status_effect: Ambush Opening
+        apply_to: self
+        turns: 3
+        polarity: positive
+        element_damage:
+          spatium: 1.3
+
+  - id: vanishing_assault
+    name: Vanishing Assault
+    description: "The caster disappears, avoids a blow, and answers with a sudden assault; Performs a physical attack that ignores Evasion and ordinary dodge checks, cannot critically hit, and gains +30% damage if the caster is in the front lane. If the target changes position before resolution, the attack fails and costs half mana."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - blink_strike
+        - phase_step
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: physical
+      damage_type: physical
+      power:
+        kind: fixed
+        value: 12
+    accuracy: 95
+    hit_count: 1
+    ignore_evasion: true
+    cannot_crit: true
+    front_lane_bonus: 0.3
+    fail_if_target_moves: true
+    fail_cost_fraction: 0.5
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+
+  - id: spatial_compression
+    name: Spatial Compression
+    description: "The caster compresses the space around an enemy until it buckles; Deals high, highly variable magical damage, increased by 20% for each lane of distance between caster and target; the caster suffers -10 ACC and -8 Evasion for 3 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - space
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 12
+    accuracy: 85
+    hit_count: 1
+    damage_variance: [0.7, 1.3]
+    distance_scaling:
+      per_lane: 0.2
+      max_lanes: 1
+    costs:
+      mana: 9
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: spatial_compression_backlash
+        status_effect: Spatial Backlash
+        apply_to: self
+        turns: 3
+        polarity: negative
+        debuff:
+          accuracy: 10
+          evasion: 8
+
+  - id: crushing_fold
+    name: Crushing Fold
+    description: "The caster folds a wider distance into a crushing blow; Deals highly variable magical damage, increased by 30% for each lane of distance between caster and target; the caster suffers -10 ACC and -8 Evasion for 3 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - spatial_compression
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 18
+    accuracy: 80
+    hit_count: 1
+    damage_variance: [0.65, 1.35]
+    distance_scaling:
+      per_lane: 0.3
+      max_lanes: 1
+    costs:
+      mana: 13
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: crushing_fold_backlash
+        status_effect: Crushing Backlash
+        apply_to: self
+        turns: 3
+        polarity: negative
+        debuff:
+          accuracy: 10
+          evasion: 8
+
+  - id: rift_mark
+    name: Rift Mark
+    description: "The caster marks a place where space will break open; Marks a lane for 1 turn; at the start of the caster's next turn, the first target in the lane takes 100% of the attack's damage and each following target takes 60% of the previous target's damage."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - space
+    targeting: enemies_lane
+    kind: utility
+    costs:
+      mana: 8
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: rift_mark_effect
+        status_effect: Rift Mark
+        apply_to: target
+        turns: 2
+        polarity: negative
+        rift_mark:
+          power: 10
+          cascade: 0.6
+
+  - id: rift_breach
+    name: Rift Breach
+    description: "The caster tears open the marked space and sends a rupture through it; Hits the marked lane on the caster's next turn, dealing full damage to the first target and 60% of the previous target's damage to each following target."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 4
+    learning_requirements:
+      required_attack_ids:
+        - rift_mark
+        - spatial_compression
+    targeting: enemies_lane
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 16
+    accuracy: 90
+    hit_count: 1
+    lane_cascade:
+      first: 1
+      subsequent: 0.6
+    costs:
+      mana: 16
+      stamina: 0
+      cooldown: 0
+
+  - id: spatial_rend
+    name: Spatial Rend
+    description: "The caster opens a long rift that cuts through every enemy in its path; Hits all targets along the selected trajectory, dealing full damage to the first target and 70% of the previous target's damage to each following target."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - rift_breach
+    targeting: enemies_lane
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 22
+    accuracy: 90
+    hit_count: 1
+    lane_cascade:
+      first: 1
+      subsequent: 0.7
+    costs:
+      mana: 22
+      stamina: 0
+      cooldown: 0
+
+  - id: gravity_well
+    name: Gravity Well
+    description: "The caster weighs down an enemy with a local pull; Reduces the target's SPD by 6 and Evasion by 8 for 2 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - space
+    targeting: any_one
+    kind: debuff
+    costs:
+      mana: 6
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: gravity_well_effect
+        status_effect: Gravity Well
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 6
+          evasion: 8
+
+  - id: heavy_gravity
+    name: Heavy Gravity
+    description: "The caster deepens the pull around an enemy; Reduces the target's SPD by 10, Evasion by 12, PATK by 6 and ACC by 6 for 3 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - gravity_well
+    targeting: any_one
+    kind: debuff
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: heavy_gravity_effect
+        status_effect: Heavy Gravity
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff:
+          speed: 10
+          evasion: 12
+          physical_attack: 6
+          accuracy: 6
+
+  - id: gravity_slam
+    name: Gravity Slam
+    description: "The caster crushes an enemy under a sudden surge of gravity; Deals magical damage and prevents the target from changing lanes for 2 turns. If the target is already unable to move, deals 50% bonus damage without extending that restriction."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - gravity_well
+    targeting: any_one
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 9
+    accuracy: 90
+    hit_count: 1
+    bonus_vs_immobile: 0.5
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: gravity_slam_effect
+        status_effect: Gravity Slam
+        apply_to: target
+        turns: 2
+        polarity: negative
+        prevent_actions:
+          - switch_line
+
+  - id: singularity
+    name: Singularity
+    description: "The caster forms a gravity well that drags nearby enemies toward its heart; Creates a 2-turn zone that pulls entities toward its center and reduces their SPD by 8 at the start of each turn. The zone ends if the caster is interrupted."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - heavy_gravity
+        - gravity_slam
+    targeting: enemies_lane
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 12
+    accuracy: 85
+    hit_count: 1
+    costs:
+      mana: 18
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: singularity_zone
+        status_effect: Singularity
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 8
+        gravity_zone:
+          speed_per_turn: 8
+          pull: true
+          prevent_exit: true
+          ends_on_caster_interrupt: true
+
+  - id: event_horizon
+    name: Event Horizon
+    description: "The caster seals the edge of a gravity well against escape; For 2 turns, entities in the zone cannot be teleported or pushed outside it. Attacks made within the zone hit every entity at its epicenter and ignore Evasion; the zone ends if the caster is interrupted."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 6
+    learning_requirements:
+      required_attack_ids:
+        - singularity
+    targeting: enemies_lane
+    kind: utility
+    costs:
+      mana: 22
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: event_horizon_zone
+        status_effect: Event Horizon
+        apply_to: target
+        turns: 2
+        polarity: negative
+        gravity_zone:
+          speed_per_turn: 10
+          pull: false
+          prevent_exit: true
+          epicenter_hits: true
+          ignore_evasion: true
+          ends_on_caster_interrupt: true
+
+  - id: gravity_field
+    name: Gravity Field
+    description: "The caster collapses a gravity field into a single devastating point; Creates a 2-turn zone that pulls entities toward its center, reduces their SPD by 10 each turn, prevents teleporting or pushing them out, and makes attacks in the zone hit all entities at the epicenter while ignoring Evasion. Ends if the caster is interrupted."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 7
+    learning_requirements:
+      required_attack_ids:
+        - singularity
+        - spatial_rend
+    targeting: enemies_lane
+    kind: attack
+    damage:
+      kind: magical
+      damage_type: magical
+      power:
+        kind: fixed
+        value: 15
+    accuracy: 85
+    hit_count: 1
+    costs:
+      mana: 25
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: gravity_field_zone
+        status_effect: Gravity Field
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff:
+          speed: 10
+        gravity_zone:
+          speed_per_turn: 10
+          pull: true
+          prevent_exit: true
+          epicenter_hits: true
+          ignore_evasion: true
+          ends_on_caster_interrupt: true
+
+  - id: spatial_mend
+    name: Spatial Mend
+    description: "The caster folds space around an ally's wounds to draw them closed; Restores 12% of the target's maximum health."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 1
+    learning_requirements:
+      required_attack_ids:
+        - space
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 5
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: spatial_mend_effect
+        status_effect: Spatial Mend
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 12
+
+  - id: restorative_fold
+    name: Restorative Fold
+    description: "The caster folds a wounded ally back into a healthier shape; Restores 20% of the target's maximum health and removes one negative status."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - spatial_mend
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 9
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: restorative_fold_effect
+        status_effect: Restorative Fold
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 20
+        cleanse: 1
+
+  - id: rigid_skin
+    name: Rigid Skin
+    description: "The caster tightens the space around an ally's skin, making it more rigid; Grants +10 PDEF for 3 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 2
+    learning_requirements:
+      required_attack_ids:
+        - space
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 6
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: rigid_skin_effect
+        status_effect: Rigid Skin
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff:
+          physical_defense: 10
+
+  - id: spatial_armor
+    name: Spatial Armor
+    description: "The caster wraps an ally in a close-fitting shell of folded space; Grants +16 PDEF and +8 MDEF for 3 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 3
+    learning_requirements:
+      required_attack_ids:
+        - rigid_skin
+    targeting: any_one
+    kind: buff
+    costs:
+      mana: 10
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: spatial_armor_effect
+        status_effect: Spatial Armor
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff:
+          physical_defense: 16
+          magical_defense: 8
+
+  - id: repair_matrix
+    name: Repair Matrix
+    description: "The caster reshapes an ally's body-space into a restored, resilient form; Restores 25% of maximum health, removes one negative status, and grants +12 PDEF for 3 turns."
+    element_id: spatium
+    sfx: spatium
+    learning_cost:
+      experience_points: 5
+    learning_requirements:
+      required_attack_ids:
+        - restorative_fold
+        - spatial_armor
+    targeting: any_one
+    kind: heal
+    costs:
+      mana: 16
+      stamina: 0
+      cooldown: 0
+    effects:
+      - effect_id: repair_matrix_heal
+        status_effect: Repair Matrix
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 25
+        cleanse: 1
+      - effect_id: repair_matrix_armor
+        status_effect: Repair Matrix Armor
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff:
+          physical_defense: 12

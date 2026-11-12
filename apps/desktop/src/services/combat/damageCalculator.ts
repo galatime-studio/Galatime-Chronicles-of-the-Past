@@ -206,9 +206,10 @@ function projectileAccuracy(
 
     const attacker = request.attacker ?? null;
     const defender = request.defender ?? null;
+    const evasion = action.ignoreEvasion ? 0 : (request.defenderStats.evasion ?? 0);
     let value = normalizeAccuracy(authoredAccuracy)
         + (request.attackerStats.accuracy ?? 0)
-        - (request.defenderStats.evasion ?? 0);
+        - evasion;
 
     if (isProjectileAction(action)) {
         // The caster's sight: the strongest lane-matching bonus wins.
@@ -252,14 +253,15 @@ function projectileAccuracy(
  * An action that ignores accuracy always lands.
  */
 export function effectiveAccuracy(
-    action: Pick<CombatAction, 'accuracy' | 'ignoreAccuracy'>,
+    action: Pick<CombatAction, 'accuracy' | 'ignoreAccuracy'> & { ignoreEvasion?: boolean },
     attackerStats: CombatStats,
     defenderStats: CombatStats,
 ): number {
     if (action.ignoreAccuracy) return 100;
 
     const authored = normalizeAccuracy(action.accuracy);
-    const value = authored + (attackerStats.accuracy ?? 0) - (defenderStats.evasion ?? 0);
+    const evasion = action.ignoreEvasion ? 0 : (defenderStats.evasion ?? 0);
+    const value = authored + (attackerStats.accuracy ?? 0) - evasion;
 
     return clamp(value, MIN_EFFECTIVE_ACCURACY, 100);
 }
@@ -272,10 +274,11 @@ export function effectiveAccuracy(
  * a target carrying that status.
  */
 export function critChanceFor(
-    action: Pick<CombatAction, 'critChance' | 'guaranteedCritVsStatus'>,
+    action: Pick<CombatAction, 'critChance' | 'guaranteedCritVsStatus'> & { cannotCrit?: boolean },
     attackerStats: CombatStats,
     defender?: CombatUnit | null,
 ): number {
+    if (action.cannotCrit) return 0;
     if (action.guaranteedCritVsStatus && defender && hasStatusEffect(defender, action.guaranteedCritVsStatus)) {
         return 100;
     }
@@ -594,6 +597,36 @@ function fireWallMultiplier(
     return multiplier;
 }
 
+/** Extra damage the caster gains while it stands in the front line. */
+function frontLaneMultiplier(action: CombatAction, attackerLine: CombatLine): number {
+    const bonus = action.frontLaneBonus ?? 0;
+    return bonus > 0 && attackerLine === 'front' ? 1 + bonus : 1;
+}
+
+/** Extra damage per lane of distance between caster and target. */
+function distanceMultiplier(
+    action: CombatAction,
+    attackerLine: CombatLine,
+    defenderLine: CombatLine,
+): number {
+    const spec = action.distanceScaling;
+    if (!spec) return 1;
+    const lanes = Math.min(spec.maxLanes, attackerLine === defenderLine ? 0 : 1);
+    return 1 + spec.perLane * lanes;
+}
+
+/** Extra damage against a unit already locked out of lane changes. */
+function immobileMultiplier(action: CombatAction, defender: CombatUnit | null | undefined): number {
+    const bonus = action.bonusVsImmobile ?? 0;
+    if (!defender || bonus <= 0) return 1;
+    const immobile = defender.effects.some((effect) => (
+        effect.movementImmunity
+        || effect.gravityZone?.preventExit
+        || effect.preventActions?.includes('switch_line')
+    )) || defender.effects.some((effect) => Boolean(effect.suspend));
+    return immobile ? 1 + bonus : 1;
+}
+
 export function resolveDamage(request: DamageRequest): DamageResult {
     const { action, elementIndex, random } = request;
     const rolling = request.roll ?? true;
@@ -669,6 +702,9 @@ export function resolveDamage(request: DamageRequest): DamageResult {
         * weatherElementMultiplierFor(request, action.elementId)
         * elementDamageMultiplier(request.attacker, effectiveElement)
         * fireWallMultiplier(request.defender, action)
+        * frontLaneMultiplier(action, request.attackerLine)
+        * distanceMultiplier(action, request.attackerLine, request.defenderLine)
+        * immobileMultiplier(action, request.defender)
         * (1 + (chargeCount > 0 && action.bonusPerCharge
             ? action.bonusPerCharge.multiplierPerCharge * chargeCount
             : 0));

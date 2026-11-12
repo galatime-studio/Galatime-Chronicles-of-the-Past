@@ -257,6 +257,91 @@ export interface AttackReflectSpec {
     exception_breaks?: boolean;
 }
 
+/** Shifts the duration of other statuses when this one lands. */
+export interface AttackShiftEffectsSpec {
+    /** Turns added (`extend`) or removed (`shorten`). */
+    turns: number;
+    direction: 'shorten' | 'extend';
+    /** Only shift statuses of this polarity; `any`/absent shifts every status. */
+    polarity?: 'positive' | 'negative' | 'any';
+}
+
+/** Suspends a unit in time: it skips turns and can defer harm. */
+export interface AttackSuspendSpec {
+    /** Incoming damage is discarded entirely (`stasis`). */
+    invulnerable?: boolean;
+    /** Incoming damage is banked and paid when the suspension ends (`time_lock`). */
+    defer_damage?: boolean;
+    /** New statuses are banked and applied when the suspension ends (`time_lock`). */
+    defer_statuses?: boolean;
+    /** Cooldowns do not tick while suspended. */
+    freeze_cooldowns?: boolean;
+    /** Timed effects do not tick down while suspended. */
+    freeze_effects?: boolean;
+}
+
+/** A mark that cancels the bearer's next action. */
+export interface AttackAnchorSpec {
+    /** Action kinds that trigger the anchor; defaults to skills, weapons and lane changes. */
+    cancel_actions?: boolean;
+}
+
+/** A pending echo hit that records part of the damage its bearer takes. */
+export interface AttackEchoSpec {
+    /** Share of incoming damage recorded (`20` = 20%). */
+    percent: number;
+    /** Hard cap on the recorded share, as a percent of the bearer's max HP. */
+    max_percent?: number;
+    /** Extra recorded share added by every subsequent hit, up to `max_percent`. */
+    add_percent_per_hit?: number;
+    /** When the echo resolves. */
+    resolve?: 'turn_end' | 'caster_next_turn' | 'deferred';
+    /** Turns the deferred echo waits before it lands. */
+    delay_turns?: number;
+    /** The deferred echo also defers the triggering hit's statuses. */
+    defer_statuses?: boolean;
+    /** The echo hit may critically strike. */
+    can_crit?: boolean;
+    /** Absolute cap on recorded damage. */
+    cap?: number;
+}
+
+/** A bonus the bearer gains on its next matching action. */
+export interface AttackNextActionBonusSpec {
+    /** Element the action must belong to; absent matches every action. */
+    element?: string;
+    /** Accuracy added to the action. */
+    accuracy?: number;
+    /** Cooldown turns removed after the action is paid. */
+    cooldown?: number;
+    /** Charges stored (defaults to 1). */
+    charges?: number;
+}
+
+/** A gravity zone that holds units in place and saps their speed. */
+export interface AttackGravityZoneSpec {
+    /** Speed lost at the start of each of the bearer's turns. */
+    speed_per_turn?: number;
+    /** Units are pulled towards the zone's centre. */
+    pull?: boolean;
+    /** Units cannot leave the zone by teleport or forced movement. */
+    prevent_exit?: boolean;
+    /** Attacks made inside the zone strike every unit at its epicentre. */
+    epicenter_hits?: boolean;
+    /** Attacks made inside the zone ignore Evasion. */
+    ignore_evasion?: boolean;
+    /** The zone ends early when its source is interrupted. */
+    ends_on_caster_interrupt?: boolean;
+}
+
+/** A delayed strike that cascades through a marked lane. */
+export interface AttackRiftMarkSpec {
+    /** Power of the first hit. */
+    power: number;
+    /** Share of the previous target's damage every following target takes. */
+    cascade?: number;
+}
+
 /** A portion of the bearer's next resource spend goes to the status source. */
 export interface AttackSpendStealSpec {
     resource: 'mana' | 'stamina';
@@ -392,6 +477,24 @@ export interface AttackEffect {
     projectile_reroll?: { per_turn: number };
     /** How far back the effect rewinds its bearer. */
     rewind?: AttackRewindSpec;
+    /** Restores the bearer at the start of each of its turns while the status lives. */
+    rewind_each_turn?: AttackRewindSpec;
+    /** Shifts other live statuses when this one lands. */
+    shift_other_effects?: AttackShiftEffectsSpec;
+    /** Delays the bearer's stamina recovery by this many turns. */
+    fatigue_recovery_delay?: number;
+    /** Suspends the bearer in time. */
+    suspend?: AttackSuspendSpec;
+    /** Cancels the bearer's next action and consumes the mark. */
+    anchor?: AttackAnchorSpec;
+    /** Records part of the bearer's incoming damage into a delayed echo. */
+    echo_mark?: AttackEchoSpec;
+    /** Grants the bearer's source a bonus on its next matching action. */
+    next_action_bonus?: AttackNextActionBonusSpec;
+    /** A gravity zone that slows and traps its bearer. */
+    gravity_zone?: AttackGravityZoneSpec;
+    /** A lane mark that resolves a cascading strike on the caster's next turn. */
+    rift_mark?: AttackRiftMarkSpec;
     /** Where the drained resource goes: back to the caster, or nowhere. */
     drain_to?: 'target' | 'caster';
     /** Resources the holder pays on each of the effect's turns. */
@@ -663,6 +766,24 @@ export interface AttackSkill {
     crit_chance?: number;
     /** The hit always lands. */
     ignore_accuracy?: boolean;
+    /** The hit ignores the defender's Evasion and ordinary dodge statuses. */
+    ignore_evasion?: boolean;
+    /** The hit can never critically strike. */
+    cannot_crit?: boolean;
+    /** The hit fizzles if its target changes position before resolution. */
+    fail_if_target_moves?: boolean;
+    /** Fraction of the mana cost paid when {@link fail_if_target_moves} fizzles. */
+    fail_cost_fraction?: number;
+    /** Extra damage multiplier while the caster stands in the front line. */
+    front_lane_bonus?: number;
+    /** Extra damage per lane of distance between caster and target. */
+    distance_scaling?: { per_lane: number; max_lanes?: number };
+    /** Cascading damage through a lane: first target full, each next a share. */
+    lane_cascade?: { first?: number; subsequent: number };
+    /** Extra multiplier against a target already unable to change lanes. */
+    bonus_vs_immobile?: number;
+    /** Adds a share of the hit's damage to an existing pending echo. */
+    echo_burst?: { percent: number };
     /** Fraction of the target's defence the hit ignores (0 … 1). */
     defense_pierce?: number;
     /** Extra multipliers per element of the defender. */
@@ -780,6 +901,15 @@ export type PublicAttack = Pick<AttackSkill,
     | 'only_during_night'
     | 'crit_chance'
     | 'ignore_accuracy'
+    | 'ignore_evasion'
+    | 'cannot_crit'
+    | 'fail_if_target_moves'
+    | 'fail_cost_fraction'
+    | 'front_lane_bonus'
+    | 'distance_scaling'
+    | 'lane_cascade'
+    | 'bonus_vs_immobile'
+    | 'echo_burst'
     | 'defense_pierce'
     | 'bonus_vs_elements'
     | 'bonus_vs_status'

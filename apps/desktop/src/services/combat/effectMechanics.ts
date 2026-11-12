@@ -152,7 +152,7 @@ export function applyMoveSpec(
 ): CombatEvent[] {
     const mover = spec.who === 'self' ? actor : unit;
     if (mover.status !== 'alive') return [];
-    if (mover.effects.some((effect) => effect.movementImmunity)) return [];
+    if (mover.effects.some((effect) => effect.movementImmunity || effect.gravityZone?.preventExit)) return [];
 
     const destination = spec.toLine === 'other'
         ? (mover.line === 'front' ? 'rear' : 'front')

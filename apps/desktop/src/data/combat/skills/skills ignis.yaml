@@ -1,8 +1,4 @@
-# Ignis — fire and heat. Base level 1 only; tiers derive from element_id,
-# learning_requirements and learning_cost. All skills use sfx: ignis.
-
 skills:
-  # Fire branch
   - id: fire
     name: Fire
     description: "The caster empowers an ally's magical attacks with inner flame; MATK +10% for 4 turns."
@@ -591,7 +587,6 @@ skills:
         polarity: positive
         lane_change_free: true
 
-  # Heat branch
   - id: heat
     name: Heat
     description: "Surrounds an ally with protective warmth; MDEF +10% for 4 turns."

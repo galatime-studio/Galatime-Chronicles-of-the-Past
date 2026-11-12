@@ -73,6 +73,14 @@
         ['shatter', 'Estilhaçar em sangramento'],
         ['fossilize', 'Fossilizar ao expirar'],
         ['on_expiry', 'Dano ao expirar'],
+        ['shift_effects', 'Encurtar/alongar estados'],
+        ['fatigue_delay', 'Atrasar recuperação'],
+        ['suspend', 'Suspender no tempo'],
+        ['anchor', 'Âncora temporal'],
+        ['echo_mark', 'Eco de dano'],
+        ['impulse', 'Impulso para a próxima ação'],
+        ['gravity_zone', 'Zona de gravidade'],
+        ['rift_mark', 'Marca de fenda'],
     ];
     var TARGET_LABELS = {
         any_one: 'qualquer personagem', enemies_all: 'todos os inimigos',
@@ -446,6 +454,16 @@
         if (form.elements.crit_multiplier) form.elements.crit_multiplier.value = skill.crit_multiplier ?? '';
         form.elements.guaranteed_crit_vs_status.value = skill.guaranteed_crit_vs_status || '';
         form.elements.defense_pierce.value = skill.defense_pierce ?? '';
+        form.elements.ignore_evasion.checked = Boolean(skill.ignore_evasion);
+        form.elements.cannot_crit.checked = Boolean(skill.cannot_crit);
+        form.elements.front_lane_bonus.value = skill.front_lane_bonus ?? '';
+        form.elements.bonus_vs_immobile.value = skill.bonus_vs_immobile ?? '';
+        form.elements.fail_if_target_moves.checked = Boolean(skill.fail_if_target_moves);
+        form.elements.fail_cost_fraction.value = skill.fail_cost_fraction ?? '';
+        form.elements.distance_per_lane.value = skill.distance_scaling?.per_lane ?? '';
+        form.elements.distance_max_lanes.value = skill.distance_scaling?.max_lanes ?? '';
+        form.elements.lane_cascade_subsequent.value = skill.lane_cascade?.subsequent ?? '';
+        form.elements.echo_burst_percent.value = skill.echo_burst?.percent ?? '';
         form.elements.bonus_vs_hp_below_threshold.value = skill.bonus_vs_hp_below?.threshold ?? '';
         form.elements.bonus_vs_hp_below_multiplier.value = skill.bonus_vs_hp_below?.multiplier ?? '';
         form.elements.flee_below_hp.value = skill.flee_below_hp ?? '';
@@ -558,6 +576,12 @@
         if (skill.crit_multiplier) chips.push({ label: 'Crítico', value: '×' + skill.crit_multiplier });
         if (skill.ignore_accuracy) chips.push({ label: 'Traço', value: 'Não falha' });
         if (skill.defense_pierce) chips.push({ label: 'Traço', value: 'Ignora ' + Math.round(skill.defense_pierce * 100) + '% da defesa' });
+        if (skill.ignore_evasion) chips.push({ label: 'Traço', value: 'Ignora Evasão' });
+        if (skill.cannot_crit) chips.push({ label: 'Traço', value: 'Sem crítico' });
+        if (skill.front_lane_bonus) chips.push({ label: 'Traço', value: '+' + Math.round(skill.front_lane_bonus * 100) + '% na frente' });
+        if (skill.distance_scaling) chips.push({ label: 'Traço', value: '+' + Math.round(skill.distance_scaling.per_lane * 100) + '% por lane' });
+        if (skill.lane_cascade) chips.push({ label: 'Traço', value: 'Cascata ' + Math.round(skill.lane_cascade.subsequent * 100) + '%' });
+        if (skill.echo_burst) chips.push({ label: 'Traço', value: 'Eco +' + skill.echo_burst.percent + '%' });
         if (skill.bonus_vs_elements && Object.keys(skill.bonus_vs_elements).length) {
             chips.push({
                 label: 'Bónus',
@@ -1172,6 +1196,31 @@
         setOptionalNumber(skill, 'crit_chance', form.elements.crit_chance.value);
         if (form.elements.crit_multiplier) setOptionalNumber(skill, 'crit_multiplier', form.elements.crit_multiplier.value);
         setOptionalNumber(skill, 'defense_pierce', form.elements.defense_pierce.value);
+        ['ignore_evasion', 'cannot_crit', 'fail_if_target_moves'].forEach(function (key) {
+            if (form.elements[key].checked) skill[key] = true;
+            else delete skill[key];
+        });
+        setOptionalNumber(skill, 'front_lane_bonus', form.elements.front_lane_bonus.value);
+        setOptionalNumber(skill, 'bonus_vs_immobile', form.elements.bonus_vs_immobile.value);
+        setOptionalNumber(skill, 'fail_cost_fraction', form.elements.fail_cost_fraction.value);
+        var distancePerLane = form.elements.distance_per_lane.value;
+        if (distancePerLane !== '') {
+            skill.distance_scaling = {
+                per_lane: numberValue(distancePerLane, 0),
+                max_lanes: Math.max(1, numberValue(form.elements.distance_max_lanes.value, 1)),
+            };
+        } else {
+            delete skill.distance_scaling;
+        }
+        var cascadeSubsequent = form.elements.lane_cascade_subsequent.value;
+        if (cascadeSubsequent !== '') {
+            skill.lane_cascade = { first: 1, subsequent: numberValue(cascadeSubsequent, 0.6) };
+        } else {
+            delete skill.lane_cascade;
+        }
+        var echoBurstPercent = form.elements.echo_burst_percent.value;
+        if (echoBurstPercent !== '') skill.echo_burst = { percent: numberValue(echoBurstPercent, 0) };
+        else delete skill.echo_burst;
         setOptionalNumber(skill, 'flee_below_hp', form.elements.flee_below_hp.value);
         if (form.elements.guaranteed_crit_vs_status.value.trim()) {
             skill.guaranteed_crit_vs_status = form.elements.guaranteed_crit_vs_status.value.trim();
@@ -1806,6 +1855,64 @@
                 + optionMarkup('self', 'O portador', (expiry.scope || 'self') === 'self')
                 + optionMarkup('all', 'Todo o campo', expiry.scope === 'all') + '</select></label>';
         }
+        if (pattern === 'shift_effects') {
+            var shift = effect.shift_other_effects || {};
+            return '<label class="effect-field"><span>Turnos</span><input class="control" data-effect-field="shift_other_effects.turns" type="number" min="1" value="' + escapeHtml(shift.turns ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Direção</span><select class="control" data-effect-field="shift_other_effects.direction">'
+                + optionMarkup('shorten', 'Encurtar', (shift.direction || 'shorten') === 'shorten')
+                + optionMarkup('extend', 'Alongar', shift.direction === 'extend') + '</select></label>'
+                + '<label class="effect-field"><span>Polaridade</span><select class="control" data-effect-field="shift_other_effects.polarity">'
+                + optionMarkup('any', 'Todos', (shift.polarity || 'any') === 'any')
+                + optionMarkup('positive', 'Positivos', shift.polarity === 'positive')
+                + optionMarkup('negative', 'Negativos', shift.polarity === 'negative') + '</select></label>';
+        }
+        if (pattern === 'fatigue_delay') {
+            return '<label class="effect-field"><span>Turnos de fadiga atrasados</span><input class="control" data-effect-field="fatigue_recovery_delay" type="number" min="1" value="' + escapeHtml(effect.fatigue_recovery_delay ?? 1) + '"><small>Impede a regeneração de stamina durante estes turnos.</small></label>';
+        }
+        if (pattern === 'suspend') {
+            var suspend = effect.suspend || {};
+            return '<label class="effect-stack"><input type="checkbox" data-effect-field="suspend.invulnerable" ' + (suspend.invulnerable ? 'checked' : '') + '> Invulnerável</label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="suspend.defer_damage" ' + (suspend.defer_damage ? 'checked' : '') + '> Adiar dano</label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="suspend.defer_statuses" ' + (suspend.defer_statuses ? 'checked' : '') + '> Adiar estados</label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="suspend.freeze_cooldowns" ' + (suspend.freeze_cooldowns !== false ? 'checked' : '') + '> Congelar cooldowns</label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="suspend.freeze_effects" ' + (suspend.freeze_effects !== false ? 'checked' : '') + '> Congelar estados temporários</label>';
+        }
+        if (pattern === 'anchor') {
+            var anchor = effect.anchor || {};
+            return '<label class="effect-stack"><input type="checkbox" data-effect-field="anchor.cancel_actions" ' + (anchor.cancel_actions !== false ? 'checked' : '') + '> Cancelar a próxima skill/arma/troca de linha</label><small>A marca dura até ser disparada.</small>';
+        }
+        if (pattern === 'echo_mark') {
+            var echoMark = effect.echo_mark || {};
+            return '<label class="effect-field"><span>Percentagem registada</span><div class="input-suffix"><input class="control" data-effect-field="echo_mark.percent" type="number" min="1" max="100" value="' + escapeHtml(echoMark.percent ?? 20) + '"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Teto</span><div class="input-suffix"><input class="control" data-effect-field="echo_mark.max_percent" type="number" min="1" max="100" value="' + escapeHtml(echoMark.max_percent ?? '') + '" placeholder="—"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Extra por golpe</span><div class="input-suffix"><input class="control" data-effect-field="echo_mark.add_percent_per_hit" type="number" min="0" max="100" value="' + escapeHtml(echoMark.add_percent_per_hit ?? 0) + '"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Resolução</span><select class="control" data-effect-field="echo_mark.resolve">'
+                + optionMarkup('turn_end', 'Fim do turno', (echoMark.resolve || 'turn_end') === 'turn_end')
+                + optionMarkup('caster_next_turn', 'Início do próximo turno do lançador', echoMark.resolve === 'caster_next_turn')
+                + optionMarkup('deferred', 'Adiado', echoMark.resolve === 'deferred') + '</select></label>'
+                + '<label class="effect-field"><span>Turnos de atraso</span><input class="control" data-effect-field="echo_mark.delay_turns" type="number" min="0" value="' + escapeHtml(echoMark.delay_turns ?? 0) + '"></label>';
+        }
+        if (pattern === 'impulse') {
+            var impulse = effect.next_action_bonus || {};
+            return '<label class="effect-field"><span>Elemento</span><input class="control" data-effect-field="next_action_bonus.element" value="' + escapeHtml(impulse.element || 'spatium') + '"></label>'
+                + '<label class="effect-field"><span>Precisão extra</span><input class="control" data-effect-field="next_action_bonus.accuracy" type="number" min="0" value="' + escapeHtml(impulse.accuracy ?? 10) + '"></label>'
+                + '<label class="effect-field"><span>Cooldown reduzido</span><input class="control" data-effect-field="next_action_bonus.cooldown" type="number" min="0" value="' + escapeHtml(impulse.cooldown ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Cargas</span><input class="control" data-effect-field="next_action_bonus.charges" type="number" min="1" value="' + escapeHtml(impulse.charges ?? 1) + '"></label>';
+        }
+        if (pattern === 'gravity_zone') {
+            var zone = effect.gravity_zone || {};
+            return '<label class="effect-field"><span>SPD por turno</span><input class="control" data-effect-field="gravity_zone.speed_per_turn" type="number" min="0" value="' + escapeHtml(zone.speed_per_turn ?? 8) + '"></label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="gravity_zone.pull" ' + (zone.pull ? 'checked' : '') + '> Puxa para o centro</label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="gravity_zone.prevent_exit" ' + (zone.prevent_exit ? 'checked' : '') + '> Impede sair</label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="gravity_zone.epicenter_hits" ' + (zone.epicenter_hits ? 'checked' : '') + '> Ataques atingem o epicentro</label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="gravity_zone.ignore_evasion" ' + (zone.ignore_evasion ? 'checked' : '') + '> Ignora Evasão</label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="gravity_zone.ends_on_caster_interrupt" ' + (zone.ends_on_caster_interrupt ? 'checked' : '') + '> Termina se o lançador for interrompido</label>';
+        }
+        if (pattern === 'rift_mark') {
+            var rift = effect.rift_mark || {};
+            return '<label class="effect-field"><span>Poder do primeiro alvo</span><input class="control" data-effect-field="rift_mark.power" type="number" min="0" value="' + escapeHtml(rift.power ?? 10) + '"></label>'
+                + '<label class="effect-field"><span>Cascata</span><div class="input-suffix"><input class="control" data-effect-field="rift_mark.cascade" type="number" min="0" max="1" step="0.05" value="' + escapeHtml(rift.cascade ?? 0.6) + '"><span>×</span></div></label>';
+        }
         if (pattern === 'stack_dot') {
             var stackDot = effect.stacking || {};
             return '<label class="effect-field"><span>Dano por stack</span><input class="control" data-effect-field="damage_per_turn" type="number" min="0" value="' + escapeHtml(effect.damage_per_turn ?? 4) + '"></label>'
@@ -2197,6 +2304,14 @@
         if (effect.movement_immunity) return 'movement_immune';
         if (effect.stat_multipliers) return 'stat_multipliers';
         if (effect.charges) return 'charges';
+        if (effect.shift_other_effects) return 'shift_effects';
+        if (effect.fatigue_recovery_delay) return 'fatigue_delay';
+        if (effect.suspend) return 'suspend';
+        if (effect.anchor) return 'anchor';
+        if (effect.echo_mark) return 'echo_mark';
+        if (effect.next_action_bonus) return 'impulse';
+        if (effect.gravity_zone) return 'gravity_zone';
+        if (effect.rift_mark) return 'rift_mark';
         if (effect.trip_on_action) return 'trip';
         if (effect.spend_trigger) return 'spend_trigger';
         if (effect.cleanse_per_turn) return 'cleanse_turn';
@@ -2380,6 +2495,14 @@
         if (pattern === 'shatter') properties.shatter_on_damage_type = { damage_type: 'physical', status_effect: 'Bleeding', turns: 3, damage_per_turn: 7 };
         if (pattern === 'fossilize') properties.fossilize_on_expiry = { status_effect: 'Fossil', turns: 3, crit_damage_taken: 0.2, break_power: 14, prevent_actions: ['switch_line'], prevent_ranges: ['short'], prevent_elements: ['corporis'] };
         if (pattern === 'on_expiry') properties.on_expiry_damage = { power: 14, scope: 'self' };
+        if (pattern === 'shift_effects') properties.shift_other_effects = { turns: 1, direction: 'shorten', polarity: 'any' };
+        if (pattern === 'fatigue_delay') properties.fatigue_recovery_delay = 1;
+        if (pattern === 'suspend') properties.suspend = { invulnerable: true, freeze_cooldowns: true, freeze_effects: true };
+        if (pattern === 'anchor') properties.anchor = { cancel_actions: true };
+        if (pattern === 'echo_mark') properties.echo_mark = { percent: 20, resolve: 'turn_end' };
+        if (pattern === 'impulse') properties.next_action_bonus = { element: 'spatium', accuracy: 10, cooldown: 1, charges: 1 };
+        if (pattern === 'gravity_zone') properties.gravity_zone = { speed_per_turn: 8, pull: true, prevent_exit: true };
+        if (pattern === 'rift_mark') properties.rift_mark = { power: 10, cascade: 0.6 };
         if (pattern === 'stack_dot') properties.stacking = { initial: 1, extend_turns: 1 };
         if (pattern === 'stack_dot') properties.damage_per_turn = 4;
         if (pattern === 'stack_dot') properties.damage_timing = 'turn_end';
@@ -2442,7 +2565,7 @@
         if (!skill || !card) return;
         var effect = skill.effects.find(function (item) { return item.effect_id === card.dataset.effectId; });
         if (!effect) return;
-        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent', 'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction', 'drain_percent_of_max_hp', 'drain_per_turn', 'movement_immunity', 'stat_multipliers', 'status_resist_chance', 'effect_magnitude_multiplier', 'intercept', 'barrier', 'taunt', 'untargetable_ranges', 'untargetable_elements', 'shatter_on_damage_type', 'fossilize_on_expiry', 'on_expiry_damage'].forEach(function (key) { delete effect[key]; });
+        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent', 'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction', 'drain_percent_of_max_hp', 'drain_per_turn', 'movement_immunity', 'stat_multipliers', 'status_resist_chance', 'effect_magnitude_multiplier', 'intercept', 'barrier', 'taunt', 'untargetable_ranges', 'untargetable_elements', 'shatter_on_damage_type', 'fossilize_on_expiry', 'on_expiry_damage', 'shift_other_effects', 'fatigue_recovery_delay', 'suspend', 'anchor', 'echo_mark', 'next_action_bonus', 'gravity_zone', 'rift_mark'].forEach(function (key) { delete effect[key]; });
         var type = select.value;
         if (type === 'regen') effect.resource_regen = { hp: 15 };
         if (type === 'regen_turn') effect.regen_per_turn = { hp: 10 };
@@ -2496,6 +2619,14 @@
         if (type === 'shatter') effect.shatter_on_damage_type = { damage_type: 'physical', status_effect: 'Bleeding', turns: 3, damage_per_turn: 7 };
         if (type === 'fossilize') effect.fossilize_on_expiry = { status_effect: 'Fossil', turns: 3, crit_damage_taken: 0.2, break_power: 14, prevent_actions: ['switch_line'], prevent_ranges: ['short'], prevent_elements: ['corporis'] };
         if (type === 'on_expiry') effect.on_expiry_damage = { power: 14, scope: 'self' };
+        if (type === 'shift_effects') effect.shift_other_effects = { turns: 1, direction: 'shorten', polarity: 'any' };
+        if (type === 'fatigue_delay') effect.fatigue_recovery_delay = 1;
+        if (type === 'suspend') effect.suspend = { invulnerable: true, freeze_cooldowns: true, freeze_effects: true };
+        if (type === 'anchor') effect.anchor = { cancel_actions: true };
+        if (type === 'echo_mark') effect.echo_mark = { percent: 20, resolve: 'turn_end' };
+        if (type === 'impulse') effect.next_action_bonus = { element: 'spatium', accuracy: 10, cooldown: 1, charges: 1 };
+        if (type === 'gravity_zone') effect.gravity_zone = { speed_per_turn: 8, pull: true, prevent_exit: true };
+        if (type === 'rift_mark') effect.rift_mark = { power: 10, cascade: 0.6 };
         if (type === 'stack_dot') effect.stacking = { initial: 1, extend_turns: 1 };
         if (type === 'stack_dot') effect.damage_per_turn = 4;
         if (type === 'stack_dot') effect.damage_timing = 'turn_end';
@@ -2767,7 +2898,7 @@
                 delete effect.random_buff;
             }
             // Cascas vazias das novas mecânicas também somem.
-            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent'], ['condition'], ['turn_postpone'], ['turn_postpone', 'condition'], ['on_miss_move'], ['weather'], ['weather', 'element_effect_multipliers'], ['element_power'], ['projectile_accuracy'], ['projectile_mark'], ['projectile_reroll'], ['detonate_on_turn'], ['chain_detonation'], ['conductor'], ['interrupt'], ['reflect'], ['spend_steal'], ['evade_next'], ['damage_redirect'], ['cost_multiplier'], ['end_cost'], ['on_death_blast'], ['stacking'], ['fire_wall'], ['element_damage'], ['ignite_on_hit'], ['ignite_attacker_on_hit'], ['burst']].forEach(function (path) {
+            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent'], ['condition'], ['turn_postpone'], ['turn_postpone', 'condition'], ['on_miss_move'], ['weather'], ['weather', 'element_effect_multipliers'], ['element_power'], ['projectile_accuracy'], ['projectile_mark'], ['projectile_reroll'], ['detonate_on_turn'], ['chain_detonation'], ['conductor'], ['interrupt'], ['reflect'], ['spend_steal'], ['evade_next'], ['damage_redirect'], ['cost_multiplier'], ['end_cost'], ['on_death_blast'], ['stacking'], ['fire_wall'], ['element_damage'], ['ignite_on_hit'], ['ignite_attacker_on_hit'], ['burst'], ['shift_other_effects'], ['suspend'], ['anchor'], ['echo_mark'], ['next_action_bonus'], ['gravity_zone'], ['rift_mark']].forEach(function (path) {
                 var holder = effect;
                 var valid = true;
                 for (var index = 0; index < path.length; index += 1) {
@@ -3180,6 +3311,15 @@
         if (skill.consume_stacks) result.consume_stacks = Model.clone(skill.consume_stacks);
         if (skill.aftershock) result.aftershock = Model.clone(skill.aftershock);
         if (skill.shuffle_positions) result.shuffle_positions = Model.clone(skill.shuffle_positions);
+        ['ignore_evasion', 'cannot_crit', 'fail_if_target_moves'].forEach(function (key) {
+            if (skill[key]) result[key] = true;
+        });
+        if (skill.fail_cost_fraction !== undefined) result.fail_cost_fraction = Number(skill.fail_cost_fraction);
+        if (skill.front_lane_bonus) result.front_lane_bonus = Number(skill.front_lane_bonus);
+        ['distance_scaling', 'lane_cascade', 'echo_burst'].forEach(function (key) {
+            if (skill[key]) result[key] = Model.clone(skill[key]);
+        });
+        if (skill.bonus_vs_immobile) result.bonus_vs_immobile = Number(skill.bonus_vs_immobile);
         if (skill.bonus_vs_elements && Object.keys(skill.bonus_vs_elements).length) {
             result.bonus_vs_elements = Model.clone(skill.bonus_vs_elements);
         }

@@ -1,12 +1,4 @@
-# Lapis — Earth and Stone. Base level 1 only; the tree derives the _II … _V
-# mastery tiers from element_id, learning_requirements and learning_cost.
-# Earth bends mud, sand, dust, pits and tremors; Stone throws rock, raises
-# walls, grows crystal and hardens flesh into petrify and fossil.
-
 skills:
-  # ---------------------------------------------------------------------------
-  # Earth
-  # ---------------------------------------------------------------------------
   - id: earth
     name: Earth
     description: "Draws a layer of packed earth around an ally, hardening its guard at the cost of a little speed."
@@ -494,9 +486,6 @@ skills:
         prevent_ranges: [short]
         prevent_elements: [corporis]
 
-  # ---------------------------------------------------------------------------
-  # Stone
-  # ---------------------------------------------------------------------------
   - id: stone
     name: Stone
     description: "Hurls a fist-sized stone at one enemy."

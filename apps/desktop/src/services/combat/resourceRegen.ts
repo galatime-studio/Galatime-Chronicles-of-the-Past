@@ -72,6 +72,17 @@ export function tickResourceRegen(unit: CombatUnit): CombatEvent[] {
             continue;
         }
 
+        // `stolen_rest` delays fatigue recovery: the stamina streak is frozen
+        // for the authored number of turns.
+        if (resource === 'stamina') {
+            const delay = unit.effects.find((effect) => (effect.fatigueRecoveryDelay ?? 0) > 0);
+            if (delay?.fatigueRecoveryDelay) {
+                delay.fatigueRecoveryDelay -= 1;
+                if (delay.fatigueRecoveryDelay <= 0) delay.fatigueRecoveryDelay = 0;
+                continue;
+            }
+        }
+
         unit.resourceIdleTurns[resource] += 1;
         const max = resource === 'mana' ? stats.maxMana : stats.maxStamina;
         if (max <= 0) continue;

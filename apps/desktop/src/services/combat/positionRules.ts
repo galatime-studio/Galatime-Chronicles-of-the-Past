@@ -59,6 +59,20 @@ export function canPlaceInLine(
     return unitsInLine(units, side, line).length < MAX_UNITS_PER_LINE;
 }
 
+/** Moves a unit to a free slot in its current line (phase-step reposition). */
+export function repositionWithinLine(
+    units: readonly CombatUnit[],
+    unit: CombatUnit,
+): boolean {
+    const line = unitsInLine(units, unit.side, unit.line);
+    const slot = line.findIndex((candidate) => candidate.id === unit.id);
+    if (slot < 0 || line.length <= 1) return false;
+
+    unit.slot = slot === 0 ? line.length - 1 : 0;
+    compactLine(units, unit.side, unit.line);
+    return true;
+}
+
 /** Renumbers the slots of a line so they run 0, 1, 2 … without gaps. */
 function compactLine(units: readonly CombatUnit[], side: CombatSide, line: CombatLine): void {
     unitsInLine(units, side, line).forEach((unit, index) => {

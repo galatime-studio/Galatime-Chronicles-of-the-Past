@@ -745,6 +745,8 @@ function readEvadeNext(source: unknown): CombatEffectInstance['evadeNext'] {
         damageTypes: (readTrimmedStringList(record.damage_types) as DamageType[] | null) ?? null,
         power,
         chance,
+        directOnly: readBoolean(record.direct_only, false),
+        returnToFreeLane: readBoolean(record.return_to_free_lane, false),
     };
 }
 
@@ -1069,6 +1071,115 @@ function readUpgradeVsStatus(
     };
 }
 
+/** Reads a per-turn rewind clause (`rewind_each_turn`). */
+function readRewindEachTurn(source: unknown): CombatEffectInstance['rewindEachTurn'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const turns = readNumber(record.turns, Number.NaN);
+    const resources = Array.isArray(record.resources)
+        ? record.resources.filter((entry): entry is 'hp' | 'mana' | 'stamina' =>
+            entry === 'hp' || entry === 'mana' || entry === 'stamina')
+        : [];
+    return {
+        turns: Number.isFinite(turns) ? (turns <= 0 ? null : Math.round(turns)) : null,
+        resources,
+        cleanse: readBoolean(record.cleanse, true),
+    };
+}
+
+/** Reads the duration shift a landing imposes on other statuses. */
+function readShiftOtherEffects(source: unknown): CombatEffectInstance['shiftOtherEffects'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const turns = Math.max(0, Math.round(readNumber(record.turns, 0)));
+    if (turns <= 0) return null;
+    const direction = readString(record.direction, 'shorten') === 'extend' ? 'extend' : 'shorten';
+    const polarityRaw = readString(record.polarity, 'any');
+    const polarity = polarityRaw === 'positive' || polarityRaw === 'negative' ? polarityRaw : 'any';
+    return { turns, direction, polarity };
+}
+
+/** Reads a time-suspension clause (`stasis`, `time_lock`). */
+function readSuspend(source: unknown): CombatEffectInstance['suspend'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    return {
+        invulnerable: readBoolean(record.invulnerable, false),
+        deferDamage: readBoolean(record.defer_damage, false),
+        deferStatuses: readBoolean(record.defer_statuses, false),
+        freezeCooldowns: readBoolean(record.freeze_cooldowns, true),
+        freezeEffects: readBoolean(record.freeze_effects, true),
+        deferredDamage: 0,
+        deferredStatuses: [],
+    };
+}
+
+/** Reads a delayed echo clause. */
+function readEchoMark(source: unknown): CombatEffectInstance['echoMark'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const percent = Math.max(0, readNumber(record.percent, 0));
+    if (percent <= 0) return null;
+    const resolveRaw = readString(record.resolve, 'turn_end');
+    const resolve = resolveRaw === 'caster_next_turn' || resolveRaw === 'deferred'
+        ? resolveRaw
+        : 'turn_end';
+    const maxPercent = readNumber(record.max_percent, Number.NaN);
+    const cap = readNumber(record.cap, Number.NaN);
+    return {
+        percent,
+        maxPercent: Number.isFinite(maxPercent) ? maxPercent : null,
+        addPercentPerHit: Math.max(0, readNumber(record.add_percent_per_hit, 0)),
+        resolve,
+        delayTurns: Math.max(0, Math.round(readNumber(record.delay_turns, 0))),
+        deferStatuses: readBoolean(record.defer_statuses, false),
+        canCrit: readBoolean(record.can_crit, false),
+        cap: Number.isFinite(cap) ? cap : null,
+        pending: 0,
+        currentPercent: percent,
+        recorded: 0,
+        readyTurn: null,
+    };
+}
+
+/** Reads a next-action bonus. */
+function readNextActionBonus(source: unknown): CombatEffectInstance['nextActionBonus'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    return {
+        element: readString(record.element, '') || null,
+        accuracy: Math.max(0, readNumber(record.accuracy, 0)),
+        cooldown: Math.max(0, Math.round(readNumber(record.cooldown, 0))),
+        charges: Math.max(1, Math.round(readNumber(record.charges, 1))),
+    };
+}
+
+/** Reads a gravity-zone status. */
+function readGravityZone(source: unknown): CombatEffectInstance['gravityZone'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    return {
+        speedPerTurn: Math.max(0, readNumber(record.speed_per_turn, 0)),
+        pull: readBoolean(record.pull, false),
+        preventExit: readBoolean(record.prevent_exit, false),
+        epicenterHits: readBoolean(record.epicenter_hits, false),
+        ignoreEvasion: readBoolean(record.ignore_evasion, false),
+        endsOnCasterInterrupt: readBoolean(record.ends_on_caster_interrupt, false),
+    };
+}
+
+/** Reads a delayed lane strike mark. */
+function readRiftMark(source: unknown): CombatEffectInstance['riftMark'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const power = Math.max(0, readNumber(record.power, 0));
+    if (power <= 0) return null;
+    return {
+        power,
+        cascade: clamp(readNumber(record.cascade, 0.6), 0, 1),
+    };
+}
+
 /**
  * Builds the runtime instance of an authored effect.
  *
@@ -1145,6 +1256,17 @@ export function createEffectInstance(
         cooldownTick: Math.max(0, Math.round(readNumber(record.cooldown_tick, 0))),
         move: readMoveSpec(effect),
         rewind: readRewindSpec(effect),
+        rewindEachTurn: readRewindEachTurn(record.rewind_each_turn),
+        shiftOtherEffects: readShiftOtherEffects(record.shift_other_effects),
+        fatigueRecoveryDelay: Math.max(0, Math.round(readNumber(record.fatigue_recovery_delay, 0))),
+        suspend: readSuspend(record.suspend),
+        anchor: asRecord(record.anchor)
+            ? { cancelActions: readBoolean(asRecord(record.anchor)?.cancel_actions, true) }
+            : null,
+        echoMark: readEchoMark(record.echo_mark),
+        nextActionBonus: readNextActionBonus(record.next_action_bonus),
+        gravityZone: readGravityZone(record.gravity_zone),
+        riftMark: readRiftMark(record.rift_mark),
         damagePerTurn,
         damagePerTurnVariance: readVariance(record.damage_variance),
         healOnKill: readHealOnKill(record),
@@ -1490,7 +1612,16 @@ function carriesStatusPayload(instance: CombatEffectInstance): boolean {
         || instance.shatterOnDamageType
         || instance.petrifyClass
         || instance.fossilizeOnExpiry
-        || instance.onExpiryDamage,
+        || instance.onExpiryDamage
+        || instance.rewindEachTurn
+        || instance.shiftOtherEffects
+        || (instance.fatigueRecoveryDelay ?? 0) > 0
+        || instance.suspend
+        || instance.anchor
+        || instance.echoMark
+        || instance.nextActionBonus
+        || instance.gravityZone
+        || instance.riftMark,
     );
 }
 
@@ -1524,6 +1655,30 @@ export function applyEffectToUnit(
     // Detonations scale from the bearer's own turn count, so stamp the landing
     // turn while the target is still in hand.
     instance.appliedTurnCount = unit.turnCount;
+
+    // Time suspension either refuses the status outright (`stasis`) or banks it
+    // until the suspension ends (`time_lock`).
+    const suspension = unit.effects.find((active) => active.suspend)?.suspend ?? null;
+    if (suspension && instance.statusEffect) {
+        if (suspension.invulnerable) {
+            return {
+                type: 'effect_resisted',
+                unitId: unit.id,
+                effectId: instance.effectId,
+                statusEffect: instance.statusEffect,
+            };
+        }
+        if (suspension.deferStatuses) {
+            suspension.deferredStatuses.push({
+                effect,
+                sourceId,
+                elementId,
+                outputMultiplier,
+                phaseMultiplier,
+            });
+            return null;
+        }
+    }
 
     // Mud seals refuse a share of incoming statuses, and erosion makes every
     // buff/debuff that does land weaker. Both read live statuses on the target.
@@ -1701,6 +1856,19 @@ export function applyEffectToUnit(
     if ((instance.shieldPercentOfMaxHp ?? 0) > 0) {
         const maxHp = effectiveStats(unit).maxHp;
         instance.shieldRemaining = Math.round(maxHp * (instance.shieldPercentOfMaxHp ?? 0) / 100);
+    }
+
+    // A temporal landing stretches or shortens the other statuses its bearer
+    // already carries (`quickened_pulse`, `dragging_moment`).
+    const shift = instance.shiftOtherEffects;
+    if (shift) {
+        const delta = shift.direction === 'extend' ? shift.turns : -shift.turns;
+        unit.effects = unit.effects.filter((active) => {
+            if (shift.polarity !== 'any' && active.polarity !== shift.polarity) return true;
+            if (active.turns === null) return true;
+            active.turns = Math.max(0, active.turns + delta);
+            return active.turns > 0;
+        });
     }
 
     const existingIndex = unit.effects.findIndex((active) => active.effectId === instance.effectId);

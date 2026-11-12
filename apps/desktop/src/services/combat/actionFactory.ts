@@ -371,6 +371,29 @@ function readShufflePositions(source: Record<string, unknown>): CombatAction['sh
     };
 }
 
+/** Reads damage that grows with the distance between caster and target. */
+function readDistanceScaling(source: Record<string, unknown>): CombatAction['distanceScaling'] {
+    const record = asRecord(source.distance_scaling);
+    if (!record) return null;
+    const perLane = Math.max(0, readNumber(record.per_lane, 0));
+    if (perLane <= 0) return null;
+    return {
+        perLane,
+        maxLanes: Math.max(1, Math.round(readNumber(record.max_lanes, 1))),
+    };
+}
+
+/** Reads a cascading lane strike. */
+function readLaneCascade(source: Record<string, unknown>): CombatAction['laneCascade'] {
+    const record = asRecord(source.lane_cascade);
+    if (!record) return null;
+    const subsequent = clamp(readNumber(record.subsequent, 0.6), 0, 1);
+    return {
+        first: clamp(readNumber(record.first, 1), 0, 4),
+        subsequent,
+    };
+}
+
 /**
  * The traits every action carries, whatever it came from.
  *
@@ -392,6 +415,8 @@ function defaultTraits(): Pick<
     | 'consumeStacks'
     | 'aftershock'
     | 'shufflePositions'
+    | 'ignoreEvasion' | 'cannotCrit' | 'failIfTargetMoves' | 'failCostFraction'
+    | 'frontLaneBonus' | 'distanceScaling' | 'laneCascade' | 'bonusVsImmobile' | 'echoBurst'
 > {
     return {
         solar: false,
@@ -429,6 +454,15 @@ function defaultTraits(): Pick<
         consumeStacks: null,
         aftershock: null,
         shufflePositions: null,
+        ignoreEvasion: false,
+        cannotCrit: false,
+        failIfTargetMoves: false,
+        failCostFraction: 0.5,
+        frontLaneBonus: 0,
+        distanceScaling: null,
+        laneCascade: null,
+        bonusVsImmobile: 0,
+        echoBurst: null,
     };
 }
 
@@ -513,6 +547,19 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
         consumeStacks: readConsumeStacks(raw),
         aftershock: readAftershock(raw),
         shufflePositions: readShufflePositions(raw),
+        ignoreEvasion: readBoolean(raw.ignore_evasion, false),
+        cannotCrit: readBoolean(raw.cannot_crit, false),
+        failIfTargetMoves: readBoolean(raw.fail_if_target_moves, false),
+        failCostFraction: clamp(readNumber(raw.fail_cost_fraction, 0.5), 0, 1),
+        frontLaneBonus: Math.max(0, readNumber(raw.front_lane_bonus, 0)),
+        distanceScaling: readDistanceScaling(raw),
+        laneCascade: readLaneCascade(raw),
+        bonusVsImmobile: Math.max(0, readNumber(raw.bonus_vs_immobile, 0)),
+        echoBurst: ((): CombatAction['echoBurst'] => {
+            const record = asRecord(raw.echo_burst);
+            const percent = record ? Math.max(0, readNumber(record.percent, 0)) : 0;
+            return percent > 0 ? { percent } : null;
+        })(),
     };
 }
 
