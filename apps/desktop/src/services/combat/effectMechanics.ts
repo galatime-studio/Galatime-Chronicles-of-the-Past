@@ -18,6 +18,7 @@ import type {
 } from '../../types/CombatType';
 import { asRecord, readBoolean, readNumber, readString } from '../../utils/combatUtils';
 import {
+    carriesStatusNamed,
     cleanseEffects,
     dispelEffects,
     effectiveStats,
@@ -38,11 +39,13 @@ export function readConditionRecord(source: unknown): AttackEffectCondition | nu
     const condition: AttackEffectCondition = {
         requires_pending: readBoolean(record.requires_pending, false) || undefined,
         requires_acted: readBoolean(record.requires_acted, false) || undefined,
+        requires_status: readString(record.requires_status, '') || undefined,
+        requires_no_status: readString(record.requires_no_status, '') || undefined,
         target_line: line === 'front' || line === 'rear' ? line : undefined,
         requires_no_space: noSpace === 'front' || noSpace === 'rear' ? noSpace : undefined,
     };
     return !condition.requires_pending && !condition.requires_acted && !condition.target_line
-        && !condition.requires_no_space
+        && !condition.requires_no_space && !condition.requires_status && !condition.requires_no_status
         ? null
         : condition;
 }
@@ -64,6 +67,8 @@ export function effectConditionSatisfied(
     const acted = hasActedThisRound(state, unit.id);
     if (condition.requires_pending && acted) return false;
     if (condition.requires_acted && !acted) return false;
+    if (condition.requires_status && !carriesStatusNamed(unit, condition.requires_status)) return false;
+    if (condition.requires_no_status && carriesStatusNamed(unit, condition.requires_no_status)) return false;
     if (condition.target_line && unit.line !== condition.target_line) return false;
     if (condition.requires_no_space && canPlaceInLine(state.units, unit.side, condition.requires_no_space)) {
         // The clause only passes when the named line is full: a `sky_lift`

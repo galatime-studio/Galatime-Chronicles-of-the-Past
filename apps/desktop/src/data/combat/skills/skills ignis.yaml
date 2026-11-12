@@ -1,0 +1,1089 @@
+# Ignis — fire and heat. Base level 1 only; tiers derive from element_id,
+# learning_requirements and learning_cost. All skills use sfx: ignis.
+
+skills:
+  # Fire branch
+  - id: fire
+    name: Fire
+    description: "The caster empowers an ally's magical attacks with inner flame; MATK +10% for 4 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: buff
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    costs: { mana: 2, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: fire
+        status_effect: Inner Flame
+        apply_to: target
+        turns: 4
+        polarity: positive
+        buff: { magical_attack: 10 }
+
+  - id: ember_dart
+    name: Ember Dart
+    description: "The caster fires a small ember that deals magical damage to one enemy."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [fire] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 6 } }
+    accuracy: 100
+    hit_count: 1
+    costs: { mana: 3, stamina: 0, cooldown: 0 }
+
+  - id: fireball
+    name: Fireball
+    description: "The caster launches a fireball that deals magical damage to one enemy."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [ember_dart] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 14 } }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+
+  - id: flame_break
+    name: Flame Break
+    description: "The caster blasts an enemy with fire, dealing magical damage and lowering PDEF and MDEF by 10% for 2 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [fireball] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 12 } }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: flame_break
+        status_effect: Flame Break
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { physical_defense: 10, magical_defense: 10 }
+
+  - id: molten_lance
+    name: Molten Lance
+    description: "The caster strikes with molten flame that pierces part of the target's defences; ignores 15% of them."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [fireball] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 13 } }
+    defense_pierce: 0.15
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+
+  - id: sunder_lance
+    name: Sunder Lance
+    description: "A piercing flame strike that damages an enemy and lowers PDEF and MDEF by 10% for 2 turns; ignores 15% of defences."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [flame_break, molten_lance] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 16 } }
+    defense_pierce: 0.15
+    accuracy: 85
+    hit_count: 1
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: sunder_lance
+        status_effect: Sundered
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { physical_defense: 10, magical_defense: 10 }
+
+  - id: ember_hail
+    name: Ember Hail
+    description: "Three burning embers, each with a 10% chance to apply 1 Burn stack."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [ember_dart] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 4 } }
+    accuracy: 90
+    hit_count: 3
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: ember_hail_burn
+        status_effect: Burn
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.1
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: ember_tempest
+    name: Ember Tempest
+    description: "Four burning embers, each with a 15% chance to apply 1 Burn stack."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [ember_hail] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 5 } }
+    accuracy: 85
+    hit_count: 4
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: ember_tempest_burn
+        status_effect: Burn
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.15
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: starfall
+    name: Starfall
+    description: "Deals magical damage to the target, then 60% of the same damage to one enemy directly behind them."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [fireball] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 16 } }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 11, stamina: 0, cooldown: 0 }
+    backlane_splash: { chance: 1, percent_of_damage: 0.6 }
+
+  - id: flame
+    name: Flame
+    description: "Scorches all enemies; each has a 25% chance to catch 1 Burn stack."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [fire] }
+    learning_cost: { experience_points: 2 }
+    targeting: enemies_all
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 5 } }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: flame_burn
+        status_effect: Burn
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.25
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: flame_sweep
+    name: Flame Sweep
+    description: "A sweeping wave of fire damages all enemies; each has a 30% chance to catch 1 Burn stack."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [flame] }
+    learning_cost: { experience_points: 3 }
+    targeting: enemies_all
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 8 } }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: flame_sweep_burn
+        status_effect: Burn
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.3
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: fire_tide
+    name: Fire Tide
+    description: "Engulfs all enemies, lowering PDEF and MDEF by 8% for 2 turns; each has a 30% chance to Burn."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [flame_sweep] }
+    learning_cost: { experience_points: 5 }
+    targeting: enemies_all
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 10 } }
+    accuracy: 85
+    hit_count: 1
+    costs: { mana: 15, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: fire_tide_debuff
+        status_effect: Fire Tide
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { physical_defense: 8, magical_defense: 8 }
+      - effect_id: fire_tide_burn
+        status_effect: Burn
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.3
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: piercing_flare
+    name: Piercing Flare
+    description: "Damages all enemies while ignoring 10% of their defences; each has a 30% chance to Burn."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [flame_sweep] }
+    learning_cost: { experience_points: 5 }
+    targeting: enemies_all
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 10 } }
+    defense_pierce: 0.1
+    accuracy: 85
+    hit_count: 1
+    costs: { mana: 15, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: piercing_flare_burn
+        status_effect: Burn
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.3
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: firestorm
+    name: Firestorm
+    description: "Three waves of burning hail strike all enemies; each wave has a 20% chance to apply 1 Burn stack."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [flame_sweep, ember_tempest] }
+    learning_cost: { experience_points: 6 }
+    targeting: enemies_all
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 4 } }
+    accuracy: 85
+    hit_count: 3
+    costs: { mana: 18, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: firestorm_burn
+        status_effect: Burn
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.2
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: burn
+    name: Burn
+    description: "25% chance to ignite one enemy for 1 Burn stack lasting 2 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [fire] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: burn
+        status_effect: Burn
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.25
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: immolate
+    name: Immolate
+    description: "Ignites for 1 Burn stack lasting 5 turns; an already burning target gains 1 stack and 1 extra turn instead."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [burn] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: immolate
+        status_effect: Burn
+        apply_to: target
+        turns: 5
+        polarity: negative
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: pyre
+    name: Pyre
+    description: "Places an undying Burn that ends only when the fight ends or an aqua/caeli skill quenches it. Other Burns deepen it."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [immolate] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: pyre
+        status_effect: Burn
+        apply_to: target
+        turns: null
+        polarity: negative
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: wildfire
+    name: Wildfire
+    description: "Ignites for 3 Burn stacks lasting 4 turns; every enemy in the target's lane has a 35% chance to catch 1 Burn stack for 2 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [pyre, flame] }
+    learning_cost: { experience_points: 6 }
+    targeting: any_one
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: wildfire_main
+        status_effect: Burn
+        apply_to: target
+        turns: 4
+        polarity: negative
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 3, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+      - effect_id: wildfire_spread
+        status_effect: Burn
+        apply_to: enemies_lane
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.35
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: flash_point
+    name: Flash Point
+    description: "Consumes every Burn stack on the target for 4 defence-ignoring damage per stack, then deals the base hit."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [immolate, fireball] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 8 } }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 13, stamina: 0, cooldown: 0 }
+    consume_stacks:
+      - { status: Burn, per_stack: 4, ignore_defense: true }
+
+  - id: scar
+    name: Scar
+    description: "Cauterises an ally's wounds, restoring 10% of their max HP."
+    element_id: ignis
+    sfx: ignis
+    kind: heal
+    learning_requirements: { required_attack_ids: [fire] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    costs: { mana: 5, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: scar
+        status_effect: Cauterised
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 10
+
+  - id: searing_mend
+    name: Searing Mend
+    description: "Restores 8% max HP and grants +8 PDEF and +8 MDEF for 2 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: heal
+    learning_requirements: { required_attack_ids: [scar] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: searing_mend_heal
+        status_effect: Searing Mend
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 8
+      - effect_id: searing_mend_guard
+        status_effect: Searing Mend
+        apply_to: target
+        turns: 2
+        polarity: positive
+        buff: { physical_defense: 8, magical_defense: 8 }
+
+  - id: ashen_carapace
+    name: Ashen Carapace
+    description: "Restores 12% max HP and grants +12 PDEF/MDEF for 3 turns; quenches Burn, adding 2% healing per consumed stack."
+    element_id: ignis
+    sfx: ignis
+    kind: heal
+    learning_requirements: { required_attack_ids: [searing_mend] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    consume_stacks:
+      - { status: Burn, heal_percent_per_stack: 2 }
+    effects:
+      - effect_id: ashen_carapace_heal
+        status_effect: Ashen Carapace
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 12
+      - effect_id: ashen_carapace_guard
+        status_effect: Ashen Carapace
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 12, magical_defense: 12 }
+
+  - id: fire_wall
+    name: Fire Wall
+    description: "Protects the allied side for 4 turns; ranged-weapon attacks deal only 70%. Aqua or caeli hits shorten it by 1 turn."
+    element_id: ignis
+    sfx: ignis
+    kind: buff
+    learning_requirements: { required_attack_ids: [fire] }
+    learning_cost: { experience_points: 2 }
+    targeting: allies_all
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: fire_wall
+        status_effect: Fire Wall
+        apply_to: allies_all
+        turns: 4
+        polarity: positive
+        fire_wall: { ranged_weapon: 0.7, projectile: 0.7, physical: 1, erode_elements: [aqua, caeli], no_erode: false }
+
+  - id: blazing_curtain
+    name: Blazing Curtain
+    description: "A stronger wall for 4 turns: ranged and projectile attacks deal 50%, physical attacks 75%. Aqua/caeli shorten it."
+    element_id: ignis
+    sfx: ignis
+    kind: buff
+    learning_requirements: { required_attack_ids: [fire_wall, flame_sweep] }
+    learning_cost: { experience_points: 4 }
+    targeting: allies_all
+    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: blazing_curtain
+        status_effect: Blazing Curtain
+        apply_to: allies_all
+        turns: 4
+        polarity: positive
+        fire_wall: { ranged_weapon: 0.5, projectile: 0.5, physical: 0.75, erode_elements: [aqua, caeli], no_erode: false }
+
+  - id: phoenix_bulwark
+    name: Phoenix Bulwark
+    description: "Keeps the curtain's protections for 5 turns and cannot be shortened by aqua or caeli."
+    element_id: ignis
+    sfx: ignis
+    kind: buff
+    learning_requirements: { required_attack_ids: [blazing_curtain] }
+    learning_cost: { experience_points: 6 }
+    targeting: allies_all
+    costs: { mana: 22, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: phoenix_bulwark
+        status_effect: Phoenix Bulwark
+        apply_to: allies_all
+        turns: 5
+        polarity: positive
+        fire_wall: { ranged_weapon: 0.5, projectile: 0.5, physical: 0.75, erode_elements: [aqua, caeli], no_erode: true }
+
+  - id: ignis_fervour
+    name: Ignis Fervour
+    description: "While a fire wall protects the allies' side, allied ignis skills deal 15% more damage."
+    element_id: ignis
+    sfx: ignis
+    kind: buff
+    learning_requirements: { required_attack_ids: [fire_wall] }
+    learning_cost: { experience_points: 3 }
+    targeting: allies_all
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: ignis_fervour
+        status_effect: Ignis Fervour
+        apply_to: allies_all
+        turns: 4
+        polarity: positive
+        element_damage: { ignis: 1.15 }
+
+  - id: kindled_ordnance
+    name: Kindled Ordnance
+    description: "While a fire wall protects the allies' side, allied projectile and ranged-weapon attacks count as ignis."
+    element_id: ignis
+    sfx: ignis
+    kind: buff
+    learning_requirements: { required_attack_ids: [ignis_fervour, blazing_curtain] }
+    learning_cost: { experience_points: 5 }
+    targeting: allies_all
+    costs: { mana: 20, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: kindled_ordnance
+        status_effect: Kindled Ordnance
+        apply_to: allies_all
+        turns: 4
+        polarity: positive
+        projectile_element: ignis
+
+  - id: firewalk
+    name: Firewalk
+    description: "For 3 turns the bearer crosses any fire wall freely and changes lanes without cost; enemies beside the path may catch Burn."
+    element_id: ignis
+    sfx: ignis
+    kind: utility
+    learning_requirements: { required_attack_ids: [ashen_carapace, fire_wall] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: firewalk
+        status_effect: Firewalk
+        apply_to: target
+        turns: 3
+        polarity: positive
+        lane_change_free: true
+
+  # Heat branch
+  - id: heat
+    name: Heat
+    description: "Surrounds an ally with protective warmth; MDEF +10% for 4 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: buff
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    costs: { mana: 2, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: heat
+        status_effect: Heat
+        apply_to: target
+        turns: 4
+        polarity: positive
+        buff: { magical_defense: 10 }
+
+  - id: body_heat
+    name: Body Heat
+    description: "Removes Wet and Freeze from an ally and grants +8 PDEF and +8 MDEF for 3 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: buff
+    learning_requirements: { required_attack_ids: [heat] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 5, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: body_heat
+        status_effect: Body Heat
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 8, magical_defense: 8 }
+        also_remove_status: [Wet, Freeze]
+
+  - id: scalding_aegis
+    name: Scalding Aegis
+    description: "Cleanses Wet/Freeze, grants +12 PDEF/MDEF for 3 turns, and aqua skills aimed at the bearer are 50% effective."
+    element_id: ignis
+    sfx: ignis
+    kind: buff
+    learning_requirements: { required_attack_ids: [body_heat] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: scalding_aegis
+        status_effect: Scalding Aegis
+        apply_to: target
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 12, magical_defense: 12 }
+        element_modulation: { aqua: 0.5 }
+        also_remove_status: [Wet, Freeze]
+
+  - id: furnace_ward
+    name: Furnace Ward
+    description: "Keeps the aegis's protection with +16 PDEF/MDEF for 4 turns; melee attackers have a 40% chance to catch Burn."
+    element_id: ignis
+    sfx: ignis
+    kind: buff
+    learning_requirements: { required_attack_ids: [scalding_aegis] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: furnace_ward
+        status_effect: Furnace Ward
+        apply_to: target
+        turns: 4
+        polarity: positive
+        buff: { physical_defense: 16, magical_defense: 16 }
+        element_modulation: { aqua: 0.5 }
+        also_remove_status: [Wet, Freeze]
+        ignite_attacker_on_hit: { damage_types: [physical], chance: 0.4, burn_stacks: 1, burn_turns: 2 }
+
+  - id: gentle_warmth
+    name: Gentle Warmth
+    description: "Restores 5% of max HP, MN and SN, and removes every Wet and Freeze effect."
+    element_id: ignis
+    sfx: ignis
+    kind: heal
+    learning_requirements: { required_attack_ids: [heat] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: gentle_warmth
+        status_effect: Gentle Warmth
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 5
+        resource_regen_percent_of_max: { mana: 5, stamina: 5 }
+        also_remove_status: [Wet, Freeze]
+
+  - id: slow_thaw
+    name: Slow Thaw
+    description: "Restores 8% of max HP, MN and SN, removes Wet/Freeze, and grants +6 SPD for 2 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: heal
+    learning_requirements: { required_attack_ids: [gentle_warmth] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: slow_thaw_heal
+        status_effect: Slow Thaw
+        apply_to: target
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 8
+        resource_regen_percent_of_max: { mana: 8, stamina: 8 }
+        also_remove_status: [Wet, Freeze]
+      - effect_id: slow_thaw_speed
+        status_effect: Slow Thaw
+        apply_to: target
+        turns: 2
+        polarity: positive
+        buff: { speed: 6 }
+
+  - id: hearth_circle
+    name: Hearth Circle
+    description: "Every ally restores 4% HP/MN/SN, gains +5 PDEF/MDEF for 2 turns, and loses Wet/Freeze."
+    element_id: ignis
+    sfx: ignis
+    kind: heal
+    learning_requirements: { required_attack_ids: [gentle_warmth, body_heat] }
+    learning_cost: { experience_points: 4 }
+    targeting: allies_all
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: hearth_circle_heal
+        status_effect: Hearth Circle
+        apply_to: allies_all
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 4
+        resource_regen_percent_of_max: { mana: 4, stamina: 4 }
+        also_remove_status: [Wet, Freeze]
+      - effect_id: hearth_circle_guard
+        status_effect: Hearth Circle
+        apply_to: allies_all
+        turns: 2
+        polarity: positive
+        buff: { physical_defense: 5, magical_defense: 5 }
+
+  - id: kindling
+    name: Kindling
+    description: "25% chance to apply 1 Overheat stack for 3 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [heat] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    costs: { mana: 3, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: kindling
+        status_effect: Overheat
+        apply_to: target
+        turns: 3
+        polarity: negative
+        effect_hit_chance: 0.25
+        stacking: { initial: 1, extend_turns: 1 }
+        turn_end_stacks: 1
+        per_stack_cost: 0.05
+        per_stack_regen_reduction: 0.1
+        debuff: { speed: 2 }
+        burst_at: 4
+        burst: { damage: 10, burn_stacks: 1, burn_turns: 3, pdef_percent: 10, turns: 3 }
+        wash_on_elements: { aqua: 1, caeli: 1 }
+
+  - id: heat_stroke
+    name: Heat Stroke
+    description: "Applies 2 Overheat stacks for 4 turns; an already overheated target adds every stack and 1 extra turn."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [kindling] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: heat_stroke
+        status_effect: Overheat
+        apply_to: target
+        turns: 4
+        polarity: negative
+        stacking: { initial: 2, extend_turns: 1 }
+        turn_end_stacks: 1
+        per_stack_cost: 0.05
+        per_stack_regen_reduction: 0.1
+        debuff: { speed: 2 }
+        burst_at: 4
+        burst: { damage: 10, burn_stacks: 1, burn_turns: 3, pdef_percent: 10, turns: 3 }
+        wash_on_elements: { aqua: 1, caeli: 1 }
+
+  - id: stifling_heat
+    name: Stifling Heat
+    description: "Applies 3 Overheat stacks for 5 turns; while overheated, skills consume 10% more MN and SN on top of the usual tax."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [heat_stroke] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: stifling_heat
+        status_effect: Overheat
+        apply_to: target
+        turns: 5
+        polarity: negative
+        stacking: { initial: 3, extend_turns: 1 }
+        turn_end_stacks: 1
+        per_stack_cost: 0.15
+        per_stack_regen_reduction: 0.1
+        debuff: { speed: 2 }
+        burst_at: 4
+        burst: { damage: 10, burn_stacks: 1, burn_turns: 3, pdef_percent: 10, turns: 3 }
+        wash_on_elements: { aqua: 1, caeli: 1 }
+
+  - id: critical_heat
+    name: Critical Heat
+    description: "Lowers the Overheat stacks needed to burst by 1, to a minimum of 2."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [kindling, stifling_heat] }
+    learning_cost: { experience_points: 5 }
+    targeting: any_one
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: critical_heat
+        status_effect: Critical Heat
+        apply_to: target
+        turns: 4
+        polarity: negative
+        burst_threshold_down: 1
+
+  - id: suffocating_dome
+    name: Suffocating Dome
+    description: "For 3 turns every entity in the lane gains +1 Overheat stack at the end of its turn and pays 5% more MN/SN."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [stifling_heat] }
+    learning_cost: { experience_points: 5 }
+    targeting: enemies_lane
+    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: suffocating_dome
+        status_effect: Overheat
+        apply_to: enemies_lane
+        turns: 3
+        polarity: negative
+        stacking: { initial: 1, extend_turns: 1 }
+        turn_end_stacks: 1
+        per_stack_cost: 0.05
+        per_stack_regen_reduction: 0.1
+        debuff: { speed: 2 }
+        burst_at: 4
+        burst: { damage: 10, burn_stacks: 1, burn_turns: 3, pdef_percent: 10, turns: 3 }
+        wash_on_elements: { aqua: 1, caeli: 1 }
+
+  - id: tinder_skin
+    name: Tinder Skin
+    description: "Applies 3 Fuel stacks for 4 turns; ignis or chaos hits on the bearer also light 1 Burn stack for 3 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [kindling] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    costs: { mana: 5, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: tinder_skin
+        status_effect: Fuel
+        apply_to: target
+        turns: 4
+        polarity: negative
+        stacking: { initial: 3, extend_turns: 0 }
+        damage_per_turn: 2
+        damage_timing: turn_start
+        decay_per_turn: 1
+        ignite_on_hit: { elements: [ignis, chaos], burn_stacks: 1, burn_turns: 3 }
+
+  - id: heavy_pitch
+    name: Heavy Pitch
+    description: "Applies 5 Fuel stacks for 6 turns; Fuel burns for 3 per stack and the bearer's MDEF is lowered by 5%."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [tinder_skin] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: heavy_pitch
+        status_effect: Fuel
+        apply_to: target
+        turns: 6
+        polarity: negative
+        stacking: { initial: 5, extend_turns: 0 }
+        damage_per_turn: 3
+        damage_timing: turn_start
+        decay_per_turn: 1
+        debuff: { magical_defense: 5 }
+        ignite_on_hit: { elements: [ignis, chaos], burn_stacks: 1, burn_turns: 3 }
+
+  - id: oil_slick
+    name: Oil Slick
+    description: "Every enemy in the target's lane catches 2 Fuel stacks for 4 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: debuff
+    learning_requirements: { required_attack_ids: [tinder_skin, heavy_pitch] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_lane
+    costs: { mana: 11, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: oil_slick
+        status_effect: Fuel
+        apply_to: enemies_lane
+        turns: 4
+        polarity: negative
+        stacking: { initial: 2, extend_turns: 0 }
+        damage_per_turn: 2
+        damage_timing: turn_start
+        decay_per_turn: 1
+        ignite_on_hit: { elements: [ignis, chaos], burn_stacks: 1, burn_turns: 3 }
+
+  - id: melt_down
+    name: Melt Down
+    description: "Consumes every Overheat and Fuel stack for 4 and 3 damage per stack, ignites 1 Burn for 3 turns, and lowers PDEF by 10 for 3 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [stifling_heat, heavy_pitch] }
+    learning_cost: { experience_points: 6 }
+    targeting: any_one
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 15 } }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    consume_stacks:
+      - { status: Overheat, per_stack: 4, ignore_defense: true }
+      - { status: Fuel, per_stack: 3, ignore_defense: true }
+    effects:
+      - effect_id: melt_down_burn
+        status_effect: Burn
+        apply_to: target
+        turns: 3
+        polarity: negative
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+      - effect_id: melt_down_pdef
+        status_effect: Melted
+        apply_to: target
+        turns: 3
+        polarity: negative
+        debuff: { physical_defense: 10 }
+
+  - id: smoke_veil
+    name: Smoke Veil
+    description: "Fills an enemy lane with smoke; for 2 turns every entity in it has ACC -10."
+    element_id: ignis
+    sfx: ignis
+    kind: control
+    learning_requirements: { required_attack_ids: [heat] }
+    learning_cost: { experience_points: 2 }
+    targeting: enemies_lane
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: smoke_veil
+        status_effect: Smoke
+        apply_to: enemies_lane
+        turns: 2
+        polarity: negative
+        debuff: { accuracy: 10 }
+
+  - id: smokescreen
+    name: Smokescreen
+    description: "Blankets an enemy lane in dense smoke; for 3 turns every entity in it has ACC -15."
+    element_id: ignis
+    sfx: ignis
+    kind: control
+    learning_requirements: { required_attack_ids: [smoke_veil] }
+    learning_cost: { experience_points: 3 }
+    targeting: enemies_lane
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: smokescreen
+        status_effect: Smoke
+        apply_to: enemies_lane
+        turns: 3
+        polarity: negative
+        debuff: { accuracy: 15 }
+
+  - id: choking_smoke
+    name: Choking Smoke
+    description: "Smoke blinds a lane for 3 turns (-15 ACC) and every entity gains +1 Overheat stack at the end of its turn."
+    element_id: ignis
+    sfx: ignis
+    kind: control
+    learning_requirements: { required_attack_ids: [smokescreen, kindling] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_lane
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: choking_smoke
+        status_effect: Choking Smoke
+        apply_to: enemies_lane
+        turns: 3
+        polarity: negative
+        debuff: { accuracy: 15 }
+        turn_end_stacks: 1
+        per_stack_cost: 0.05
+        per_stack_regen_reduction: 0.1
+        burst_at: 4
+        burst: { damage: 10, burn_stacks: 1, burn_turns: 3, pdef_percent: 10, turns: 3 }
+        wash_on_elements: { aqua: 1, caeli: 1 }
+
+  - id: black_veil
+    name: Black Veil
+    description: "Covers all enemies in smoke; for 2 turns every enemy has ACC -12."
+    element_id: ignis
+    sfx: ignis
+    kind: control
+    learning_requirements: { required_attack_ids: [smokescreen, heavy_pitch] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_all
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: black_veil
+        status_effect: Smoke
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { accuracy: 12 }
+
+  - id: backdraft
+    name: Backdraft
+    description: "Ignites a lane's smoke: each enemy takes damage plus 4 per Fuel stack, which is consumed; enemies with no Fuel gain 2 Overheat stacks."
+    element_id: ignis
+    sfx: ignis
+    kind: attack
+    learning_requirements: { required_attack_ids: [smokescreen, tinder_skin] }
+    learning_cost: { experience_points: 5 }
+    targeting: enemies_lane
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 8 } }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 13, stamina: 0, cooldown: 0 }
+    consume_stacks:
+      - { status: Fuel, per_stack: 4, ignore_defense: true }
+    effects:
+      - effect_id: backdraft_overheat
+        status_effect: Overheat
+        apply_to: enemies_lane
+        turns: 3
+        polarity: negative
+        stacking: { initial: 2, extend_turns: 1 }
+        turn_end_stacks: 1
+        per_stack_cost: 0.05
+        per_stack_regen_reduction: 0.1
+        debuff: { speed: 2 }
+        burst_at: 4
+        burst: { damage: 10, burn_stacks: 1, burn_turns: 3, pdef_percent: 10, turns: 3 }
+        wash_on_elements: { aqua: 1, caeli: 1 }
+
+  - id: cinder_screen
+    name: Cinder Screen
+    description: "For 3 turns an ember-laden lane has ACC -15, and each entity has a 20% chance at the end of its turn to catch 1 Burn stack for 2 turns."
+    element_id: ignis
+    sfx: ignis
+    kind: control
+    learning_requirements: { required_attack_ids: [smokescreen, ember_hail] }
+    learning_cost: { experience_points: 4 }
+    targeting: enemies_lane
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: cinder_screen
+        status_effect: Cinder Smoke
+        apply_to: enemies_lane
+        turns: 3
+        polarity: negative
+        debuff: { accuracy: 15 }
+        turn_end_burn: { chance: 0.2, burn_stacks: 1, burn_turns: 2 }

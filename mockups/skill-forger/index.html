@@ -214,6 +214,7 @@
                                 <label class="field"><span>Recuo (HP)</span><input class="control" name="recoil_hp" type="number" min="0" placeholder="0"></label>
                                 <label class="field"><span>Fogo amigo (dano)</span><input class="control" name="friendly_fire_damage" type="number" min="0" placeholder="0"></label>
                                 <label class="field"><span>Atinge a linha de trás</span><div class="range-pair"><input class="control" name="backlane_power" type="number" min="0" placeholder="8"><input class="control" name="backlane_chance" type="number" min="0" max="100" placeholder="30"></div><small>poder · chance %</small></label>
+                                <label class="field"><span>Frente da linha de trás</span><div class="input-suffix"><input class="control" name="backlane_percent" type="number" min="0" max="100" step="1" placeholder="60"><span>% do dano</span></div></label>
                                 <label class="field"><span>Recuo sem espaço</span><div class="input-suffix"><input class="control" name="no_space_recoil_fraction" type="number" min="0" max="1" step="0.05" placeholder="0.5"><span>fração</span></div></label>
                                 <label class="field"><span>Dano fixo se imune a controlo</span><input class="control" name="control_immune_damage" type="number" min="0" placeholder="14"></label>
                                 <label class="field"><span>Detonação ao matar</span><input class="control" name="on_kill_detonation_power" type="number" min="0" placeholder="12"></label>
@@ -239,6 +240,16 @@
                                 <label class="field"><span>Escala com dano sofrido</span><input class="control" name="damage_taken_scaling_per_point" type="number" min="0" step="0.05" placeholder="0.5"><small>Poder += dano sofrido × valor.</small></label>
                                 <label class="field"><span>Bónus vs fraqueza</span><div class="input-suffix"><input class="control" name="element_effectiveness_weak" type="number" min="1" step="0.05" placeholder="1.25"><span>×</span></div></label>
                                 <label class="field"><span>Penalidade vs resistência</span><div class="input-suffix"><input class="control" name="element_effectiveness_resist" type="number" min="0" step="0.05" placeholder="0.75"><span>×</span></div></label>
+                            </div>
+                        </div>
+
+                        <div class="trait-block">
+                            <span class="trait-head-label">IGNIS — CONSUMIR STACKS</span>
+                            <div class="form-grid trait-grid">
+                                <label class="field"><span>Estado</span><input class="control" name="consume_status" placeholder="Burn"></label>
+                                <label class="field"><span>Dano por stack</span><input class="control" name="consume_per_stack" type="number" min="0" step="0.5" placeholder="4"></label>
+                                <label class="field"><span>Cura % por stack</span><input class="control" name="consume_heal_percent" type="number" min="0" step="0.5" placeholder="2"></label>
+                                <label class="toggle-row trait-toggle"><input type="checkbox" name="consume_ignore_defense"><span class="toggle-track"></span><span>Ignora defesa</span></label>
                             </div>
                         </div>
                     </section>

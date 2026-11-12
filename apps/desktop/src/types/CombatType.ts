@@ -349,6 +349,57 @@ export interface CombatEffectInstance {
     endCost?: { resource: CombatResourceId; percentOfMax: number; shortfall: 'hp' } | null;
     /** Direct-damage retaliation when the bearer falls. */
     onDeathBlast?: { power: number } | null;
+    /** Merge repeated landings into one stack status. */
+    mergeOnApply?: boolean;
+    /** Extra turns added when a landing merges into the existing stack. */
+    extendOnApply?: number;
+    /** When `damagePerTurn` is paid (`turn_end` for Burn). */
+    damageTiming?: 'turn_start' | 'turn_end';
+    /** Stacks shed on each start-of-turn tick (`fuel`). */
+    decayPerTurn?: number;
+    /** Stacks gained at the end of the bearer's own turn (`overheat`). */
+    turnEndStacks?: number;
+    /** Chance to catch Burn at the end of the bearer's turn. */
+    turnEndBurn?: { chance: number; burnStacks: number; burnTurns: number } | null;
+    /** Lowers Overheat's burst threshold. */
+    burstThresholdDown?: number;
+    /** Per-stack cost tax (`overheat`). */
+    perStackCost?: number;
+    /** Per-stack regeneration loss (`overheat`). */
+    perStackRegenReduction?: number;
+    /** Stack threshold at which the status bursts. */
+    burstAt?: number;
+    /** Burst payload (`overheat`). */
+    burst?: {
+        damage: number;
+        burnStacks: number;
+        burnTurns: number;
+        pdefPercent: number;
+        turns: number;
+    } | null;
+    /** Stack loss on matching element hits (`overheat` vs aqua/caeli). */
+    washOnElements?: Record<string, number> | null;
+    /** Elements that light a Burn when they hit (`fuel`). */
+    igniteOnHit?: { elements: string[]; burnStacks: number; burnTurns: number } | null;
+    /** Chance to light the attacker when it strikes (`furnace_ward`). */
+    igniteAttackerOnHit?: {
+        damageTypes: string[] | null;
+        chance: number;
+        burnStacks: number;
+        burnTurns: number;
+    } | null;
+    /** Fire-wall damage reductions for the protected side. */
+    fireWall?: {
+        rangedWeapon: number;
+        projectile: number;
+        physical: number;
+        erodeElements: string[] | null;
+        noErode: boolean;
+    } | null;
+    /** Outgoing damage multipliers by element. */
+    elementDamage?: Record<string, number> | null;
+    /** Projectile/ranged actions treated as this element. */
+    projectileElement?: string | null;
     /** Removes only damage-over-time effects. */
     cleanseDot?: number;
     /** Extra HoT per negative status on the bearer. */
@@ -523,6 +574,7 @@ export interface CombatFriendlyFireSpec {
 export interface CombatBacklaneSplashSpec {
     chance: number;
     power: number;
+    percentOfDamage: number;
     both: boolean;
 }
 
@@ -741,6 +793,13 @@ export interface CombatAction {
     damageTakenScaling?: { perPoint: number; max?: number } | null;
     /** Weak/resist multiplier applied after normal element effectiveness. */
     elementEffectiveness?: { weak: number; resist: number } | null;
+    /** Named stacking statuses consumed for burst damage or healing. */
+    consumeStacks?: Array<{
+        status: string;
+        perStack: number;
+        ignoreDefense: boolean;
+        healPercentPerStack: number;
+    }> | null;
 }
 
 /**Damage-channel modifiers folded from a defender's passive abilities.

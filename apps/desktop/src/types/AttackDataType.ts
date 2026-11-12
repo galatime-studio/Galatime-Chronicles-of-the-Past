@@ -43,6 +43,10 @@ export interface AttackEffectCondition {
     requires_pending?: boolean;
     /** Only units that have already acted this round. */
     requires_acted?: boolean;
+    /** Only units carrying this status label/id. */
+    requires_status?: string;
+    /** Only units that do not carry this status label/id. */
+    requires_no_status?: string;
     /** Only units standing in the named line. */
     target_line?: 'front' | 'rear';
     /** Only units that cannot be placed in the named line (it is full). */
@@ -110,7 +114,10 @@ export interface AttackFriendlyFireSpec {
 /** A chance for the blast to clip the enemy rear line as well. */
 export interface AttackBacklaneSplashSpec {
     chance: number;
+    /** Flat power when used without `percent_of_damage`. */
     power: number;
+    /** Share of the main hit repeated on the rear-line victim. */
+    percent_of_damage?: number;
     /** Hit the main target too, on top of the rear-line victim. */
     both?: boolean;
 }
@@ -477,6 +484,54 @@ export interface AttackEffect {
     end_cost?: { resource?: 'mana' | 'stamina'; percent_of_max: number; shortfall?: 'hp' };
     /** A direct-damage retaliation when the bearer falls. */
     on_death_blast?: { power: number };
+    /** Merge repeated landings into one stack status instead of replacing it. */
+    stacking?: { extend_turns?: number; initial?: number };
+    /** When the per-turn damage is paid: start (default) or end of the bearer's turn. */
+    damage_timing?: 'turn_start' | 'turn_end';
+    /** Stacks shed on each start-of-turn tick (`fuel`). */
+    decay_per_turn?: number;
+    /** Stacks gained at the end of the bearer's own turn (`overheat`). */
+    turn_end_stacks?: number;
+    /** Chance to catch Burn at the end of the bearer's turn (`cinder_screen`). */
+    turn_end_burn?: { chance: number; burn_stacks?: number; burn_turns?: number };
+    /** Lowers the bearer's Overheat burst threshold (`critical_heat`). */
+    burst_threshold_down?: number;
+    /** Per-stack cost tax (`overheat`: 0.05 = +5% MN/SN). */
+    per_stack_cost?: number;
+    /** Per-stack regeneration loss (`overheat`: 0.1 = -10%). */
+    per_stack_regen_reduction?: number;
+    /** Burst threshold and payload for a stack status (`overheat`). */
+    burst_at?: number;
+    burst?: {
+        damage: number;
+        burn_stacks?: number;
+        burn_turns?: number;
+        pdef_percent?: number;
+        turns?: number;
+    };
+    /** Stack loss when hit by an element (`overheat` vs aqua/caeli). */
+    wash_on_elements?: Record<string, number>;
+    /** Elements that light a Burn on the bearer when they hit (`fuel`). */
+    ignite_on_hit?: { elements: string[]; burn_stacks: number; burn_turns: number };
+    /** A chance to light the melee attacker when it strikes the bearer (`furnace_ward`). */
+    ignite_attacker_on_hit?: {
+        damage_types?: string[];
+        chance?: number;
+        burn_stacks?: number;
+        burn_turns?: number;
+    };
+    /** A wall that protects its bearer's side from ranged/projectile/physical hits. */
+    fire_wall?: {
+        ranged_weapon?: number;
+        projectile?: number;
+        physical?: number;
+        erode_elements?: string[];
+        no_erode?: boolean;
+    };
+    /** Outgoing damage multipliers by element (`ignis_fervour`). */
+    element_damage?: Record<string, number>;
+    /** Projectile/ranged actions are treated as this element (`kindled_ordnance`). */
+    projectile_element?: string;
     /** Multiplicative stat changes while the status lives (`1.15` = +15%). */
     stat_multipliers?: Record<string, number>;
     /** Removes only damage-over-time effects. */
@@ -617,6 +672,13 @@ export interface AttackSkill {
     damage_taken_scaling?: { per_point: number; max?: number };
     /** Extra multiplier when the target is weak/resistant to the action's element. */
     element_effectiveness?: { weak: number; resist: number };
+    /** Consumes named stacking statuses for burst damage or healing. */
+    consume_stacks?: Array<{
+        status: string;
+        per_stack?: number;
+        ignore_defense?: boolean;
+        heal_percent_per_stack?: number;
+    }>;
     /**
      * SFX track id played when the skill is used.
      *
@@ -681,6 +743,7 @@ export type PublicAttack = Pick<AttackSkill,
     | 'cooldown_reset'
     | 'damage_taken_scaling'
     | 'element_effectiveness'
+    | 'consume_stacks'
     | 'sfx'
 >;
 

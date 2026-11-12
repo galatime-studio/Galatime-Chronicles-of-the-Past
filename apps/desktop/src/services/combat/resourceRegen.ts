@@ -76,9 +76,14 @@ export function tickResourceRegen(unit: CombatUnit): CombatEvent[] {
         const max = resource === 'mana' ? stats.maxMana : stats.maxStamina;
         if (max <= 0) continue;
 
-        events.push(
-            ...changeResource(unit, resource, idleRegenAmount(max, unit.resourceIdleTurns[resource])),
-        );
+        // Overheat taxes regeneration per stack (`per_stack_regen_reduction`).
+        const regenLoss = unit.effects.reduce((total, effect) => (
+            total + Math.max(0, effect.perStackRegenReduction ?? 0) * Math.max(1, effect.stacks)
+        ), 0);
+        const amount = Math.max(0, Math.floor(
+            idleRegenAmount(max, unit.resourceIdleTurns[resource]) * Math.max(0, 1 - regenLoss),
+        ));
+        events.push(...changeResource(unit, resource, amount));
     }
 
     return events;

@@ -215,10 +215,12 @@ function readBacklaneSplash(source: Record<string, unknown>): CombatAction['back
     const record = asRecord(source.backlane_splash);
     if (!record) return null;
     const power = Math.max(0, readNumber(record.power, 0));
-    if (power <= 0) return null;
+    const percentOfDamage = clamp(readNumber(record.percent_of_damage, 0), 0, 1);
+    if (power <= 0 && percentOfDamage <= 0) return null;
     return {
         chance: clamp(readNumber(record.chance, 0.2), 0, 1),
         power,
+        percentOfDamage,
         both: readBoolean(record.both, false),
     };
 }
@@ -328,6 +330,26 @@ function readElementEffectiveness(source: Record<string, unknown>): CombatAction
     return weak !== 1 || resist !== 1 ? { weak, resist } : null;
 }
 
+/** Reads status-stack consumption (`flash_point`, `melt_down`, `ashen_carapace`). */
+function readConsumeStacks(source: Record<string, unknown>): CombatAction['consumeStacks'] {
+    if (!Array.isArray(source.consume_stacks)) return null;
+    const specs = source.consume_stacks
+        .map((entry) => {
+            const record = asRecord(entry);
+            if (!record) return null;
+            const status = readString(record.status, '').trim();
+            if (!status) return null;
+            return {
+                status,
+                perStack: Math.max(0, readNumber(record.per_stack, 0)),
+                ignoreDefense: readBoolean(record.ignore_defense, false),
+                healPercentPerStack: Math.max(0, readNumber(record.heal_percent_per_stack, 0)),
+            };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+    return specs.length > 0 ? specs : null;
+}
+
 /**
  * The traits every action carries, whatever it came from.
  *
@@ -346,6 +368,7 @@ function defaultTraits(): Pick<
     | 'cooldownReset'
     | 'damageTakenScaling'
     | 'elementEffectiveness'
+    | 'consumeStacks'
 > {
     return {
         solar: false,
@@ -380,6 +403,7 @@ function defaultTraits(): Pick<
         cooldownReset: null,
         damageTakenScaling: null,
         elementEffectiveness: null,
+        consumeStacks: null,
     };
 }
 
@@ -461,6 +485,7 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
         cooldownReset: readCooldownReset(raw),
         damageTakenScaling: readDamageTakenScaling(raw),
         elementEffectiveness: readElementEffectiveness(raw),
+        consumeStacks: readConsumeStacks(raw),
     };
 }
 

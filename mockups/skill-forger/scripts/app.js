@@ -47,6 +47,13 @@
         ['cost_multiplier', 'Desconto de custo'],
         ['end_cost', 'Custo ao terminar'],
         ['on_death_blast', 'Explosão ao cair'],
+        ['stack_dot', 'Stack com dano (Burn/Fuel)'],
+        ['burst_stacks', 'Stack com explosão (Overheat)'],
+        ['fire_wall', 'Muro de fogo'],
+        ['element_damage', 'Dano elemental'],
+        ['projectile_element', 'Projétil como elemento'],
+        ['ignite_attacker', 'Queimar atacante'],
+        ['turn_end_burn', 'Queimar no fim do turno'],
         ['cleanse_dot', 'Limpar dano contínuo'],
         ['regen_bonus', 'Bónus de regeneração'],
         ['regen_lowest', 'Restaurar recurso mais baixo'],
@@ -443,6 +450,7 @@
         if (form.elements.recoil_hp) form.elements.recoil_hp.value = skill.recoil?.hp ?? '';
         if (form.elements.friendly_fire_damage) form.elements.friendly_fire_damage.value = skill.friendly_fire?.damage ?? '';
         if (form.elements.backlane_power) form.elements.backlane_power.value = skill.backlane_splash?.power ?? '';
+        if (form.elements.backlane_percent) form.elements.backlane_percent.value = percentOf(skill.backlane_splash?.percent_of_damage);
         if (form.elements.backlane_chance) form.elements.backlane_chance.value = percentOf(skill.backlane_splash?.chance);
         if (form.elements.no_space_recoil_fraction) form.elements.no_space_recoil_fraction.value = skill.no_space_recoil?.fraction ?? '';
         if (form.elements.control_immune_damage) form.elements.control_immune_damage.value = skill.control_immune_damage ?? '';
@@ -459,6 +467,11 @@
         if (form.elements.damage_taken_scaling_per_point) form.elements.damage_taken_scaling_per_point.value = skill.damage_taken_scaling?.per_point ?? '';
         if (form.elements.element_effectiveness_weak) form.elements.element_effectiveness_weak.value = skill.element_effectiveness?.weak ?? '';
         if (form.elements.element_effectiveness_resist) form.elements.element_effectiveness_resist.value = skill.element_effectiveness?.resist ?? '';
+        var consume = Array.isArray(skill.consume_stacks) ? skill.consume_stacks[0] : null;
+        if (form.elements.consume_status) form.elements.consume_status.value = consume?.status ?? '';
+        if (form.elements.consume_per_stack) form.elements.consume_per_stack.value = consume?.per_stack ?? '';
+        if (form.elements.consume_heal_percent) form.elements.consume_heal_percent.value = consume?.heal_percent_per_stack ?? '';
+        if (form.elements.consume_ignore_defense) form.elements.consume_ignore_defense.checked = Boolean(consume?.ignore_defense);
         updatePowerFields(false);
         if (form.elements.power_kind.value === 'random' && form.elements.power_max) form.elements.power_max.value = power?.max ?? form.elements.power_value.value;
         if (form.elements.power_kind.value === 'attribute' && form.elements.power_stat) form.elements.power_stat.value = skill.power_scaling?.stat || 'speed';
@@ -1197,9 +1210,12 @@
 
         var backlanePower = form.elements.backlane_power
             ? numberValue(form.elements.backlane_power.value, 0) : 0;
-        if (backlanePower > 0) {
+        var backlanePercent = form.elements.backlane_percent
+            ? Math.max(0, Math.min(1, numberValue(form.elements.backlane_percent.value, 0) / 100)) : 0;
+        if (backlanePower > 0 || backlanePercent > 0) {
             skill.backlane_splash = {
                 power: backlanePower,
+                percent_of_damage: backlanePercent,
                 chance: Math.min(1, Math.max(0,
                     numberValue(form.elements.backlane_chance.value, 30) / 100)),
                 both: true,
@@ -1293,6 +1309,22 @@
             skill.element_effectiveness = { weak: effectivenessWeak, resist: effectivenessResist };
         } else {
             delete skill.element_effectiveness;
+        }
+
+        var consumeStatus = form.elements.consume_status
+            ? form.elements.consume_status.value.trim() : '';
+        if (consumeStatus) {
+            skill.consume_stacks = [{
+                status: consumeStatus,
+                per_stack: form.elements.consume_per_stack
+                    ? numberValue(form.elements.consume_per_stack.value, 0) : 0,
+                ignore_defense: form.elements.consume_ignore_defense
+                    ? form.elements.consume_ignore_defense.checked : false,
+                heal_percent_per_stack: form.elements.consume_heal_percent
+                    ? numberValue(form.elements.consume_heal_percent.value, 0) : 0,
+            }];
+        } else {
+            delete skill.consume_stacks;
         }
         syncBonusVs(skill);
 
@@ -1685,6 +1717,53 @@
             var deathBlast = effect.on_death_blast || {};
             return '<label class="effect-field"><span>Poder da explosão</span><input class="control" data-effect-field="on_death_blast.power" type="number" min="0" value="' + escapeHtml(deathBlast.power ?? 40) + '"><small>Dano físico fixo a quem desferiu o golpe direto que derrubou o portador.</small></label>';
         }
+        if (pattern === 'stack_dot') {
+            var stackDot = effect.stacking || {};
+            return '<label class="effect-field"><span>Dano por stack</span><input class="control" data-effect-field="damage_per_turn" type="number" min="0" value="' + escapeHtml(effect.damage_per_turn ?? 4) + '"></label>'
+                + '<label class="effect-field"><span>Momento do dano</span><select class="control" data-effect-field="damage_timing">'
+                + optionMarkup('turn_end', 'Fim do turno', (effect.damage_timing || 'turn_end') === 'turn_end')
+                + optionMarkup('turn_start', 'Início do turno', effect.damage_timing === 'turn_start') + '</select></label>'
+                + '<label class="effect-field"><span>Stacks iniciais</span><input class="control" data-effect-field="stacking.initial" type="number" min="1" value="' + escapeHtml(stackDot.initial ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Turnos extra ao reaplicar</span><input class="control" data-effect-field="stacking.extend_turns" type="number" min="0" value="' + escapeHtml(stackDot.extend_turns ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Stacks perdidos por turno</span><input class="control" data-effect-field="decay_per_turn" type="number" min="0" value="' + escapeHtml(effect.decay_per_turn ?? 0) + '"></label>'
+                + '<label class="effect-field"><span>Elementos que apagam</span><input class="control" data-effect-field="expire_on_elements" value="' + escapeHtml(listValue(effect.expire_on_elements)) + '" placeholder="aqua, caeli"></label>';
+        }
+        if (pattern === 'burst_stacks') {
+            var burst = effect.burst || {};
+            return '<label class="effect-field"><span>Stacks no fim do turno</span><input class="control" data-effect-field="turn_end_stacks" type="number" min="0" value="' + escapeHtml(effect.turn_end_stacks ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Limiar de explosão</span><input class="control" data-effect-field="burst_at" type="number" min="2" value="' + escapeHtml(effect.burst_at ?? 4) + '"></label>'
+                + '<label class="effect-field"><span>Dano da explosão</span><input class="control" data-effect-field="burst.damage" type="number" min="0" value="' + escapeHtml(burst.damage ?? 10) + '"></label>'
+                + '<label class="effect-field"><span>Custo extra por stack</span><input class="control" data-effect-field="per_stack_cost" type="number" min="0" step="0.01" value="' + escapeHtml(effect.per_stack_cost ?? 0.05) + '"></label>'
+                + '<label class="effect-field"><span>Regen perdida por stack</span><input class="control" data-effect-field="per_stack_regen_reduction" type="number" min="0" step="0.01" value="' + escapeHtml(effect.per_stack_regen_reduction ?? 0.1) + '"></label>'
+                + '<label class="effect-field"><span>Lavagem por elemento</span></label>'
+                + pairsEditor('Lavagem por elemento', effect.wash_on_elements || {}, 'wash_on_elements_pairs', 'aqua: 1, caeli: 1');
+        }
+        if (pattern === 'fire_wall') {
+            var wall = effect.fire_wall || {};
+            return '<label class="effect-field"><span>Dano de armas à distância</span><div class="input-suffix"><input class="control" data-effect-field="fire_wall.ranged_weapon" type="number" min="0" max="1" step="0.05" value="' + escapeHtml(wall.ranged_weapon ?? 0.7) + '"><span>×</span></div></label>'
+                + '<label class="effect-field"><span>Dano de projéteis</span><div class="input-suffix"><input class="control" data-effect-field="fire_wall.projectile" type="number" min="0" max="1" step="0.05" value="' + escapeHtml(wall.projectile ?? 0.7) + '"><span>×</span></div></label>'
+                + '<label class="effect-field"><span>Dano físico</span><div class="input-suffix"><input class="control" data-effect-field="fire_wall.physical" type="number" min="0" max="1" step="0.05" value="' + escapeHtml(wall.physical ?? 1) + '"><span>×</span></div></label>'
+                + '<label class="effect-field"><span>Elementos que erodem</span><input class="control" data-effect-field="fire_wall.erode_elements" value="' + escapeHtml(listValue(wall.erode_elements)) + '" placeholder="aqua, caeli"></label>'
+                + '<label class="effect-stack"><input type="checkbox" data-effect-field="fire_wall.no_erode" ' + (wall.no_erode ? 'checked' : '') + '> Não pode ser encurtado</label>';
+        }
+        if (pattern === 'element_damage') {
+            return pairsEditor('Dano elemental', effect.element_damage || {}, 'element_damage_pairs', 'ignis: 1.15');
+        }
+        if (pattern === 'projectile_element') {
+            return '<label class="effect-field"><span>Projéteis contam como</span><input class="control" data-effect-field="projectile_element" value="' + escapeHtml(effect.projectile_element || '') + '" placeholder="ignis"></label>';
+        }
+        if (pattern === 'ignite_attacker') {
+            var igniter = effect.ignite_attacker_on_hit || {};
+            return '<label class="effect-field"><span>Canais que queimam</span><input class="control" data-effect-field="ignite_attacker_on_hit.damage_types" value="' + escapeHtml(listValue(igniter.damage_types)) + '" placeholder="physical"></label>'
+                + '<label class="effect-field"><span>Chance</span><div class="input-suffix"><input class="control" data-effect-field="ignite_attacker_on_hit.chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(igniter.chance)) + '" placeholder="40"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Stacks de Burn</span><input class="control" data-effect-field="ignite_attacker_on_hit.burn_stacks" type="number" min="0" value="' + escapeHtml(igniter.burn_stacks ?? 1) + '"></label>';
+        }
+        if (pattern === 'turn_end_burn') {
+            var endBurn = effect.turn_end_burn || {};
+            return '<label class="effect-field"><span>Chance</span><div class="input-suffix"><input class="control" data-effect-field="turn_end_burn.chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(endBurn.chance)) + '" placeholder="20"><span>%</span></div></label>'
+                + '<label class="effect-field"><span>Stacks de Burn</span><input class="control" data-effect-field="turn_end_burn.burn_stacks" type="number" min="0" value="' + escapeHtml(endBurn.burn_stacks ?? 1) + '"></label>'
+                + '<label class="effect-field"><span>Duração do Burn</span><input class="control" data-effect-field="turn_end_burn.burn_turns" type="number" min="0" value="' + escapeHtml(endBurn.burn_turns ?? 2) + '"></label>';
+        }
         if (pattern === 'cleanse_dot') {
             return '<label class="effect-field"><span>Remover DoTs</span><input class="control" data-effect-field="cleanse_dot" type="number" min="1" value="' + escapeHtml(effect.cleanse_dot ?? 1) + '"><small>Remove apenas efeitos de dano contínuo.</small></label>';
         }
@@ -2054,6 +2133,13 @@
         if (effect.cost_multiplier) return 'cost_multiplier';
         if (effect.end_cost) return 'end_cost';
         if (effect.on_death_blast) return 'on_death_blast';
+        if (effect.stacking && effect.turn_end_stacks) return 'burst_stacks';
+        if (effect.stacking && effect.damage_per_turn) return 'stack_dot';
+        if (effect.fire_wall) return 'fire_wall';
+        if (effect.element_damage) return 'element_damage';
+        if (effect.projectile_element) return 'projectile_element';
+        if (effect.ignite_attacker_on_hit) return 'ignite_attacker';
+        if (effect.turn_end_burn) return 'turn_end_burn';
         if (effect.cleanse_dot) return 'cleanse_dot';
         if ((effect.regen_bonus_per_negative ?? 0) > 0 || (effect.regen_bonus_per_dot_percent ?? 0) > 0) return 'regen_bonus';
         if (effect.regen_lowest_percent) return 'regen_lowest';
@@ -2187,6 +2273,18 @@
         if (pattern === 'cost_multiplier') properties.cost_multiplier = { mana: 0.5, stamina: 0.5 };
         if (pattern === 'end_cost') properties.end_cost = { resource: 'stamina', percent_of_max: 50, shortfall: 'hp' };
         if (pattern === 'on_death_blast') properties.on_death_blast = { power: 40 };
+        if (pattern === 'stack_dot') properties.stacking = { initial: 1, extend_turns: 1 };
+        if (pattern === 'stack_dot') properties.damage_per_turn = 4;
+        if (pattern === 'stack_dot') properties.damage_timing = 'turn_end';
+        if (pattern === 'burst_stacks') properties.stacking = { initial: 1, extend_turns: 1 };
+        if (pattern === 'burst_stacks') properties.turn_end_stacks = 1;
+        if (pattern === 'burst_stacks') properties.burst_at = 4;
+        if (pattern === 'burst_stacks') properties.burst = { damage: 10, burn_stacks: 1, burn_turns: 3, pdef_percent: 10, turns: 3 };
+        if (pattern === 'fire_wall') properties.fire_wall = { ranged_weapon: 0.7, projectile: 0.7, physical: 1, erode_elements: ['aqua', 'caeli'] };
+        if (pattern === 'element_damage') properties.element_damage = { ignis: 1.15 };
+        if (pattern === 'projectile_element') properties.projectile_element = 'ignis';
+        if (pattern === 'ignite_attacker') properties.ignite_attacker_on_hit = { damage_types: ['physical'], chance: 0.4, burn_stacks: 1, burn_turns: 2 };
+        if (pattern === 'turn_end_burn') properties.turn_end_burn = { chance: 0.2, burn_stacks: 1, burn_turns: 2 };
         if (pattern === 'cleanse_dot') properties.cleanse_dot = 1;
         if (pattern === 'regen_bonus') { properties.regen_bonus_per_negative = 2; properties.regen_bonus_per_dot_percent = 4; }
         if (pattern === 'regen_lowest') properties.regen_lowest_percent = 6;
@@ -2282,6 +2380,18 @@
         if (type === 'cost_multiplier') effect.cost_multiplier = { mana: 0.5, stamina: 0.5 };
         if (type === 'end_cost') effect.end_cost = { resource: 'stamina', percent_of_max: 50, shortfall: 'hp' };
         if (type === 'on_death_blast') effect.on_death_blast = { power: 40 };
+        if (type === 'stack_dot') effect.stacking = { initial: 1, extend_turns: 1 };
+        if (type === 'stack_dot') effect.damage_per_turn = 4;
+        if (type === 'stack_dot') effect.damage_timing = 'turn_end';
+        if (type === 'burst_stacks') effect.stacking = { initial: 1, extend_turns: 1 };
+        if (type === 'burst_stacks') effect.turn_end_stacks = 1;
+        if (type === 'burst_stacks') effect.burst_at = 4;
+        if (type === 'burst_stacks') effect.burst = { damage: 10, burn_stacks: 1, burn_turns: 3, pdef_percent: 10, turns: 3 };
+        if (type === 'fire_wall') effect.fire_wall = { ranged_weapon: 0.7, projectile: 0.7, physical: 1, erode_elements: ['aqua', 'caeli'] };
+        if (type === 'element_damage') effect.element_damage = { ignis: 1.15 };
+        if (type === 'projectile_element') effect.projectile_element = 'ignis';
+        if (type === 'ignite_attacker') effect.ignite_attacker_on_hit = { damage_types: ['physical'], chance: 0.4, burn_stacks: 1, burn_turns: 2 };
+        if (type === 'turn_end_burn') effect.turn_end_burn = { chance: 0.2, burn_stacks: 1, burn_turns: 2 };
         if (type === 'cleanse_dot') effect.cleanse_dot = 1;
         if (type === 'regen_bonus') { effect.regen_bonus_per_negative = 2; effect.regen_bonus_per_dot_percent = 4; }
         if (type === 'regen_lowest') effect.regen_lowest_percent = 6;
@@ -2352,14 +2462,16 @@
                     else delete effect[key];
                 } else if (key === 'element_modulation_pairs' || key === 'damage_channel_modulation_pairs'
                     || key === 'upgrade_regen_pairs' || key === 'element_power_pairs' || key === 'weather_element_pairs'
-                    || key === 'stat_multiplier_pairs') {
+                    || key === 'stat_multiplier_pairs' || key === 'element_damage_pairs' || key === 'wash_on_elements_pairs') {
                     // Pares "chave: valor"; cada editor dirige o seu destino.
                     var targetKey = key === 'element_modulation_pairs' ? 'element_modulation'
                         : key === 'damage_channel_modulation_pairs' ? 'damage_channel_modulation'
                             : key === 'element_power_pairs' ? 'element_power'
                                 : key === 'weather_element_pairs' ? 'weather.element_effect_multipliers'
                                     : key === 'stat_multiplier_pairs' ? 'stat_multipliers'
-                                        : 'upgrade_vs_status.extra_regen_per_turn_percent';
+                                        : key === 'element_damage_pairs' ? 'element_damage'
+                                            : key === 'wash_on_elements_pairs' ? 'wash_on_elements'
+                                                : 'upgrade_vs_status.extra_regen_per_turn_percent';
                     var parsedPairs = {};
                     String(field.value || '').split(',').forEach(function (entry) {
                         var halves = entry.split(':');
@@ -2375,7 +2487,8 @@
                     || key === 'interrupt.chance' || key === 'reflect.chance'
                     || key === 'spend_steal.percent' || key === 'evade_next.chance'
                     || key === 'refund_spent.percent' || key === 'damage_reduction.percent'
-                    || key === 'drain_per_turn.chance') {
+                    || key === 'drain_per_turn.chance' || key === 'ignite_attacker_on_hit.chance'
+                    || key === 'turn_end_burn.chance') {
                     // Mostram-se em percentagem mas guardam-se como fração.
                     var fractionLeaf = key.split('.');
                     var fractionParent = readNested(effect, fractionLeaf.slice(0, -1).join('.')) || {};
@@ -2393,7 +2506,8 @@
                     || key === 'charges.release.prevent_actions'
                     || key === 'trip_on_action.spawn.prevent_actions'
                     || key === 'conductor.grounded_by_elements' || key === 'interrupt.actions'
-                    || key === 'evade_next.damage_types' || key === 'refund_spent.resources') {
+                    || key === 'evade_next.damage_types' || key === 'refund_spent.resources'
+                    || key === 'fire_wall.erode_elements' || key === 'ignite_attacker_on_hit.damage_types') {
                     var commaLeaf = key.split('.');
                     var commaName = commaLeaf[commaLeaf.length - 1];
                     var commaList = String(field.value || '').split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
@@ -2532,7 +2646,7 @@
                 delete effect.random_buff;
             }
             // Cascas vazias das novas mecânicas também somem.
-            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent'], ['condition'], ['turn_postpone'], ['turn_postpone', 'condition'], ['on_miss_move'], ['weather'], ['weather', 'element_effect_multipliers'], ['element_power'], ['projectile_accuracy'], ['projectile_mark'], ['projectile_reroll'], ['detonate_on_turn'], ['chain_detonation'], ['conductor'], ['interrupt'], ['reflect'], ['spend_steal'], ['evade_next'], ['damage_redirect'], ['cost_multiplier'], ['end_cost'], ['on_death_blast']].forEach(function (path) {
+            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent'], ['condition'], ['turn_postpone'], ['turn_postpone', 'condition'], ['on_miss_move'], ['weather'], ['weather', 'element_effect_multipliers'], ['element_power'], ['projectile_accuracy'], ['projectile_mark'], ['projectile_reroll'], ['detonate_on_turn'], ['chain_detonation'], ['conductor'], ['interrupt'], ['reflect'], ['spend_steal'], ['evade_next'], ['damage_redirect'], ['cost_multiplier'], ['end_cost'], ['on_death_blast'], ['stacking'], ['fire_wall'], ['element_damage'], ['ignite_on_hit'], ['ignite_attacker_on_hit'], ['burst']].forEach(function (path) {
                 var holder = effect;
                 var valid = true;
                 for (var index = 0; index < path.length; index += 1) {
@@ -2942,6 +3056,7 @@
         if (skill.cooldown_reset) result.cooldown_reset = Model.clone(skill.cooldown_reset);
         if (skill.damage_taken_scaling) result.damage_taken_scaling = Model.clone(skill.damage_taken_scaling);
         if (skill.element_effectiveness) result.element_effectiveness = Model.clone(skill.element_effectiveness);
+        if (skill.consume_stacks) result.consume_stacks = Model.clone(skill.consume_stacks);
         if (skill.bonus_vs_elements && Object.keys(skill.bonus_vs_elements).length) {
             result.bonus_vs_elements = Model.clone(skill.bonus_vs_elements);
         }

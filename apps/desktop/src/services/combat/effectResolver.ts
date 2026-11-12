@@ -777,6 +777,68 @@ function readOnDeathBlast(source: unknown): CombatEffectInstance['onDeathBlast']
     return power > 0 ? { power } : null;
 }
 
+/** Reads the merge behaviour of a stack status (`burn`, `overheat`, `fuel`). */
+function readStacking(source: unknown): { merge: boolean; extend: number; initial: number } {
+    const record = asRecord(source);
+    if (!record) return { merge: false, extend: 0, initial: 1 };
+    return {
+        merge: true,
+        extend: Math.max(0, Math.round(readNumber(record.extend_turns, 1))),
+        initial: Math.max(1, Math.round(readNumber(record.initial, 1))),
+    };
+}
+
+/** Reads a burst threshold/payload (`overheat`). */
+function readBurst(source: unknown): CombatEffectInstance['burst'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    return {
+        damage: Math.max(0, readNumber(record.damage, 0)),
+        burnStacks: Math.max(0, Math.round(readNumber(record.burn_stacks, 0))),
+        burnTurns: Math.max(0, Math.round(readNumber(record.burn_turns, 0))),
+        pdefPercent: Math.max(0, readNumber(record.pdef_percent, 0)),
+        turns: Math.max(0, Math.round(readNumber(record.turns, 0))),
+    };
+}
+
+/** Reads a fire-wall protection spec. */
+function readFireWall(source: unknown): CombatEffectInstance['fireWall'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    return {
+        rangedWeapon: clamp(readNumber(record.ranged_weapon, 1), 0, 1),
+        projectile: clamp(readNumber(record.projectile, 1), 0, 1),
+        physical: clamp(readNumber(record.physical, 1), 0, 1),
+        erodeElements: readTrimmedStringList(record.erode_elements),
+        noErode: readBoolean(record.no_erode, false),
+    };
+}
+
+/** Reads an on-hit ignition rider (`fuel`). */
+function readIgniteOnHit(source: unknown): CombatEffectInstance['igniteOnHit'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const elements = readTrimmedStringList(record.elements);
+    if (!elements?.length) return null;
+    return {
+        elements,
+        burnStacks: Math.max(0, Math.round(readNumber(record.burn_stacks, 1))),
+        burnTurns: Math.max(0, Math.round(readNumber(record.burn_turns, 3))),
+    };
+}
+
+/** Reads a reactive melee ignition (`furnace_ward`). */
+function readIgniteAttackerOnHit(source: unknown): CombatEffectInstance['igniteAttackerOnHit'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    return {
+        damageTypes: readTrimmedStringList(record.damage_types),
+        chance: clamp(readNumber(record.chance, 0.4), 0, 1),
+        burnStacks: Math.max(0, Math.round(readNumber(record.burn_stacks, 1))),
+        burnTurns: Math.max(0, Math.round(readNumber(record.burn_turns, 2))),
+    };
+}
+
 /** Reads the plant-side regen modifiers (`mending_bloom`, `deep_rooted_remedy`). */
 function readRegenBonuses(record: Record<string, unknown>): {
     perNegative: number;
@@ -1020,7 +1082,7 @@ export function createEffectInstance(
         })()),
         healPercentOfMax: Math.max(0, readNumber(record.heal_percent_of_max, 0)),
         spendTrigger: readSpendTrigger(record.spend_trigger),
-        stacks: 1,
+        stacks: readStacking(record.stacking).initial,
         canStack: readBoolean(effect.can_stack, false),
         expiresMode: readExpiresMode(effect),
         laneChangeFree: readBoolean(record.lane_change_free, false) || undefined,
@@ -1056,6 +1118,33 @@ export function createEffectInstance(
         costMultiplier: readCostMultiplier(record.cost_multiplier),
         endCost: readEndCost(record.end_cost),
         onDeathBlast: readOnDeathBlast(record.on_death_blast),
+        mergeOnApply: readStacking(record.stacking).merge,
+        extendOnApply: readStacking(record.stacking).extend,
+        damageTiming: readString(record.damage_timing, 'turn_start') === 'turn_end' ? 'turn_end' : 'turn_start',
+        decayPerTurn: Math.max(0, Math.round(readNumber(record.decay_per_turn, 0))),
+        turnEndStacks: Math.max(0, Math.round(readNumber(record.turn_end_stacks, 0))),
+        turnEndBurn: ((): CombatEffectInstance['turnEndBurn'] => {
+            const spec = asRecord(record.turn_end_burn);
+            if (!spec) return null;
+            const chance = clamp(readNumber(spec.chance, 0), 0, 1);
+            if (chance <= 0) return null;
+            return {
+                chance,
+                burnStacks: Math.max(0, Math.round(readNumber(spec.burn_stacks, 1))),
+                burnTurns: Math.max(0, Math.round(readNumber(spec.burn_turns, 2))),
+            };
+        })(),
+        burstThresholdDown: Math.max(0, Math.round(readNumber(record.burst_threshold_down, 0))),
+        perStackCost: Math.max(0, readNumber(record.per_stack_cost, 0)),
+        perStackRegenReduction: Math.max(0, readNumber(record.per_stack_regen_reduction, 0)),
+        burstAt: Math.max(0, Math.round(readNumber(record.burst_at, 0))),
+        burst: readBurst(record.burst),
+        washOnElements: readNumberRecord(record.wash_on_elements),
+        igniteOnHit: readIgniteOnHit(record.ignite_on_hit),
+        igniteAttackerOnHit: readIgniteAttackerOnHit(record.ignite_attacker_on_hit),
+        fireWall: readFireWall(record.fire_wall),
+        elementDamage: readNumberRecord(record.element_damage),
+        projectileElement: readString(record.projectile_element, '') || null,
         cleanseDot: Math.max(0, Math.round(readNumber(record.cleanse_dot, 0))),
         regenBonusPerNegative: readRegenBonuses(record).perNegative,
         regenBonusPerDotPercent: readRegenBonuses(record).perDotPercent,
@@ -1207,6 +1296,19 @@ function carriesStatusPayload(instance: CombatEffectInstance): boolean {
         || instance.costMultiplier
         || instance.endCost
         || instance.onDeathBlast
+        || instance.mergeOnApply
+        || instance.damageTiming === 'turn_end'
+        || (instance.turnEndStacks ?? 0) > 0
+        || instance.turnEndBurn
+        || (instance.burstThresholdDown ?? 0) > 0
+        || (instance.burstAt ?? 0) > 0
+        || instance.burst
+        || instance.washOnElements
+        || instance.igniteOnHit
+        || instance.igniteAttackerOnHit
+        || instance.fireWall
+        || instance.elementDamage
+        || instance.projectileElement
         || instance.cleanseDot
         || (instance.regenBonusPerNegative ?? 0) > 0
         || (instance.regenBonusPerDotPercent ?? 0) > 0
@@ -1320,6 +1422,34 @@ export function applyEffectToUnit(
         };
     }
 
+    // A stack status (`Burn`, `Overheat`, `Fuel`) merges into the existing
+    // bearer instead of replacing it: stacks rise and the remaining duration is
+    // extended, exactly as the fire catalogue describes.
+    if (instance.mergeOnApply && instance.statusEffect) {
+        const label = normalizeStatusKey(instance.statusEffect);
+        const holder = unit.effects.find((active) => (
+            active.mergeOnApply
+            && active.statusEffect
+            && normalizeStatusKey(active.statusEffect) === label
+        ));
+        if (holder) {
+            holder.stacks = Math.max(1, holder.stacks) + Math.max(1, instance.stacks);
+            if (instance.turns === null) {
+                // Pyre removes the turn limit even when it lands on an older Burn.
+                holder.turns = null;
+            } else if (holder.turns !== null) {
+                holder.turns += Math.max(0, instance.extendOnApply ?? 0);
+            }
+            return {
+                type: 'effect_applied',
+                unitId: unit.id,
+                effectId: holder.effectId,
+                statusEffect: holder.statusEffect,
+                turns: holder.turns,
+            };
+        }
+    }
+
     // A charge-bearing landing builds onto the shared status instead of
     // stacking alongside it: each charge raises the count, refreshes the
     // duration and deepens the carried debuff. A full gauge spends itself on
@@ -1422,7 +1552,7 @@ export function tickUnitEffects(
     const shedThisTick = new Set<string>();
 
     for (const effect of unit.effects) {
-        if (effect.damagePerTurn > 0) {
+        if (effect.damagePerTurn > 0 && effect.damageTiming !== 'turn_end') {
             // A variable DoT rolls its own `damage_variance` every tick, so a
             // rot can bite hard one turn and barely the next.
             const variance = effect.damagePerTurnVariance
@@ -1433,6 +1563,15 @@ export function tickUnitEffects(
                 Math.round(effect.damagePerTurn * Math.max(1, effect.stacks) * variance),
             );
             events.push(...changeResource(unit, 'hp', -amount));
+        }
+
+        // Fuel burns down by one stack at the start of the bearer's turn.
+        if ((effect.decayPerTurn ?? 0) > 0) {
+            effect.stacks = Math.max(0, effect.stacks - (effect.decayPerTurn ?? 0));
+            if (effect.stacks <= 0) {
+                events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+                continue;
+            }
         }
 
         // A seed (`blood_seed`, `mana_seed`) drains a share of a maximum pool
@@ -1541,6 +1680,94 @@ export function tickUnitEffects(
     }
 
     unit.effects = expiring;
+    return events;
+}
+
+/**
+ * Pays the statuses that resolve at the END of their bearer's turn.
+ *
+ * Burn (`damage_timing: turn_end`) damages after the action. Overheat gains a
+ * stack and bursts at its threshold. The function does not decrement duration;
+ * the start-of-turn tick owns that.
+ */
+export function tickTurnEndEffects(
+    unit: CombatUnit,
+    random: CombatRandom = Math.random,
+): CombatEvent[] {
+    const events: CombatEvent[] = [];
+    const consumed: CombatEffectInstance[] = [];
+
+    for (const effect of [...unit.effects]) {
+        if (effect.damagePerTurn > 0 && effect.damageTiming === 'turn_end') {
+            const amount = Math.max(
+                1,
+                Math.round(effect.damagePerTurn * Math.max(1, effect.stacks)),
+            );
+            events.push(...changeResource(unit, 'hp', -amount));
+        }
+
+        if ((effect.turnEndStacks ?? 0) > 0) {
+            effect.stacks = Math.max(1, effect.stacks) + (effect.turnEndStacks ?? 0);
+            const thresholdDown = unit.effects.reduce(
+                (total, entry) => total + Math.max(0, entry.burstThresholdDown ?? 0),
+                0,
+            );
+            const threshold = Math.max(2, (effect.burstAt ?? 0) - thresholdDown);
+            if (effect.burstAt && effect.stacks >= threshold && effect.burst) {
+                const burst = effect.burst;
+                if (burst.damage > 0) {
+                    events.push(...changeResource(unit, 'hp', -burst.damage));
+                }
+                if (burst.burnStacks > 0 && burst.burnTurns > 0) {
+                    const burn: AttackEffect = {
+                        effect_id: 'burn',
+                        status_effect: 'Burn',
+                        turns: burst.burnTurns,
+                        polarity: 'negative',
+                        damage_per_turn: 4,
+                        damage_timing: 'turn_end',
+                        stacking: { extend_turns: 1 },
+                    };
+                    const applied = applyEffectToUnit(unit, burn, effect.sourceId, effect.elementId, random);
+                    if (applied) events.push(applied);
+                }
+                if (burst.pdefPercent > 0 && burst.turns > 0) {
+                    const pdef: AttackEffect = {
+                        effect_id: 'overheat_burst_pdef',
+                        status_effect: 'Overheat Burst',
+                        turns: burst.turns,
+                        polarity: 'negative',
+                        debuff: { physical_defense: burst.pdefPercent },
+                    };
+                    const applied = applyEffectToUnit(unit, pdef, effect.sourceId, effect.elementId, random);
+                    if (applied) events.push(applied);
+                }
+                consumed.push(effect);
+            }
+        }
+
+        if (effect.turnEndBurn && random() < effect.turnEndBurn.chance) {
+            const burn: AttackEffect = {
+                effect_id: 'burn',
+                status_effect: 'Burn',
+                turns: effect.turnEndBurn.burnTurns,
+                polarity: 'negative',
+                damage_per_turn: 4,
+                damage_timing: 'turn_end',
+                stacking: { extend_turns: 1, initial: effect.turnEndBurn.burnStacks },
+            };
+            const applied = applyEffectToUnit(unit, burn, effect.sourceId, effect.elementId, random);
+            if (applied) events.push(applied);
+        }
+    }
+
+    if (consumed.length > 0) {
+        unit.effects = unit.effects.filter((effect) => !consumed.includes(effect));
+        for (const effect of consumed) {
+            events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+        }
+    }
+
     return events;
 }
 
@@ -2261,16 +2488,29 @@ export function expireStatusesOnElementHit(
     const lifted = unit.effects.filter(
         (effect) => effect.expireOnElements?.some((entry) => entry.toLowerCase() === wanted),
     );
-    if (lifted.length === 0) return [];
-
-    const liftedIds = new Set(lifted.map((effect) => effect.effectId));
-    unit.effects = unit.effects.filter((effect) => !liftedIds.has(effect.effectId));
-
-    return lifted.map((effect) => ({
+    const events: CombatEvent[] = lifted.map((effect) => ({
         type: 'effect_expired',
         unitId: unit.id,
         effectId: effect.effectId,
     }));
+    if (lifted.length > 0) {
+        const liftedIds = new Set(lifted.map((effect) => effect.effectId));
+        unit.effects = unit.effects.filter((effect) => !liftedIds.has(effect.effectId));
+    }
+
+    // A stack status can also be washed down rather than removed outright
+    // (`overheat` loses one stack to aqua/caeli).
+    for (const effect of [...unit.effects]) {
+        const amount = effect.washOnElements?.[wanted] ?? 0;
+        if (amount <= 0) continue;
+        effect.stacks = Math.max(0, effect.stacks - amount);
+        if (effect.stacks <= 0) {
+            unit.effects = unit.effects.filter((entry) => entry !== effect);
+            events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+        }
+    }
+
+    return events;
 }
 
 /**

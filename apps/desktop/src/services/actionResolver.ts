@@ -866,6 +866,13 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
         }
     }
 
+    // A healing action can also consume a stack status (`ashen_carapace`).
+    if (!action.dealsDamage && action.consumeStacks?.length) {
+        for (const target of actionTargets) {
+            if (target.status === 'alive') consumeStacksOnHit(actor, target, action, events, random);
+        }
+    }
+
     for (const target of resolvedUnits) {
         const resolution = resolutions.get(target.id);
         if (!resolution) continue;
@@ -989,6 +996,116 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
     return events;
 }
 
+/** Finds a live status by id or label. */
+function findStatus(target: CombatUnit, status: string): CombatEffectInstance | null {
+    const wanted = status.trim().toLowerCase();
+    return target.effects.find((effect) => (
+        (effect.statusEffect ?? '').trim().toLowerCase() === wanted
+        || effect.effectId.trim().toLowerCase() === wanted
+    )) ?? null;
+}
+
+/** Consumes named stack statuses for flat damage and/or healing. */
+function consumeStacksOnHit(
+    actor: CombatUnit,
+    target: CombatUnit,
+    action: CombatAction,
+    events: CombatEvent[],
+    random: CombatRandom,
+): void {
+    if (!action.consumeStacks?.length) return;
+    for (const spec of action.consumeStacks) {
+        const effect = findStatus(target, spec.status);
+        if (!effect) continue;
+        const stacks = Math.max(1, effect.stacks);
+        if (spec.perStack > 0) {
+            dealFlatDamage(
+                events,
+                actor,
+                target,
+                spec.perStack * stacks,
+                action.id,
+                action.damageType,
+                random,
+            );
+        }
+        if (spec.healPercentPerStack > 0) {
+            const amount = Math.round(effectiveStats(target).maxHp * spec.healPercentPerStack / 100 * stacks);
+            if (amount > 0) events.push(...changeResource(target, 'hp', amount));
+        }
+        target.effects = target.effects.filter((entry) => entry !== effect);
+        events.push({ type: 'effect_expired', unitId: target.id, effectId: effect.effectId });
+    }
+}
+
+/** Applies a Burn stack bundle to a unit. */
+function applyBurn(
+    unit: CombatUnit,
+    sourceId: string,
+    stacks: number,
+    turns: number,
+    events: CombatEvent[],
+    random: CombatRandom,
+): void {
+    if (stacks <= 0 || turns <= 0 || unit.status !== 'alive') return;
+    const burn: AttackEffect = {
+        effect_id: 'burn',
+        status_effect: 'Burn',
+        turns,
+        polarity: 'negative',
+        damage_per_turn: 4,
+        damage_timing: 'turn_end',
+        stacking: { extend_turns: 1, initial: stacks },
+    };
+    const applied = applyEffectToUnit(unit, burn, sourceId, 'ignis', random);
+    if (applied) events.push(applied);
+}
+
+/** Applies on-hit Burn riders and fire-wall erosion. */
+function applyIgniteAndErosion(
+    actor: CombatUnit,
+    target: CombatUnit,
+    action: CombatAction,
+    events: CombatEvent[],
+    random: CombatRandom,
+): void {
+    for (const effect of [...target.effects]) {
+        if (effect.igniteOnHit && action.elementId && effect.igniteOnHit.elements.includes(action.elementId)) {
+            applyBurn(
+                target,
+                effect.sourceId,
+                effect.igniteOnHit.burnStacks,
+                effect.igniteOnHit.burnTurns,
+                events,
+                random,
+            );
+        }
+
+        if (effect.igniteAttackerOnHit
+            && (!effect.igniteAttackerOnHit.damageTypes?.length
+                || effect.igniteAttackerOnHit.damageTypes.includes(action.damageType))
+            && random() < effect.igniteAttackerOnHit.chance) {
+            applyBurn(
+                actor,
+                effect.sourceId,
+                effect.igniteAttackerOnHit.burnStacks,
+                effect.igniteAttackerOnHit.burnTurns,
+                events,
+                random,
+            );
+        }
+
+        if (effect.fireWall && !effect.fireWall.noErode
+            && effect.fireWall.erodeElements?.includes(action.elementId ?? '')) {
+            effect.turns = effect.turns === null ? null : effect.turns - 1;
+            if (effect.turns !== null && effect.turns <= 0) {
+                target.effects = target.effects.filter((entry) => entry !== effect);
+                events.push({ type: 'effect_expired', unitId: target.id, effectId: effect.effectId });
+            }
+        }
+    }
+}
+
 /**
  * Resolves the Chaos follow-ups an attack leaves behind.
  *
@@ -1071,11 +1188,14 @@ function resolveChaosFollowUp(
     if (action.backlaneSplash && primaryTarget && mainHit) {
         const spec = action.backlaneSplash;
         if (random() < spec.chance) {
+            const splashPower = spec.percentOfDamage > 0
+                ? Math.round((primaryResolution?.finalDamage ?? 0) * spec.percentOfDamage)
+                : spec.power;
             const target = selectBacklaneTarget(state, actor, new Set(resolutions.keys()), random);
             if (target) {
                 const splashAction: CombatAction = {
                     ...action,
-                    power: spec.power,
+                    power: splashPower,
                     hitCount: 1,
                     scatterTargets: false,
                     scatterHits: null,
@@ -1085,8 +1205,8 @@ function resolveChaosFollowUp(
                 if (!resolvedUnits.some((unit) => unit.id === target.id)) resolvedUnits.push(target);
                 events.push({ type: 'attack_resolved', resolution });
             }
-            if (spec.both && primaryTarget) {
-                dealFlatDamage(events, actor, primaryTarget, spec.power, action.id, action.damageType, random);
+            if (spec.both && primaryTarget && splashPower > 0) {
+                dealFlatDamage(events, actor, primaryTarget, splashPower, action.id, action.damageType, random);
             }
         }
     }
@@ -1126,6 +1246,9 @@ function resolveChaosFollowUp(
     for (const target of resolvedUnits) {
         const resolution = resolutions.get(target.id);
         if (!resolution?.isHit || target.status !== 'alive') continue;
+
+        consumeStacksOnHit(actor, target, action, events, random);
+        applyIgniteAndErosion(actor, target, action, events, random);
 
         // A `chain_detonation` mark pays extra when another chaos hit lands and
         // can set off its neighbours' marks, once each. Every extra mark costs

@@ -57,11 +57,15 @@ export function effectiveActionCost(unit: CombatUnit, action: CombatAction): Com
     // Status-driven cost multipliers (`adrenaline`) apply to every skill the
     // bearer uses, on top of the weapon discount, so preview and payment agree.
     const statusMana = unit.effects.reduce(
-        (factor, effect) => factor * (effect.costMultiplier?.mana ?? 1),
+        (factor, effect) => factor
+            * (effect.costMultiplier?.mana ?? 1)
+            * (1 + Math.max(0, effect.perStackCost ?? 0) * Math.max(1, effect.stacks)),
         1,
     );
     const statusStamina = unit.effects.reduce(
-        (factor, effect) => factor * (effect.costMultiplier?.stamina ?? 1),
+        (factor, effect) => factor
+            * (effect.costMultiplier?.stamina ?? 1)
+            * (1 + Math.max(0, effect.perStackCost ?? 0) * Math.max(1, effect.stacks)),
         1,
     );
     const applyStatusCosts = (costs: CombatActionCost): CombatActionCost => {

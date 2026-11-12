@@ -60,6 +60,7 @@ import {
     readResourceTransferSpec,
     resolveEffectTargets,
     tickUnitEffects,
+    tickTurnEndEffects,
 } from './combat/effectResolver';
 import { recordTimelineSnapshot } from './combat/rewind';
 import { tickWeather } from './combat/weather';
@@ -1161,6 +1162,9 @@ export function submitCombatAction(
     // (a reflection) does not get a turn end.
     if (!actionOutcome && actor.status === 'alive') {
         events.push(...resolveUnitTurnEnd(state, actor, random));
+        // Burn pays at the END of its bearer's turn; Overheat gains its stack
+        // and may burst here.
+        events.push(...tickTurnEndEffects(actor, random));
         // `turn_end` statuses (`Ranged Veil`) expire right after their holder
         // acts — they guard exactly one of the holder's turns.
         events.push(...expireTurnEndEffects(actor));
@@ -1240,6 +1244,7 @@ function submitInventoryAction(
 
     if (actor.status === 'alive') {
         events.push(...resolveUnitTurnEnd(state, actor, random));
+        events.push(...tickTurnEndEffects(actor, random));
         events.push(...expireTurnEndEffects(actor));
     }
 

@@ -221,6 +221,13 @@
         cost_multiplier: 'Desconto de custo',
         end_cost: 'Custo final',
         on_death_blast: 'Último golpe',
+        // Ignis: stacks, muros, dano elemental e ignição.
+        stack_dot: 'Queimadura em stacks',
+        burst_stacks: 'Sobreaquecimento',
+        fire_wall: 'Muro de fogo',
+        element_damage: 'Dano elemental',
+        projectile_element: 'Projétil elemental',
+        ignite_attacker: 'Atacante em chamas',
         cleanse_dot: 'Limpeza de DoT',
         regen_bonus: 'Bónus de regeneração',
         regen_lowest: 'Sap do recurso baixo',
@@ -828,6 +835,35 @@
         if (effect.on_death_blast && typeof effect.on_death_blast === 'object') {
             fragments.push('Ao cair por dano direto, devolve ' + effect.on_death_blast.power + ' PWR a quem o derrubou.');
         }
+        if (effect.stacking) {
+            fragments.push('Empilha ' + (effect.stacking.initial ?? 1) + ' stack(s) e estende a duração em '
+                + (effect.stacking.extend_turns ?? 0) + ' turno(s) quando reaplicado.');
+        }
+        if (effect.damage_timing === 'turn_end' && effect.damage_per_turn) {
+            fragments.push('Paga ' + effect.damage_per_turn + ' de dano por stack no fim do turno.');
+        }
+        if (effect.decay_per_turn) fragments.push('Perde ' + effect.decay_per_turn + ' stack(s) no início do turno.');
+        if (effect.turn_end_stacks) fragments.push('Ganha ' + effect.turn_end_stacks + ' stack(s) no fim do turno.');
+        if (effect.turn_end_burn) {
+            fragments.push('No fim do turno, ' + Math.round((effect.turn_end_burn.chance || 0) * 100)
+                + '% de chance de apanhar ' + (effect.turn_end_burn.burn_stacks || 1) + ' stack(s) de Burn.');
+        }
+        if (effect.fire_wall) {
+            fragments.push('Muro de fogo: reduz dano à distância/projétil/físico para '
+                + (effect.fire_wall.ranged_weapon ?? 1) + '/'
+                + (effect.fire_wall.projectile ?? 1) + '/'
+                + (effect.fire_wall.physical ?? 1) + '×.');
+        }
+        if (effect.element_damage) {
+            fragments.push('Multiplica dano dos elementos indicados (' + JSON.stringify(effect.element_damage) + ').');
+        }
+        if (effect.projectile_element) fragments.push('Projéteis contam como ' + effect.projectile_element + '.');
+        if (effect.ignite_on_hit) {
+            fragments.push('Ataques de ' + effect.ignite_on_hit.elements.join('/') + ' também acendem Burn.');
+        }
+        if (effect.ignite_attacker_on_hit) {
+            fragments.push('Atacantes têm ' + Math.round((effect.ignite_attacker_on_hit.chance || 0) * 100) + '% de apanhar Burn.');
+        }
         if (condition && condition.requires_no_space) {
             fragments.push('Só aplica se a linha ' + (condition.requires_no_space === 'front' ? 'da frente' : 'de trás')
                 + ' estiver cheia.');
@@ -896,6 +932,11 @@
             'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal',
             // Corporis: esquiva/riposta, cobertura, custos, custo final e último golpe.
             'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast',
+            // Ignis: stacks, muros de fogo e ignição.
+            'stacking', 'damage_timing', 'decay_per_turn', 'turn_end_stacks', 'turn_end_burn',
+            'burst_threshold_down', 'per_stack_cost', 'per_stack_regen_reduction', 'burst_at',
+            'burst', 'wash_on_elements', 'ignite_on_hit', 'ignite_attacker_on_hit', 'fire_wall',
+            'element_damage', 'projectile_element',
             // Florere: HoTs condicionais, sap, refunds, escudos e drenos.
             'stat_multipliers', 'cleanse_dot', 'regen_bonus_per_negative', 'regen_bonus_per_dot_percent',
             'regen_lowest_percent', 'refund_spent', 'cleanse_on_heal', 'damage_reduction',
@@ -1017,7 +1058,7 @@
         }
         ['recoil', 'friendly_fire', 'backlane_splash', 'no_space_recoil', 'chain', 'shrapnel',
             'instability', 'on_kill_detonation', 'cooldown_reset', 'damage_taken_scaling',
-            'element_effectiveness'].forEach(function (key) {
+            'element_effectiveness', 'consume_stacks'].forEach(function (key) {
             if (source[key] && typeof source[key] === 'object') skill[key] = clone(source[key]);
         });
         if (Number(source.control_immune_damage) > 0) skill.control_immune_damage = Number(source.control_immune_damage);

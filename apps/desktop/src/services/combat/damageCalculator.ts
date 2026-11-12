@@ -561,6 +561,39 @@ function instabilityMultiplier(attacker: CombatUnit | null | undefined, action: 
     return 1 + Math.max(0, spec.damagePerCharge ?? 0) * stacks;
 }
 
+/** The element a projectile/ranged action is treated as (`kindled_ordnance`). */
+function damageElementFor(attacker: CombatUnit | null | undefined, action: CombatAction): string {
+    if (!attacker) return action.elementId;
+    if (!isProjectileAction(action) && !(action.weapon && isRangedAction(action))) return action.elementId;
+    const override = attacker.effects.find((effect) => effect.projectileElement)?.projectileElement;
+    return override ?? action.elementId;
+}
+
+/** Outgoing element damage bonuses the caster carries (`ignis_fervour`). */
+function elementDamageMultiplier(
+    attacker: CombatUnit | null | undefined,
+    elementId: string,
+): number {
+    if (!attacker) return 1;
+    return attacker.effects.reduce((multiplier, effect) => (
+        multiplier * (effect.elementDamage?.[elementId] ?? 1)
+    ), 1);
+}
+
+/** Fire-wall protection on the defender's side. */
+function fireWallMultiplier(
+    defender: CombatUnit | null | undefined,
+    action: CombatAction,
+): number {
+    const wall = defender?.effects.find((effect) => effect.fireWall)?.fireWall;
+    if (!wall) return 1;
+    let multiplier = 1;
+    if (isProjectileAction(action)) multiplier *= wall.projectile;
+    else if (action.weapon && isRangedAction(action)) multiplier *= wall.rangedWeapon;
+    if (action.damageType === 'physical') multiplier *= wall.physical;
+    return multiplier;
+}
+
 export function resolveDamage(request: DamageRequest): DamageResult {
     const { action, elementIndex, random } = request;
     const rolling = request.roll ?? true;
@@ -573,10 +606,10 @@ export function resolveDamage(request: DamageRequest): DamageResult {
     // `bonus_vs_status` trait (hydro_lance versus Wet) deepens it further.
     const statusBonus = bonusVsStatusFor(action, request.defender);
     const pierced = piercedDefense(rawDefense, (action.defensePierce ?? 0) + statusBonus.defensePierce);
-    // A modulation the defender carries (Wet versus ignis) compounds into the
-    // element chain, so attacks, previews and every derived reader agree.
-    const statusModulation = elementModulationFor(request.defender, action.elementId);
-    const rawEffect = elementMultiplier(elementIndex, action.elementId, request.defenderElementIds) * statusModulation;
+    // A projectile/ranged action may borrow another element (`kindled_ordnance`).
+    const effectiveElement = damageElementFor(request.attacker, action);
+    const statusModulation = elementModulationFor(request.defender, effectiveElement);
+    const rawEffect = elementMultiplier(elementIndex, effectiveElement, request.defenderElementIds) * statusModulation;
     const effectiveness = action.elementEffectiveness
         ? (rawEffect > 1 ? action.elementEffectiveness.weak
             : rawEffect < 1 ? action.elementEffectiveness.resist : 1)
@@ -634,6 +667,8 @@ export function resolveDamage(request: DamageRequest): DamageResult {
         // A battlefield weather state multiplies its listed elements both ways
         // (damage and effect magnitude), so the damage chain folds it here too.
         * weatherElementMultiplierFor(request, action.elementId)
+        * elementDamageMultiplier(request.attacker, effectiveElement)
+        * fireWallMultiplier(request.defender, action)
         * (1 + (chargeCount > 0 && action.bonusPerCharge
             ? action.bonusPerCharge.multiplierPerCharge * chargeCount
             : 0));
