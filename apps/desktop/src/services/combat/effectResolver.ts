@@ -719,6 +719,62 @@ function readSpendSteal(source: unknown): CombatEffectInstance['spendSteal'] {
     return { resource, percent, amount, max };
 }
 
+/** Reads a one-shot dodge-and-riposte status (`counter_stance`). */
+function readEvadeNext(source: unknown): CombatEffectInstance['evadeNext'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const power = Math.max(0, readNumber(record.power, 0));
+    const chance = clamp(readNumber(record.chance, 1), 0, 1);
+    if (power <= 0 && chance <= 0) return null;
+    return {
+        damageTypes: (readTrimmedStringList(record.damage_types) as DamageType[] | null) ?? null,
+        power,
+        chance,
+    };
+}
+
+/** Reads a damage-redirection status (`bulwark`). */
+function readDamageRedirect(source: unknown): CombatEffectInstance['damageRedirect'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const scope = readString(record.scope, 'allies_all') === 'allies_lane' ? 'allies_lane' : 'allies_all';
+    return { scope };
+}
+
+/** Reads a status that discounts its bearer's own action costs (`adrenaline`). */
+function readCostMultiplier(source: unknown): CombatEffectInstance['costMultiplier'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const mana = readNumber(record.mana, 1);
+    const stamina = readNumber(record.stamina, 1);
+    if (mana === 1 && stamina === 1) return null;
+    return {
+        mana: clamp(mana, 0, 1),
+        stamina: clamp(stamina, 0, 1),
+    };
+}
+
+/** Reads a price paid when the status ends (`adrenaline`). */
+function readEndCost(source: unknown): CombatEffectInstance['endCost'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const percentOfMax = Math.max(0, readNumber(record.percent_of_max, 0));
+    if (percentOfMax <= 0) return null;
+    return {
+        resource: readString(record.resource, 'stamina') === 'mana' ? 'mana' : 'stamina',
+        percentOfMax,
+        shortfall: 'hp',
+    };
+}
+
+/** Reads a direct-damage retaliation fired when the bearer falls (`last_stand`). */
+function readOnDeathBlast(source: unknown): CombatEffectInstance['onDeathBlast'] {
+    const record = asRecord(source);
+    if (!record) return null;
+    const power = Math.max(0, readNumber(record.power, 0));
+    return power > 0 ? { power } : null;
+}
+
 /** Reads a `cleanse_per_turn` spec (`rain`); `polarity` defaults to negatives. */
 function readCleansePerTurn(
     source: unknown,
@@ -913,6 +969,11 @@ export function createEffectInstance(
         interrupt: readInterrupt(record.interrupt),
         reflect: readReflect(record.reflect),
         spendSteal: readSpendSteal(record.spend_steal),
+        evadeNext: readEvadeNext(record.evade_next),
+        damageRedirect: readDamageRedirect(record.damage_redirect),
+        costMultiplier: readCostMultiplier(record.cost_multiplier),
+        endCost: readEndCost(record.end_cost),
+        onDeathBlast: readOnDeathBlast(record.on_death_blast),
         appliedTurnCount: 0,
     };
 
@@ -1048,7 +1109,12 @@ function carriesStatusPayload(instance: CombatEffectInstance): boolean {
         || instance.conductor
         || instance.interrupt
         || instance.reflect
-        || instance.spendSteal,
+        || instance.spendSteal
+        || instance.evadeNext
+        || instance.damageRedirect
+        || instance.costMultiplier
+        || instance.endCost
+        || instance.onDeathBlast,
     );
 }
 
@@ -1320,6 +1386,9 @@ export function tickUnitEffects(
 
         events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
 
+        // A status with a final price (`adrenaline`) pays it when it ends.
+        events.push(...applyEndCost(unit, effect));
+
         // A field that expires untouched still bites whoever stood on it
         // (`blast_rush`, `grounding`).
         if ((effect.tripOnAction?.expireDamage ?? 0) > 0) {
@@ -1348,6 +1417,7 @@ export function expireRoundBoundEffects(units: CombatUnit[]): CombatEvent[] {
         for (const effect of unit.effects) {
             if (effect.expiresMode === 'round_end') {
                 events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+                events.push(...applyEndCost(unit, effect));
                 continue;
             }
             kept.push(effect);
@@ -1370,6 +1440,7 @@ export function expireTurnEndEffects(unit: CombatUnit): CombatEvent[] {
     for (const effect of unit.effects) {
         if (effect.expiresMode === 'turn_end') {
             events.push({ type: 'effect_expired', unitId: unit.id, effectId: effect.effectId });
+            events.push(...applyEndCost(unit, effect));
             continue;
         }
         kept.push(effect);
@@ -1555,6 +1626,29 @@ function payResourceDelta(
         events.push(...changeResource(unit, resource, Math.round(amount * sign)));
     }
 
+    return events;
+}
+
+/**
+ * Pays a status's final price.
+ *
+ * `adrenaline` drains a share of the pool when it ends; any shortfall is paid
+ * out of health, which is why the helper reads the live maxima.
+ */
+function applyEndCost(unit: CombatUnit, effect: CombatEffectInstance): CombatEvent[] {
+    const cost = effect.endCost;
+    if (!cost || cost.percentOfMax <= 0) return [];
+
+    const stats = effectiveStats(unit);
+    const max = cost.resource === 'mana' ? stats.maxMana : stats.maxStamina;
+    const wanted = Math.round(max * cost.percentOfMax / 100);
+    if (wanted <= 0) return [];
+
+    const current = cost.resource === 'mana' ? unit.currentMana : unit.currentStamina;
+    const paid = Math.min(current, wanted);
+    const events = [...changeResource(unit, cost.resource, -paid)];
+    const shortfall = wanted - paid;
+    if (shortfall > 0) events.push(...changeResource(unit, 'hp', -shortfall));
     return events;
 }
 

@@ -576,7 +576,12 @@ export function resolveDamage(request: DamageRequest): DamageResult {
     // A modulation the defender carries (Wet versus ignis) compounds into the
     // element chain, so attacks, previews and every derived reader agree.
     const statusModulation = elementModulationFor(request.defender, action.elementId);
-    const effect = elementMultiplier(elementIndex, action.elementId, request.defenderElementIds) * statusModulation;
+    const rawEffect = elementMultiplier(elementIndex, action.elementId, request.defenderElementIds) * statusModulation;
+    const effectiveness = action.elementEffectiveness
+        ? (rawEffect > 1 ? action.elementEffectiveness.weak
+            : rawEffect < 1 ? action.elementEffectiveness.resist : 1)
+        : 1;
+    const effect = rawEffect * effectiveness;
     const positionModifier = action.ignorePositionPenalty
         ? 1
         : positionDamageModifier(
@@ -608,7 +613,14 @@ export function resolveDamage(request: DamageRequest): DamageResult {
     // every hit, so a buffed speed strikes harder and previews agree.
     const hitPowerBase = (action.power + (action.powerScaling
         ? action.powerScaling.perPoint * Math.max(0, request.attackerStats[action.powerScaling.stat] ?? 0)
-        : 0)) * instabilityMultiplier(request.attacker, action);
+        : 0)
+        + (action.damageTakenScaling && request.attacker
+            ? Math.min(
+                action.damageTakenScaling.max ?? Number.POSITIVE_INFINITY,
+                action.damageTakenScaling.perPoint
+                    * Math.max(0, request.attacker.eventCounts.damage_taken ?? 0),
+            )
+            : 0)) * instabilityMultiplier(request.attacker, action);
 
     // The skill's traits, folded once so every hit of the same action reads
     // the same numbers. A `bonus_per_charge` trait (`avalanche`) trades each

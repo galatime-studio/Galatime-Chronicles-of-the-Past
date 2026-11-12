@@ -177,6 +177,12 @@ function scaleEffect(effect: AttackEffect, factor: number): AttackEffect {
                 : scaleRounded(effect.trip_on_action.expire_damage, factor),
         };
     }
+    if (effect.evade_next?.power !== undefined) {
+        next.evade_next = { ...effect.evade_next, power: scaleRounded(effect.evade_next.power, factor) };
+    }
+    if (effect.on_death_blast) {
+        next.on_death_blast = { power: scaleRounded(effect.on_death_blast.power, factor) };
+    }
 
     return next;
 }
@@ -245,6 +251,12 @@ export function applySkillLevel(skill: PublicAttack, level: number): PublicAttac
         next.on_kill_detonation = {
             ...skill.on_kill_detonation,
             power: scaleRounded(skill.on_kill_detonation.power, powerFactor),
+        };
+    }
+    if (skill.damage_taken_scaling) {
+        next.damage_taken_scaling = {
+            ...skill.damage_taken_scaling,
+            per_point: skill.damage_taken_scaling.per_point * powerFactor,
         };
     }
 

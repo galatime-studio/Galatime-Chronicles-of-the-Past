@@ -215,6 +215,12 @@
         interrupt: 'Interrupção',
         reflect: 'Reflexo fixo',
         spend_steal: 'Roubo de recurso',
+        // Corporis: esquiva/riposta, cobertura e economia de stamina.
+        evade_next: 'Esquiva e riposta',
+        damage_redirect: 'Cobertura',
+        cost_multiplier: 'Desconto de custo',
+        end_cost: 'Custo final',
+        on_death_blast: 'Último golpe',
     };
 
     function patternStatusName(pattern) { return PATTERN_STATUS_NAMES[pattern] || 'Efeito'; }
@@ -776,6 +782,27 @@
                 + (effect.spend_steal.resource === 'stamina' ? 'stamina' : 'mana')
                 + ' do próximo gasto do portador para quem aplicou o estado.');
         }
+        if (effect.evade_next && typeof effect.evade_next === 'object') {
+            fragments.push('Esquiva o próximo golpe'
+                + (effect.evade_next.damage_types?.length ? ' de ' + effect.evade_next.damage_types.join('/') : '')
+                + (effect.evade_next.power ? ' e responde com ' + effect.evade_next.power + ' PWR' : '') + '.');
+        }
+        if (effect.damage_redirect && typeof effect.damage_redirect === 'object') {
+            fragments.push(effect.damage_redirect.scope === 'allies_lane'
+                ? 'Recebe o dano destinado aos aliados da sua linha.'
+                : 'Recebe o dano destinado a qualquer aliado.');
+        }
+        if (effect.cost_multiplier && typeof effect.cost_multiplier === 'object') {
+            fragments.push('Multiplica os custos de mana/stamina por '
+                + (effect.cost_multiplier.mana ?? 1) + '/' + (effect.cost_multiplier.stamina ?? 1) + '.');
+        }
+        if (effect.end_cost && typeof effect.end_cost === 'object') {
+            fragments.push('Ao terminar, perde ' + effect.end_cost.percent_of_max + '% do '
+                + (effect.end_cost.resource === 'mana' ? 'mana' : 'stamina') + ' máximo (o que faltar sai da vida).');
+        }
+        if (effect.on_death_blast && typeof effect.on_death_blast === 'object') {
+            fragments.push('Ao cair por dano direto, devolve ' + effect.on_death_blast.power + ' PWR a quem o derrubou.');
+        }
         if (condition && condition.requires_no_space) {
             fragments.push('Só aplica se a linha ' + (condition.requires_no_space === 'front' ? 'da frente' : 'de trás')
                 + ' estiver cheia.');
@@ -840,6 +867,10 @@
             // Céu (caeli Sky): clima, projéteis e véu antiaéreo.
             'weather', 'element_power', 'projectile_accuracy', 'projectile_mark',
             'ranged_evasion', 'projectile_reroll',
+            // Chaos: marcas, cadeias, condutores, interrupção, reflexo e roubo.
+            'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal',
+            // Corporis: esquiva/riposta, cobertura, custos, custo final e último golpe.
+            'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast',
         ];
         var cleaned = {};
         allowed.forEach(function (key) {
@@ -863,7 +894,8 @@
         // Casca vazia das novas mecânicas: some.
         ['shield', 'cleanse_per_turn', 'spend_trigger', 'upgrade_vs_status', 'charges', 'trip_on_action', 'element_modulation',
             'condition', 'turn_postpone', 'on_miss_move', 'element_power', 'projectile_accuracy', 'projectile_mark',
-            'resource_transfer'].forEach(function (key) {
+            'resource_transfer', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect',
+            'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast'].forEach(function (key) {
             if (cleaned[key] && typeof cleaned[key] === 'object' && !Object.keys(cleaned[key]).length) {
                 delete cleaned[key];
             }
@@ -951,6 +983,13 @@
         if (source.targeting && typeof source.targeting === 'object') {
             skill.targeting = source.targeting.area || source.targeting.target || 'any_one';
         }
+        ['recoil', 'friendly_fire', 'backlane_splash', 'no_space_recoil', 'chain', 'shrapnel',
+            'instability', 'on_kill_detonation', 'cooldown_reset', 'damage_taken_scaling',
+            'element_effectiveness'].forEach(function (key) {
+            if (source[key] && typeof source[key] === 'object') skill[key] = clone(source[key]);
+        });
+        if (Number(source.control_immune_damage) > 0) skill.control_immune_damage = Number(source.control_immune_damage);
+        if (typeof source.sfx === 'string' && source.sfx.trim()) skill.sfx = source.sfx.trim();
         if (source.collateral && typeof source.collateral === 'object') skill.collateral = clone(source.collateral);
         return skill;
     }

@@ -54,23 +54,44 @@ export function effectiveActionCost(unit: CombatUnit, action: CombatAction): Com
     const modifier = unit.weapon?.costModifiers?.mana;
     const cursedTax = action.weapon && weaponHasFlag(unit, 'cursed') ? CURSED_STAMINA_TAX : 0;
 
+    // Status-driven cost multipliers (`adrenaline`) apply to every skill the
+    // bearer uses, on top of the weapon discount, so preview and payment agree.
+    const statusMana = unit.effects.reduce(
+        (factor, effect) => factor * (effect.costMultiplier?.mana ?? 1),
+        1,
+    );
+    const statusStamina = unit.effects.reduce(
+        (factor, effect) => factor * (effect.costMultiplier?.stamina ?? 1),
+        1,
+    );
+    const applyStatusCosts = (costs: CombatActionCost): CombatActionCost => {
+        if (statusMana === 1 && statusStamina === 1) return costs;
+        return {
+            ...costs,
+            mana: Math.max(0, Math.ceil(costs.mana * statusMana)),
+            stamina: Math.max(0, Math.ceil(costs.stamina * statusStamina)),
+        };
+    };
+
     if (!modifier) {
-        return cursedTax > 0
+        const base = cursedTax > 0
             ? { ...action.costs, stamina: action.costs.stamina + cursedTax }
             : action.costs;
+        return applyStatusCosts(base);
     }
 
     const { multiplier, elements } = modifier;
     const applies = !elements || elements.length === 0 || elements.includes(action.elementId);
     if (!applies) {
-        return cursedTax > 0
+        const base = cursedTax > 0
             ? { ...action.costs, stamina: action.costs.stamina + cursedTax }
             : action.costs;
+        return applyStatusCosts(base);
     }
 
     const mana = Math.max(0, Math.round(action.costs.mana * multiplier));
-    if (mana === action.costs.mana && cursedTax === 0) return action.costs;
-    return { ...action.costs, mana, stamina: action.costs.stamina + cursedTax };
+    if (mana === action.costs.mana && cursedTax === 0) return applyStatusCosts(action.costs);
+    return applyStatusCosts({ ...action.costs, mana, stamina: action.costs.stamina + cursedTax });
 }
 
 /**

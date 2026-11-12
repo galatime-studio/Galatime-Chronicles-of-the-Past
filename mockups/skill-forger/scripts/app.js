@@ -42,6 +42,11 @@
         ['interrupt', 'Interromper ação'],
         ['reflect', 'Refletir dano fixo'],
         ['spend_steal', 'Roubar gasto de recurso'],
+        ['evade_next', 'Esquiva e riposta'],
+        ['damage_redirect', 'Redirecionar dano'],
+        ['cost_multiplier', 'Desconto de custo'],
+        ['end_cost', 'Custo ao terminar'],
+        ['on_death_blast', 'Explosão ao cair'],
     ];
     var TARGET_LABELS = {
         any_one: 'qualquer personagem', enemies_all: 'todos os inimigos',
@@ -441,6 +446,9 @@
         if (form.elements.instability_self_damage) form.elements.instability_self_damage.value = skill.instability?.self_damage ?? '';
         if (form.elements.cooldown_reset_status) form.elements.cooldown_reset_status.value = skill.cooldown_reset?.status ?? '';
         if (form.elements.cooldown_reset_amount) form.elements.cooldown_reset_amount.value = skill.cooldown_reset?.amount ?? '';
+        if (form.elements.damage_taken_scaling_per_point) form.elements.damage_taken_scaling_per_point.value = skill.damage_taken_scaling?.per_point ?? '';
+        if (form.elements.element_effectiveness_weak) form.elements.element_effectiveness_weak.value = skill.element_effectiveness?.weak ?? '';
+        if (form.elements.element_effectiveness_resist) form.elements.element_effectiveness_resist.value = skill.element_effectiveness?.resist ?? '';
         updatePowerFields(false);
         if (form.elements.power_kind.value === 'random' && form.elements.power_max) form.elements.power_max.value = power?.max ?? form.elements.power_value.value;
         if (form.elements.power_kind.value === 'attribute' && form.elements.power_stat) form.elements.power_stat.value = skill.power_scaling?.stat || 'speed';
@@ -919,6 +927,11 @@
             if (effect.interrupt) notes.push('Interrupção: ' + Math.round(effect.interrupt.chance * 100) + '% de falhar a ação vigiada');
             if (effect.reflect) notes.push('Reflete ' + effect.reflect.power + ' PWR fixo');
             if (effect.spend_steal) notes.push('Rouba ' + (effect.spend_steal.amount ? effect.spend_steal.amount : Math.round((effect.spend_steal.percent || 0) * 100) + '%') + ' do próximo gasto');
+            if (effect.evade_next) notes.push('Esquiva o próximo golpe (' + (effect.evade_next.damage_types || ['qualquer']).join('/') + ') e riposta ' + (effect.evade_next.power || 0) + ' PWR');
+            if (effect.damage_redirect) notes.push('Cobre os aliados e recebe o dano no lugar deles');
+            if (effect.cost_multiplier) notes.push('Custos ×' + (effect.cost_multiplier.mana ?? 1) + ' mana / ×' + (effect.cost_multiplier.stamina ?? 1) + ' stamina');
+            if (effect.end_cost) notes.push('Ao terminar paga ' + effect.end_cost.percent_of_max + '% do recurso (falta vai à vida)');
+            if (effect.on_death_blast) notes.push('Ao cair devolve ' + effect.on_death_blast.power + ' PWR');
             if (effect.confuse) {
                 var chance = effect.confusion_chance === undefined || effect.confusion_chance === null
                     ? 50 : Math.round(Number(effect.confusion_chance) * 100);
@@ -1255,6 +1268,21 @@
             };
         } else {
             delete skill.cooldown_reset;
+        }
+
+        var damageTakenPerPoint = form.elements.damage_taken_scaling_per_point
+            ? numberValue(form.elements.damage_taken_scaling_per_point.value, 0) : 0;
+        if (damageTakenPerPoint > 0) skill.damage_taken_scaling = { per_point: damageTakenPerPoint };
+        else delete skill.damage_taken_scaling;
+
+        var effectivenessWeak = form.elements.element_effectiveness_weak
+            ? numberValue(form.elements.element_effectiveness_weak.value, 1) : 1;
+        var effectivenessResist = form.elements.element_effectiveness_resist
+            ? numberValue(form.elements.element_effectiveness_resist.value, 1) : 1;
+        if (effectivenessWeak !== 1 || effectivenessResist !== 1) {
+            skill.element_effectiveness = { weak: effectivenessWeak, resist: effectivenessResist };
+        } else {
+            delete skill.element_effectiveness;
         }
         syncBonusVs(skill);
 
@@ -1618,6 +1646,35 @@
                 + '<label class="effect-field"><span>Valor fixo</span><input class="control" data-effect-field="spend_steal.amount" type="number" min="0" value="' + escapeHtml(steal.amount ?? '') + '" placeholder="0"><small>Substitui a percentagem quando preenchido.</small></label>'
                 + '<label class="effect-field"><span>Teto por gasto</span><input class="control" data-effect-field="spend_steal.max" type="number" min="0" value="' + escapeHtml(steal.max ?? '') + '" placeholder="—"></label>';
         }
+        if (pattern === 'evade_next') {
+            var evade = effect.evade_next || {};
+            return '<label class="effect-field"><span>Canais esquivados</span><input class="control" data-effect-field="evade_next.damage_types" value="' + escapeHtml(listValue(evade.damage_types)) + '" placeholder="physical"><small>Lista separada por vírgulas; vazio esquiva qualquer canal.</small></label>'
+                + '<label class="effect-field"><span>Dano da riposta</span><input class="control" data-effect-field="evade_next.power" type="number" min="0" value="' + escapeHtml(evade.power ?? '') + '" placeholder="10"></label>'
+                + '<label class="effect-field"><span>Chance</span><div class="input-suffix"><input class="control" data-effect-field="evade_next.chance" type="number" min="0" max="100" value="' + escapeHtml(percentOf(evade.chance ?? 1)) + '" placeholder="100"><span>%</span></div></label>';
+        }
+        if (pattern === 'damage_redirect') {
+            var redirect = effect.damage_redirect || {};
+            return '<label class="effect-field"><span>Quem protege</span><select class="control" data-effect-field="damage_redirect.scope">'
+                + optionMarkup('allies_all', 'Todos os aliados', (redirect.scope || 'allies_all') === 'allies_all')
+                + optionMarkup('allies_lane', 'Só a linha do portador', redirect.scope === 'allies_lane') + '</select></label>'
+                + '<small>O dano destinado aos aliados protegidos é desviado para o portador.</small>';
+        }
+        if (pattern === 'cost_multiplier') {
+            var costMultiplier = effect.cost_multiplier || {};
+            return '<label class="effect-field"><span>Multiplicador de mana</span><div class="input-suffix"><input class="control" data-effect-field="cost_multiplier.mana" type="number" min="0" max="1" step="0.05" value="' + escapeHtml(costMultiplier.mana ?? 1) + '"><span>×</span></div></label>'
+                + '<label class="effect-field"><span>Multiplicador de stamina</span><div class="input-suffix"><input class="control" data-effect-field="cost_multiplier.stamina" type="number" min="0" max="1" step="0.05" value="' + escapeHtml(costMultiplier.stamina ?? 1) + '"><span>×</span></div><small>Os custos são arredondados para cima.</small></label>';
+        }
+        if (pattern === 'end_cost') {
+            var endCost = effect.end_cost || {};
+            return '<label class="effect-field"><span>Recurso</span><select class="control" data-effect-field="end_cost.resource">'
+                + optionMarkup('stamina', 'Stamina', (endCost.resource || 'stamina') === 'stamina')
+                + optionMarkup('mana', 'Mana', endCost.resource === 'mana') + '</select></label>'
+                + '<label class="effect-field"><span>Percentagem do máximo</span><div class="input-suffix"><input class="control" data-effect-field="end_cost.percent_of_max" type="number" min="0" max="100" value="' + escapeHtml(endCost.percent_of_max ?? '') + '" placeholder="50"><span>%</span></div><small>O que faltar no recurso é pago em vida.</small></label>';
+        }
+        if (pattern === 'on_death_blast') {
+            var deathBlast = effect.on_death_blast || {};
+            return '<label class="effect-field"><span>Poder da explosão</span><input class="control" data-effect-field="on_death_blast.power" type="number" min="0" value="' + escapeHtml(deathBlast.power ?? 40) + '"><small>Dano físico fixo a quem desferiu o golpe direto que derrubou o portador.</small></label>';
+        }
         if (pattern === 'deferred') {
             var deferred = effect.deferred_damage || {};
             return '<label class="effect-field"><span>Dano</span><input class="control" data-effect-field="deferred_damage.amount" type="number" min="0" value="' + escapeHtml(deferred.amount ?? 12) + '"><small>O golpe cai mais tarde, não agora.</small></label>'
@@ -1922,6 +1979,11 @@
         if (effect.interrupt) return 'interrupt';
         if (effect.reflect) return 'reflect';
         if (effect.spend_steal) return 'spend_steal';
+        if (effect.evade_next) return 'evade_next';
+        if (effect.damage_redirect) return 'damage_redirect';
+        if (effect.cost_multiplier) return 'cost_multiplier';
+        if (effect.end_cost) return 'end_cost';
+        if (effect.on_death_blast) return 'on_death_blast';
         if (effect.self_upkeep) return 'upkeep';
         if (effect.regen_per_turn) return 'regen_turn';
         if (effect.resource_transfer) return 'transfer';
@@ -2040,6 +2102,11 @@
         if (pattern === 'interrupt') properties.interrupt = { chance: 0.5, actions: ['skill', 'weapon'] };
         if (pattern === 'reflect') properties.reflect = { power: 8, chance: 1, consume: false };
         if (pattern === 'spend_steal') properties.spend_steal = { resource: 'mana', percent: 0.25, max: 15 };
+        if (pattern === 'evade_next') properties.evade_next = { damage_types: ['physical'], power: 10, chance: 1 };
+        if (pattern === 'damage_redirect') properties.damage_redirect = { scope: 'allies_all' };
+        if (pattern === 'cost_multiplier') properties.cost_multiplier = { mana: 0.5, stamina: 0.5 };
+        if (pattern === 'end_cost') properties.end_cost = { resource: 'stamina', percent_of_max: 50, shortfall: 'hp' };
+        if (pattern === 'on_death_blast') properties.on_death_blast = { power: 40 };
         skill.effects.push(Model.makeEffect(skill.id, pattern, applyTo, effectIndex - 1, properties));
         state.openScopes[skill.id] = state.openScopes[skill.id] || {};
         state.openScopes[skill.id][scope] = true;
@@ -2080,7 +2147,7 @@
         if (!skill || !card) return;
         var effect = skill.effects.find(function (item) { return item.effect_id === card.dataset.effectId; });
         if (!effect) return;
-        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal'].forEach(function (key) { delete effect[key]; });
+        ['buff', 'debuff', 'resource_regen', 'regen_per_turn', 'regen_per_turn_percent', 'random_resource_regen', 'random_resource_regen_per_turn', 'resource_regen_percent_of_max', 'heal_percent_of_max', 'spend_trigger', 'upgrade_vs_status', 'element_modulation', 'expire_on_elements', 'cleanse_per_turn', 'shield', 'charges', 'trip_on_action', 'also_remove_status', 'resource_drain', 'resource_transfer', 'damage', 'damage_per_turn', 'damage_variance', 'cleanse', 'cleanse_all', 'dispel', 'dispel_all', 'dispel_status', 'deferred_damage', 'echo', 'move', 'self_upkeep', 'rewind', 'turn_postpone', 'on_miss_move', 'lane_change_free', 'expires', 'weather', 'projectile_accuracy', 'projectile_mark', 'ranged_evasion', 'projectile_reroll', 'detonate_on_turn', 'chain_detonation', 'conductor', 'interrupt', 'reflect', 'spend_steal', 'evade_next', 'damage_redirect', 'cost_multiplier', 'end_cost', 'on_death_blast'].forEach(function (key) { delete effect[key]; });
         var type = select.value;
         if (type === 'regen') effect.resource_regen = { hp: 15 };
         if (type === 'regen_turn') effect.regen_per_turn = { hp: 10 };
@@ -2120,6 +2187,11 @@
         if (type === 'interrupt') effect.interrupt = { chance: 0.5, actions: ['skill', 'weapon'] };
         if (type === 'reflect') effect.reflect = { power: 8, chance: 1, consume: false };
         if (type === 'spend_steal') effect.spend_steal = { resource: 'mana', percent: 0.25, max: 15 };
+        if (type === 'evade_next') effect.evade_next = { damage_types: ['physical'], power: 10, chance: 1 };
+        if (type === 'damage_redirect') effect.damage_redirect = { scope: 'allies_all' };
+        if (type === 'cost_multiplier') effect.cost_multiplier = { mana: 0.5, stamina: 0.5 };
+        if (type === 'end_cost') effect.end_cost = { resource: 'stamina', percent_of_max: 50, shortfall: 'hp' };
+        if (type === 'on_death_blast') effect.on_death_blast = { power: 40 };
         // O nome do estado segue a operação, mas só enquanto o autor não o
         // tiver escrito por si.
         if (Object.values(Model.PATTERN_STATUS_NAMES || {}).includes(effect.status_effect)) {
@@ -2199,7 +2271,7 @@
                     || key === 'upgrade_vs_status.extra_turns_chance'
                     || key === 'detonate_on_turn.turn_skip_chance'
                     || key === 'interrupt.chance' || key === 'reflect.chance'
-                    || key === 'spend_steal.percent') {
+                    || key === 'spend_steal.percent' || key === 'evade_next.chance') {
                     // Mostram-se em percentagem mas guardam-se como fração.
                     var fractionLeaf = key.split('.');
                     var fractionParent = readNested(effect, fractionLeaf.slice(0, -1).join('.')) || {};
@@ -2216,7 +2288,8 @@
                 } else if (key === 'trip_on_action.actions' || key === 'trip_on_action.damage_types'
                     || key === 'charges.release.prevent_actions'
                     || key === 'trip_on_action.spawn.prevent_actions'
-                    || key === 'conductor.grounded_by_elements' || key === 'interrupt.actions') {
+                    || key === 'conductor.grounded_by_elements' || key === 'interrupt.actions'
+                    || key === 'evade_next.damage_types') {
                     var commaLeaf = key.split('.');
                     var commaName = commaLeaf[commaLeaf.length - 1];
                     var commaList = String(field.value || '').split(',').map(function (entry) { return entry.trim(); }).filter(Boolean);
@@ -2355,7 +2428,7 @@
                 delete effect.random_buff;
             }
             // Cascas vazias das novas mecânicas também somem.
-            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent'], ['condition'], ['turn_postpone'], ['turn_postpone', 'condition'], ['on_miss_move'], ['weather'], ['weather', 'element_effect_multipliers'], ['element_power'], ['projectile_accuracy'], ['projectile_mark'], ['projectile_reroll'], ['detonate_on_turn'], ['chain_detonation'], ['conductor'], ['interrupt'], ['reflect'], ['spend_steal']].forEach(function (path) {
+            [['trip_on_action'], ['upgrade_vs_status'], ['charges'], ['spend_trigger'], ['cleanse_per_turn'], ['shield'], ['trip_on_action', 'spawn'], ['upgrade_vs_status', 'extra_regen_per_turn_percent'], ['condition'], ['turn_postpone'], ['turn_postpone', 'condition'], ['on_miss_move'], ['weather'], ['weather', 'element_effect_multipliers'], ['element_power'], ['projectile_accuracy'], ['projectile_mark'], ['projectile_reroll'], ['detonate_on_turn'], ['chain_detonation'], ['conductor'], ['interrupt'], ['reflect'], ['spend_steal'], ['evade_next'], ['damage_redirect'], ['cost_multiplier'], ['end_cost'], ['on_death_blast']].forEach(function (path) {
                 var holder = effect;
                 var valid = true;
                 for (var index = 0; index < path.length; index += 1) {
@@ -2751,6 +2824,20 @@
         if (skill.bonus_vs_hp_below) result.bonus_vs_hp_below = Model.clone(skill.bonus_vs_hp_below);
         if (skill.bonus_vs_status) result.bonus_vs_status = Model.clone(skill.bonus_vs_status);
         if (skill.bonus_per_charge) result.bonus_per_charge = Model.clone(skill.bonus_per_charge);
+        if (skill.kind) result.kind = skill.kind;
+        if (skill.sfx) result.sfx = skill.sfx;
+        if (skill.recoil) result.recoil = Model.clone(skill.recoil);
+        if (skill.friendly_fire) result.friendly_fire = Model.clone(skill.friendly_fire);
+        if (skill.backlane_splash) result.backlane_splash = Model.clone(skill.backlane_splash);
+        if (skill.no_space_recoil) result.no_space_recoil = Model.clone(skill.no_space_recoil);
+        if (skill.chain) result.chain = Model.clone(skill.chain);
+        if (skill.shrapnel) result.shrapnel = Model.clone(skill.shrapnel);
+        if (skill.instability) result.instability = Model.clone(skill.instability);
+        if (Number(skill.control_immune_damage) > 0) result.control_immune_damage = Number(skill.control_immune_damage);
+        if (skill.on_kill_detonation) result.on_kill_detonation = Model.clone(skill.on_kill_detonation);
+        if (skill.cooldown_reset) result.cooldown_reset = Model.clone(skill.cooldown_reset);
+        if (skill.damage_taken_scaling) result.damage_taken_scaling = Model.clone(skill.damage_taken_scaling);
+        if (skill.element_effectiveness) result.element_effectiveness = Model.clone(skill.element_effectiveness);
         if (skill.bonus_vs_elements && Object.keys(skill.bonus_vs_elements).length) {
             result.bonus_vs_elements = Model.clone(skill.bonus_vs_elements);
         }

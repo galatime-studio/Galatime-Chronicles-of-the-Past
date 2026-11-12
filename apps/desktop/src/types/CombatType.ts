@@ -339,6 +339,16 @@ export interface CombatEffectInstance {
     reflect?: CombatReflectSpec | null;
     /** Steals part of the bearer's next resource spend for the status source. */
     spendSteal?: CombatSpendStealSpec | null;
+    /** A one-shot dodge plus riposte against a matching damage channel. */
+    evadeNext?: { damageTypes: DamageType[] | null; power: number; chance: number } | null;
+    /** Redirects damage aimed at protected allies onto this unit. */
+    damageRedirect?: { scope: 'allies_all' | 'allies_lane' } | null;
+    /** Multipliers the bearer applies to its own action costs. */
+    costMultiplier?: { mana?: number; stamina?: number } | null;
+    /** Price paid when the status ends (stamina, HP covering the shortfall). */
+    endCost?: { resource: CombatResourceId; percentOfMax: number; shortfall: 'hp' } | null;
+    /** Direct-damage retaliation when the bearer falls. */
+    onDeathBlast?: { power: number } | null;
     /** Turn count when the status landed, used by detonations to scale. */
     appliedTurnCount?: number;
 }
@@ -701,6 +711,10 @@ export interface CombatAction {
     onKillDetonation?: CombatOnKillDetonationSpec | null;
     /** Cuts the caster's own cooldowns when a hit target carries a status. */
     cooldownReset?: { status: string; amount: number } | null;
+    /** Adds accumulated damage taken to the hit's power (`retaliation`). */
+    damageTakenScaling?: { perPoint: number; max?: number } | null;
+    /** Weak/resist multiplier applied after normal element effectiveness. */
+    elementEffectiveness?: { weak: number; resist: number } | null;
 }
 
 /**Damage-channel modifiers folded from a defender's passive abilities.

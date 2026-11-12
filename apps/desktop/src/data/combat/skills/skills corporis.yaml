@@ -1,0 +1,522 @@
+# Corporis — physicality. No mana: every skill pays stamina only.
+# Base forms only; the tree derives the _II … _V tiers from element_id,
+# learning_requirements and learning_cost.
+
+skills:
+  # Strike lane — Punch & Kick
+  - id: punch
+    name: Punch
+    description: "The caster drives a straight punch; one physical hit deals power 10 at 95% accuracy."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 10 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 0, stamina: 4, cooldown: 0 }
+
+  - id: kick
+    name: Kick
+    description: "The caster snaps a balanced kick into the target; one physical hit deals power 9 at 95% accuracy."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 9 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 0, stamina: 4, cooldown: 0 }
+
+  - id: flurry
+    name: Flurry
+    description: "The caster pours several quick punches into the target; three physical hits each have power 4 and 95% accuracy."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [punch] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 4 }
+    accuracy: 95
+    hit_count: 3
+    costs: { mana: 0, stamina: 6, cooldown: 0 }
+
+  - id: bone_crusher
+    name: Bone Crusher
+    description: "The caster puts their whole body behind one fist; one physical hit deals power 16 at 90% accuracy."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [punch] }
+    learning_cost: { experience_points: 3 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 16 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 0, stamina: 10, cooldown: 1 }
+
+  - id: uppercut
+    name: Uppercut
+    description: "The caster rises into a strike beneath the target's chin; the hit has a 20% chance to stun for 1 turn."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [punch] }
+    learning_cost: { experience_points: 1 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 12 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 0, stamina: 6, cooldown: 0 }
+    effects:
+      - effect_id: uppercut_stun
+        status_effect: Stunned
+        apply_to: target
+        turns: 1
+        polarity: negative
+        effect_hit_chance: 0.2
+        prevent_actions: [attack, skill, weapon]
+
+  - id: fist_storm
+    name: Fist Storm
+    description: "The caster combines a fast flurry with a rising finish; five physical hits each have power 3 and 90% accuracy, and the final hit may stun for 1 turn."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [flurry, uppercut] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 3 }
+    accuracy: 90
+    hit_count: 5
+    costs: { mana: 0, stamina: 11, cooldown: 1 }
+    effects:
+      - effect_id: fist_storm_stun
+        status_effect: Stunned
+        apply_to: target
+        turns: 1
+        polarity: negative
+        effect_hit_chance: 0.2
+        prevent_actions: [attack, skill, weapon]
+
+  - id: quick_kicks
+    name: Quick Kicks
+    description: "The caster drives a rapid sequence of kicks into the target; three physical hits each have power 4 and 90% accuracy."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [kick] }
+    learning_cost: { experience_points: 2 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 4 }
+    accuracy: 90
+    hit_count: 3
+    costs: { mana: 0, stamina: 6, cooldown: 0 }
+
+  - id: heavy_kick
+    name: Heavy Kick
+    description: "The caster commits their weight to one crushing kick; one physical hit deals power 16 at 90% accuracy."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [kick] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 16 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 0, stamina: 10, cooldown: 1 }
+
+  - id: ripple_punch
+    name: Ripple Punch
+    description: "The caster lands a breath-guided punch that resonates with the target; deals power 12, with a ×1.25 damage modifier against Corporis weakness and ×0.75 against Corporis resistance after normal elemental effectiveness."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [punch, steady_breath] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 12 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 0, stamina: 10, cooldown: 0 }
+    element_effectiveness: { weak: 1.25, resist: 0.75 }
+
+  - id: perfect_ripple_punch
+    name: Perfect Ripple Punch
+    description: "The caster releases a fully focused ripple punch; deals power 18, with a ×1.5 damage modifier against Corporis weakness and ×0.5 against Corporis resistance after normal elemental effectiveness."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [ripple_punch, bone_crusher] }
+    learning_cost: { experience_points: 7 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 18 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 0, stamina: 14, cooldown: 1 }
+    element_effectiveness: { weak: 1.5, resist: 0.5 }
+
+  - id: ripple_kick
+    name: Ripple Kick
+    description: "The caster sends a breath-guided kick through the target's guard; deals power 12 and ignores 25% of the target's PDEF."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [kick, steady_breath] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 12 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 0, stamina: 10, cooldown: 0 }
+    defense_pierce: 0.25
+
+  - id: perfect_ripple_kick
+    name: Perfect Ripple Kick
+    description: "The caster drives a fully focused ripple kick through the target's guard; deals power 18 and ignores 50% of the target's PDEF."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [ripple_kick, heavy_kick] }
+    learning_cost: { experience_points: 7 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 18 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 0, stamina: 14, cooldown: 1 }
+    defense_pierce: 0.5
+
+  # Guard lane
+  - id: guard
+    name: Guard
+    description: "The caster settles into a guarded stance; PDEF +6 and MDEF +2 for 2 turns."
+    element_id: corporis
+    sfx: corporis
+    kind: buff
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: self
+    costs: { mana: 0, stamina: 5, cooldown: 0 }
+    effects:
+      - effect_id: guard
+        status_effect: Guarded
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff: { physical_defense: 6, magical_defense: 2 }
+
+  - id: counter_stance
+    name: Counter Stance
+    description: "The caster waits for an opening and answers an attack; dodges the next physical attack and counters it with a counter-attack."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [guard] }
+    learning_cost: { experience_points: 2 }
+    targeting: self
+    costs: { mana: 0, stamina: 6, cooldown: 0 }
+    effects:
+      - effect_id: counter_stance
+        status_effect: Counter Stance
+        apply_to: self
+        turns: 2
+        polarity: positive
+        evade_next: { damage_types: [physical], power: 10, chance: 1 }
+
+  - id: iron_guard
+    name: Iron Guard
+    description: "The caster braces behind a locked elbow; PDEF +10 and MDEF +6 for 2 turns."
+    element_id: corporis
+    sfx: corporis
+    kind: buff
+    learning_requirements: { required_attack_ids: [guard] }
+    learning_cost: { experience_points: 3 }
+    targeting: self
+    costs: { mana: 0, stamina: 12, cooldown: 0 }
+    effects:
+      - effect_id: iron_guard
+        status_effect: Iron Guard
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff: { physical_defense: 10, magical_defense: 6 }
+
+  - id: retaliation
+    name: Retaliation
+    description: "The caster retaliates and uses the accumulated damage against the target; PDEF +10, the damage is proportional to how much damage was taken during this fight."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [counter_stance] }
+    learning_cost: { experience_points: 4 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 0 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 0, stamina: 12, cooldown: 0 }
+    damage_taken_scaling: { per_point: 0.5 }
+    effects:
+      - effect_id: retaliation_guard
+        status_effect: Retaliating
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff: { physical_defense: 10 }
+
+  - id: bulwark
+    name: Bulwark
+    description: "The caster puts their body between an ally and danger; for 3 turns, the caster takes the damage instead of the ally."
+    element_id: corporis
+    sfx: corporis
+    kind: utility
+    learning_requirements: { required_attack_ids: [iron_guard] }
+    learning_cost: { experience_points: 4 }
+    targeting: self
+    costs: { mana: 0, stamina: 14, cooldown: 0 }
+    effects:
+      - effect_id: bulwark
+        status_effect: Bulwark
+        apply_to: self
+        turns: 3
+        polarity: positive
+        damage_redirect: { scope: allies_all }
+
+  - id: adamant_guard
+    name: Adamant Guard
+    description: "The caster locks into an unyielding defensive stance; PDEF +18 and MDEF +12 for 3 turns."
+    element_id: corporis
+    sfx: corporis
+    kind: buff
+    learning_requirements: { required_attack_ids: [iron_guard] }
+    learning_cost: { experience_points: 6 }
+    targeting: self
+    costs: { mana: 0, stamina: 20, cooldown: 1 }
+    effects:
+      - effect_id: adamant_guard
+        status_effect: Adamant Guard
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 18, magical_defense: 12 }
+
+  - id: last_stand
+    name: Last Stand
+    description: "Before the bearer falls, it deals a massive blow to the target; only attacks if the bearer dies from direct damage caused by an entity of the other party. This effect lasts 3 turns."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [retaliation] }
+    learning_cost: { experience_points: 7 }
+    targeting: self
+    costs: { mana: 0, stamina: 22, cooldown: 2 }
+    effects:
+      - effect_id: last_stand
+        status_effect: Last Stand
+        apply_to: self
+        turns: 3
+        polarity: positive
+        on_death_blast: { power: 40 }
+
+  # Breath / Fury lane
+  - id: steady_breath
+    name: Steady Breath
+    description: "The caster settles their breathing and regains composure; restores 5% SN and ACC +5% for 2 turns."
+    element_id: corporis
+    sfx: corporis
+    kind: utility
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 1 }
+    targeting: self
+    costs: { mana: 0, stamina: 4, cooldown: 0 }
+    effects:
+      - effect_id: steady_breath_regen
+        status_effect: Steady Breath
+        apply_to: self
+        turns: 1
+        polarity: positive
+        resource_regen_percent_of_max: { stamina: 5 }
+      - effect_id: steady_breath_acc
+        status_effect: Steady Breath
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff: { accuracy: 5 }
+
+  - id: rage
+    name: Rage
+    description: "The caster lets their battle fury rise; PATK +6 and MATK +2 for 3 turns."
+    element_id: corporis
+    sfx: corporis
+    kind: buff
+    learning_requirements: { required_attack_ids: [] }
+    learning_cost: { experience_points: 2 }
+    targeting: self
+    costs: { mana: 0, stamina: 10, cooldown: 0 }
+    effects:
+      - effect_id: rage
+        status_effect: Rage
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { physical_attack: 6, magical_attack: 2 }
+
+  - id: deep_breath
+    name: Deep Breath
+    description: "The caster draws in a deeper, more measured breath; restores 5% SN and ACC +10% for 3 turns."
+    element_id: corporis
+    sfx: corporis
+    kind: buff
+    learning_requirements: { required_attack_ids: [steady_breath] }
+    learning_cost: { experience_points: 3 }
+    targeting: self
+    costs: { mana: 0, stamina: 10, cooldown: 0 }
+    effects:
+      - effect_id: deep_breath_regen
+        status_effect: Deep Breath
+        apply_to: self
+        turns: 1
+        polarity: positive
+        resource_regen_percent_of_max: { stamina: 5 }
+      - effect_id: deep_breath_acc
+        status_effect: Deep Breath
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { accuracy: 10 }
+
+  - id: battle_fury
+    name: Battle Fury
+    description: "The caster channels their fury into every strike; PATK +10 and MATK +8 for 3 turns."
+    element_id: corporis
+    sfx: corporis
+    kind: buff
+    learning_requirements: { required_attack_ids: [rage] }
+    learning_cost: { experience_points: 5 }
+    targeting: self
+    costs: { mana: 0, stamina: 16, cooldown: 1 }
+    effects:
+      - effect_id: battle_fury
+        status_effect: Battle Fury
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { physical_attack: 10, magical_attack: 8 }
+
+  - id: iron_lungs
+    name: Iron Lungs
+    description: "The caster draws a deep breath and keeps it steady; regenerates 5% SN each turn for 3 turns."
+    element_id: corporis
+    sfx: corporis
+    kind: buff
+    learning_requirements: { required_attack_ids: [steady_breath] }
+    learning_cost: { experience_points: 3 }
+    targeting: self
+    costs: { mana: 0, stamina: 9, cooldown: 0 }
+    effects:
+      - effect_id: iron_lungs
+        status_effect: Iron Lungs
+        apply_to: self
+        turns: 3
+        polarity: positive
+        regen_per_turn_percent: { stamina: 5 }
+
+  - id: footwork
+    name: Footwork
+    description: "The caster moves lightly and finds a smoother rhythm; SPD +4 and EVASION +5 for 3 turns."
+    element_id: corporis
+    sfx: corporis
+    kind: buff
+    learning_requirements: { required_attack_ids: [steady_breath] }
+    learning_cost: { experience_points: 3 }
+    targeting: self
+    costs: { mana: 0, stamina: 10, cooldown: 0 }
+    effects:
+      - effect_id: footwork
+        status_effect: Footwork
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { speed: 4, evasion: 5 }
+
+  - id: second_breath
+    name: Second Breath
+    description: "The caster gathers their remaining strength to mend their wounds; restores 10% HP."
+    element_id: corporis
+    sfx: corporis
+    kind: heal
+    learning_requirements: { required_attack_ids: [steady_breath] }
+    learning_cost: { experience_points: 3 }
+    targeting: self
+    costs: { mana: 0, stamina: 14, cooldown: 1 }
+    effects:
+      - effect_id: second_breath
+        status_effect: Second Breath
+        apply_to: self
+        turns: 1
+        polarity: positive
+        heal_percent_of_max: 10
+
+  - id: adrenaline
+    name: Adrenaline
+    description: "The caster surges forward on instinct; for 3 turns EVASION +15 and mana & stamina skill costs are halved, rounded up. When it ends, the bearer loses stamina equal to 50% of maximum, and any shortfall is lost as HP. The activation cost is not discounted."
+    element_id: corporis
+    sfx: corporis
+    kind: buff
+    learning_requirements: { required_attack_ids: [battle_fury, iron_lungs] }
+    learning_cost: { experience_points: 4 }
+    targeting: self
+    costs: { mana: 0, stamina: 12, cooldown: 2 }
+    effects:
+      - effect_id: adrenaline
+        status_effect: Adrenaline
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { evasion: 15 }
+        cost_multiplier: { mana: 0.5, stamina: 0.5 }
+        end_cost: { resource: stamina, percent_of_max: 50, shortfall: hp }

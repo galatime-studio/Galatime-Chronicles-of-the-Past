@@ -55,6 +55,8 @@ const PUBLIC_SKILL_FIELDS = [
     'control_immune_damage',
     'on_kill_detonation',
     'cooldown_reset',
+    'damage_taken_scaling',
+    'element_effectiveness',
     'sfx',
 ] as const;
 
@@ -153,6 +155,11 @@ const PUBLIC_EFFECT_FIELDS = [
     'interrupt',
     'reflect',
     'spend_steal',
+    'evade_next',
+    'damage_redirect',
+    'cost_multiplier',
+    'end_cost',
+    'on_death_blast',
 ] as const;
 
 function clone(value: unknown): unknown {

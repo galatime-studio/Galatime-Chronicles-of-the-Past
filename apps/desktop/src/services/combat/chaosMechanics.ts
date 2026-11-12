@@ -86,6 +86,9 @@ export function dealFlatDamage(
 
     const healthDamage = Math.max(0, Math.round(absorbed.leftover));
     target.currentHp = Math.max(0, target.currentHp - healthDamage);
+    if (healthDamage > 0) {
+        target.eventCounts.damage_taken = (target.eventCounts.damage_taken ?? 0) + healthDamage;
+    }
 
     const resolution: AttackResolution = {
         attackerId: source.id,

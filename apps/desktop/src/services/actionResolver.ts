@@ -26,6 +26,7 @@ import type {
     CombatRandom,
     CombatState,
     CombatUnit,
+    DamageType,
 } from '../types/CombatType';
 import { asRecord, readBoolean, readNumber, readString } from '../utils/combatUtils';
 import type { AbilityTriggerContext } from './combat/abilityContext';
@@ -312,6 +313,53 @@ function resolveFlee(context: ActionResolutionContext, events: CombatEvent[]): C
     return null;
 }
 
+/** Consumes a live dodge status that answers this damage channel. */
+function consumeEvade(
+    target: CombatUnit,
+    damageType: DamageType,
+    random: CombatRandom,
+    events: CombatEvent[],
+): CombatEffectInstance | null {
+    const evade = target.effects.find((effect) => effect.evadeNext
+        && (!effect.evadeNext.damageTypes?.length || effect.evadeNext.damageTypes.includes(damageType))
+        && random() < effect.evadeNext.chance);
+    if (!evade) return null;
+
+    target.effects = target.effects.filter((effect) => effect !== evade);
+    events.push({ type: 'effect_expired', unitId: target.id, effectId: evade.effectId });
+    return evade;
+}
+
+/** A resolution for a hit that was dodged before it could land. */
+function makeMissResolution(actor: CombatUnit, target: CombatUnit, action: CombatAction): AttackResolution {
+    return {
+        attackerId: actor.id,
+        targetId: target.id,
+        actionId: action.id,
+        isHit: false,
+        attackMultiplier: 1,
+        immune: false,
+        hits: 0,
+        attackValue: 0,
+        defenseValue: 0,
+        power: action.power,
+        damageType: action.damageType,
+        elementMultiplier: 1,
+        variance: 1,
+        positionModifier: 1,
+        defenseReduction: 0,
+        baseDamage: 0,
+        finalDamage: 0,
+        shielded: 0,
+        critChance: 0,
+        isCrit: false,
+        hitChance: action.accuracy,
+        targetHpBefore: target.currentHp,
+        targetHpAfter: target.currentHp,
+        appliedEffectIds: [],
+    };
+}
+
 /**
  * Rolls one target's damage and records the whole chain.
  *
@@ -325,29 +373,32 @@ function buildResolution(
 ): AttackResolution {
     const { actor, elementIndex, random, state } = context;
     const action = options.action ?? context.action;
+    // A `bulwark` ally takes the blow aimed at its protected friend.
+    const cover = findCover(state.units, target);
+    const recipient = cover ?? target;
 
     const result = resolveDamage({
         action,
         attempts: options.attempts,
         attackerStats: effectiveStats(actor),
-        defenderStats: effectiveStats(target),
-        defenderElementIds: target.elementIds,
-        defender: target,
+        defenderStats: effectiveStats(recipient),
+        defenderElementIds: recipient.elementIds,
+        defender: recipient,
         attacker: actor,
         weather: state.weather ?? null,
         elementIndex,
         attackerLine: actor.line,
-        defenderLine: target.line,
-        sameSide: actor.side === target.side,
-        defenderDefending: target.defending,
+        defenderLine: recipient.line,
+        sameSide: actor.side === recipient.side,
+        defenderDefending: recipient.defending,
         // The hour of the day decides what a solar or lunar action is worth.
         timePhase: effectiveTimePhase(state),
         // The wounded-target bonus reads how much of its health is left.
-        defenderHpFraction: hpFraction(target),
+        defenderHpFraction: hpFraction(recipient),
         // A status such as Blood Moon can add damage against wounded targets.
-        attackerTraits: bonusVsHpBelowFromEffects(actor, hpFraction(target)),
+        attackerTraits: bonusVsHpBelowFromEffects(actor, hpFraction(recipient)),
         modifier: foldAttackModifiers(
-            target,
+            recipient,
             { damageType: action.damageType, elementId: action.elementId },
             random,
             state.units,
@@ -357,27 +408,40 @@ function buildResolution(
         random,
     });
 
-    const targetHpBefore = target.currentHp;
+    const targetHpBefore = recipient.currentHp;
     // A live status shield (Condensation, and later the ice walls) soaks the
     // hit before the holder's health pays: shields absorb first, health next.
     const damageDealt = Math.max(0, result.finalDamage);
-    const shield = absorbShieldDamage(target, damageDealt, random);
+    const shield = absorbShieldDamage(recipient, damageDealt, random);
     const healthDamage = shield.leftover;
     if (healthDamage > 0) {
-        target.currentHp = Math.max(0, target.currentHp - healthDamage);
+        recipient.currentHp = Math.max(0, recipient.currentHp - healthDamage);
+        recipient.eventCounts.damage_taken = (recipient.eventCounts.damage_taken ?? 0) + healthDamage;
     }
 
     return {
         attackerId: actor.id,
-        targetId: target.id,
+        targetId: recipient.id,
         actionId: action.id,
         ...result,
         finalDamage: healthDamage,
         shielded: damageDealt - healthDamage,
         targetHpBefore,
-        targetHpAfter: target.currentHp,
+        targetHpAfter: recipient.currentHp,
         appliedEffectIds: [],
     };
+}
+
+/** The `bulwark` unit that steps in front of `target`, if any. */
+function findCover(units: readonly CombatUnit[], target: CombatUnit): CombatUnit | null {
+    if (target.effects.some((effect) => effect.damageRedirect)) return null;
+    return units.find((unit) => (
+        unit.id !== target.id
+        && unit.status === 'alive'
+        && unit.side === target.side
+        && unit.effects.some((effect) => effect.damageRedirect
+            && (effect.damageRedirect.scope === 'allies_all' || unit.line === target.line))
+    )) ?? null;
 }
 
 /** How much of its maximum health a unit still has, as a fraction. */
@@ -610,6 +674,14 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
             rollScatter(context, actionTargets, resolutions);
         } else {
             for (const target of actionTargets) {
+                const evade = consumeEvade(target, action.damageType, random, events);
+                if (evade) {
+                    resolutions.set(target.id, makeMissResolution(actor, target, action));
+                    if ((evade.evadeNext?.power ?? 0) > 0) {
+                        dealFlatDamage(events, target, actor, evade.evadeNext?.power ?? 0, action.id, 'physical', random);
+                    }
+                    continue;
+                }
                 resolutions.set(target.id, buildResolution(context, target));
             }
             // A single-shot projectile miss may be re-shot on the spot
@@ -789,6 +861,20 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
         if (!resolution) continue;
         resolution.appliedEffectIds = appliedByUnit.get(target.id) ?? [];
         events.push({ type: 'attack_resolved', resolution });
+    }
+
+    // A `last_stand` status answers the direct hit that felled its bearer.
+    const recipients = new Set<string>([
+        ...resolvedUnits.map((unit) => unit.id),
+        ...Array.from(resolutions.values()).map((resolution) => resolution.targetId),
+    ]);
+    for (const unit of state.units) {
+        if (!recipients.has(unit.id) || unit.currentHp > 0) continue;
+        const lastStand = unit.effects.find((effect) => effect.onDeathBlast);
+        if (!lastStand?.onDeathBlast) continue;
+        dealFlatDamage(events, unit, actor, lastStand.onDeathBlast.power, action.id, 'physical', random);
+        unit.effects = unit.effects.filter((effect) => effect !== lastStand);
+        events.push({ type: 'effect_expired', unitId: unit.id, effectId: lastStand.effectId });
     }
 
     // Chaos aftermath: chains, shrapnel, recoil, marks, conductors and the

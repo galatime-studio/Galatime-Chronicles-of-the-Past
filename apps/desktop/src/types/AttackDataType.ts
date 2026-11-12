@@ -463,6 +463,16 @@ export interface AttackEffect {
     reflect?: AttackReflectSpec;
     /** Steals part of the bearer's next mana/stamina spend for the status source. */
     spend_steal?: AttackSpendStealSpec;
+    /** Dodges the next matching hit and answers with flat PWR. */
+    evade_next?: { damage_types?: string[]; power?: number; chance?: number };
+    /** While the bearer lives, damage aimed at its allies is taken by it instead. */
+    damage_redirect?: { scope?: 'allies_all' | 'allies_lane' };
+    /** Multipliers the bearer applies to its own skill costs while the status lives. */
+    cost_multiplier?: { mana?: number; stamina?: number };
+    /** A price paid when the status ends (stamina, with HP covering a shortfall). */
+    end_cost?: { resource?: 'mana' | 'stamina'; percent_of_max: number; shortfall?: 'hp' };
+    /** A direct-damage retaliation when the bearer falls. */
+    on_death_blast?: { power: number };
     /** Stat fields the holder cannot gain buffs to while the status lives. */
     block_stat_buffs?: string[];
     /** Incoming damage multipliers per channel (`frost_mirror` halves physical). */
@@ -572,6 +582,10 @@ export interface AttackSkill {
     on_kill_detonation?: AttackOnKillDetonationSpec;
     /** Takes turns off the caster's own cooldowns when a target carries a status. */
     cooldown_reset?: { status: string; amount?: number };
+    /** Adds the bearer's accumulated damage taken to the hit's power. */
+    damage_taken_scaling?: { per_point: number; max?: number };
+    /** Extra multiplier when the target is weak/resistant to the action's element. */
+    element_effectiveness?: { weak: number; resist: number };
     /**
      * SFX track id played when the skill is used.
      *
@@ -634,6 +648,8 @@ export type PublicAttack = Pick<AttackSkill,
     | 'control_immune_damage'
     | 'on_kill_detonation'
     | 'cooldown_reset'
+    | 'damage_taken_scaling'
+    | 'element_effectiveness'
     | 'sfx'
 >;
 

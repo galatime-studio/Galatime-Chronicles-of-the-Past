@@ -309,6 +309,25 @@ function readCooldownReset(source: Record<string, unknown>): CombatAction['coold
     return status ? { status, amount } : null;
 }
 
+/** Reads a hit that grows with the caster's accumulated damage taken. */
+function readDamageTakenScaling(source: Record<string, unknown>): CombatAction['damageTakenScaling'] {
+    const record = asRecord(source.damage_taken_scaling);
+    if (!record) return null;
+    const perPoint = Math.max(0, readNumber(record.per_point, 0));
+    if (perPoint <= 0) return null;
+    const max = Math.max(0, readNumber(record.max, 0));
+    return max > 0 ? { perPoint, max } : { perPoint };
+}
+
+/** Reads the weak/resist nudge applied after the element table. */
+function readElementEffectiveness(source: Record<string, unknown>): CombatAction['elementEffectiveness'] {
+    const record = asRecord(source.element_effectiveness);
+    if (!record) return null;
+    const weak = Math.max(0, readNumber(record.weak, 1));
+    const resist = Math.max(0, readNumber(record.resist, 1));
+    return weak !== 1 || resist !== 1 ? { weak, resist } : null;
+}
+
 /**
  * The traits every action carries, whatever it came from.
  *
@@ -325,6 +344,8 @@ function defaultTraits(): Pick<
     | 'recoil' | 'friendlyFire' | 'backlaneSplash' | 'noSpaceRecoil'
     | 'chain' | 'shrapnel' | 'instability' | 'controlImmuneDamage' | 'onKillDetonation'
     | 'cooldownReset'
+    | 'damageTakenScaling'
+    | 'elementEffectiveness'
 > {
     return {
         solar: false,
@@ -357,6 +378,8 @@ function defaultTraits(): Pick<
         controlImmuneDamage: 0,
         onKillDetonation: null,
         cooldownReset: null,
+        damageTakenScaling: null,
+        elementEffectiveness: null,
     };
 }
 
@@ -375,7 +398,9 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
     // `range` and a top-level `damage_variance` are not part of the public skill
     // projection yet, so they are read off the raw record.
     const raw = skill as unknown as Record<string, unknown>;
-    const dealsDamage = power > 0;
+    const dealsDamage = power > 0
+        || Boolean(asRecord(raw.damage_taken_scaling))
+        || Boolean(asRecord(raw.chain));
 
     return {
         id: skill.id,
@@ -434,6 +459,8 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
         controlImmuneDamage: Math.max(0, readNumber(raw.control_immune_damage, 0)),
         onKillDetonation: readOnKillDetonation(raw),
         cooldownReset: readCooldownReset(raw),
+        damageTakenScaling: readDamageTakenScaling(raw),
+        elementEffectiveness: readElementEffectiveness(raw),
     };
 }
 
