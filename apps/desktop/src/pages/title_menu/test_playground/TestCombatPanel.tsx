@@ -129,27 +129,23 @@ export function TestCombatPanel() {
                     </CommonButton>
                 </div>
 
-                <div className="flex min-h-0 flex-1 gap-3">
-                    <div className="min-w-0 flex-1">
-                        <CombatEncounter
-                            encounter={encounter}
-                            resolveSpriteUrl={resolveUnitSprite}
-                            onEvents={handleEvents}
-                            inventoryPicker
-                            startOptions={{ persistInventories: false, difficulty }}
-                            className="h-full"
-                        />
-                    </div>
+                <div className="relative min-h-0 flex-1">
+                    <CombatEncounter
+                        encounter={encounter}
+                        resolveSpriteUrl={resolveUnitSprite}
+                        onEvents={handleEvents}
+                        inventoryPicker
+                        startOptions={{ persistInventories: false, difficulty }}
+                        className="h-full"
+                    />
 
-                    {/* Where the maths is read back: actions, multipliers, damage and deaths. */}
-                    <div className="w-52 shrink-0">
-                        <TestCombatLog
-                            events={logEvents}
-                            units={logUnits}
-                            onClear={() => setLogEvents([])}
-                            className="h-full"
-                        />
-                    </div>
+                    {/* Where the maths is read back: a panel over the battle's right
+                        edge, opened and closed from its own header. */}
+                    <TestCombatLog
+                        events={logEvents}
+                        units={logUnits}
+                        onClear={() => setLogEvents([])}
+                    />
                 </div>
             </div>
         );

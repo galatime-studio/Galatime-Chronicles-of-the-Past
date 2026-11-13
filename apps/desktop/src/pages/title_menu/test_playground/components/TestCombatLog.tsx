@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import CommonButton from '../../../../components/common/CommonButton';
+import { CloseIcon } from '../../../../assets/GalatimeIcon';
 import type { CombatEvent, CombatUnit } from '../../../../types/CombatType';
 
 interface TestCombatLogProps {
@@ -12,37 +14,20 @@ interface TestCombatLogProps {
     className?: string;
 }
 
-type LogTone =
-    | 'start'
-    | 'turn'
-    | 'action'
-    | 'damage'
-    | 'miss'
-    | 'heal'
-    | 'effect'
-    | 'death'
-    | 'resource'
-    | 'end';
-
 interface LogLine {
     key: number;
-    tone: LogTone;
+    /** The line the reader follows: always white, one step above the detail. */
     text: string;
+    /** The maths and the leftovers: always muted, one step below the text. */
     detail?: string;
 }
 
-const TONE_CLASSES: Record<LogTone, string> = {
-    start: 'text-white',
-    turn: 'text-galatime-primary',
-    action: 'text-white/85',
-    damage: 'text-galatime-stats-damage',
-    miss: 'text-white/40',
-    heal: 'text-galatime-stats-health',
-    effect: 'text-galatime-accent',
-    death: 'text-galatime-error',
-    resource: 'text-galatime-stats-stamina',
-    end: 'text-white font-bold',
-};
+interface LogGroup {
+    key: number;
+    /** Subject owning the block, shown as `[NAME]`. */
+    title: string;
+    lines: LogLine[];
+}
 
 /**
  * Trims a computed number to at most two decimals.
@@ -55,288 +40,501 @@ function short(value: number): number {
 }
 
 /**
- * Turns the fight's events into readable lines.
+ * Turns the fight's events into blocks, one subject at a time.
  *
- * `attack_resolved` is the one worth reading closely: it carries the whole
- * calculation — the attack and defence stats, the power, the element and lane
- * multipliers, the variance roll and the HP the target was left on.
+ * A block starts whenever the subject changes — a character's turn, the ability
+ * that just fired, the weather that rolled in — and every event of the same
+ * subject is appended to it. The header carries the identity (`[ARTHUR]`,
+ * `[FIRE CLOAK]`); the lines below only describe what happened, so the reader
+ * never has to parse the same name twice.
  */
 function formatEvents(
     events: readonly CombatEvent[],
     nameOf: (unitId: string) => string,
-): LogLine[] {
-    const lines: LogLine[] = [];
+    t: TFunction<'playground'>,
+): LogGroup[] {
+    const groups: LogGroup[] = [];
+
+    const push = (title: string, line: LogLine, forceNew = false) => {
+        const last = groups[groups.length - 1];
+        if (!forceNew && last && last.title === title) {
+            last.lines.push(line);
+            return;
+        }
+        groups.push({ key: line.key, title, lines: [line] });
+    };
+
+    const lineOf = (key: number, line: string, detail?: string): LogLine => ({
+        key,
+        text: line,
+        detail,
+    });
 
     for (const [key, event] of events.entries()) {
         switch (event.type) {
             case 'combat_started':
-                lines.push({
-                    key,
-                    tone: 'start',
-                    text: 'Combat started',
-                    detail: `order: ${event.order.map(nameOf).join(' → ')}`,
-                });
+                push(
+                    t('playground.combat.log.system'),
+                    lineOf(
+                        key,
+                        t('playground.combat.log.started'),
+                        t('playground.combat.log.order', { order: event.order.map(nameOf).join(' → ') }),
+                    ),
+                    true,
+                );
                 break;
 
             case 'turn_started':
-                lines.push({ key, tone: 'turn', text: `${nameOf(event.unitId)} acts` });
+                push(
+                    nameOf(event.unitId),
+                    lineOf(key, t('playground.combat.log.turnStarted')),
+                    true,
+                );
                 break;
 
             case 'action_used':
-                lines.push({
+                push(nameOf(event.actorId), lineOf(
                     key,
-                    tone: 'action',
-                    text: `${nameOf(event.actorId)} uses ${event.actionName}`,
-                    detail: event.targetIds.length > 0
-                        ? `→ ${event.targetIds.map(nameOf).join(', ')}`
+                    t('playground.combat.log.uses', { action: event.actionName }),
+                    event.targetIds.length > 0
+                        ? t('playground.combat.log.on', { targets: event.targetIds.map(nameOf).join(', ') })
                         : undefined,
-                });
+                ));
                 break;
 
             case 'attack_resolved': {
                 const hit = event.resolution;
-                const attacker = nameOf(hit.attackerId);
-                const target = nameOf(hit.targetId);
-
-                const stats = [
-                    `ATK ${short(hit.attackValue)} (${hit.damageType})`,
-                    `DEF ${short(hit.defenseValue)}`,
-                    `PW ${hit.power}`,
-                ];
+                const stats = t('playground.combat.log.attackStats', {
+                    attack: short(hit.attackValue),
+                    type: hit.damageType,
+                    defense: short(hit.defenseValue),
+                    power: hit.power,
+                });
 
                 if (!hit.isHit) {
-                    lines.push({
+                    push(nameOf(hit.attackerId), lineOf(
                         key,
-                        tone: 'miss',
-                        text: `${attacker} misses ${target}`,
-                        detail: `${stats.join(' · ')} · elem ×${hit.elementMultiplier}`,
-                    });
+                        t('playground.combat.log.miss', { target: nameOf(hit.targetId) }),
+                        `${stats} · ${t('playground.combat.log.element', { value: hit.elementMultiplier })}`,
+                    ));
                     break;
                 }
 
                 // The chain in the order it is evaluated:
                 // (ATK / DEF) x EFFECT x PWR -> lane -> bracing -> variance.
-                const chain = [
-                    `${stats.join(' · ')}`,
-                    `ATK÷DEF ${short(hit.attackValue / Math.max(1, hit.defenseValue))}`,
-                    `elem ×${hit.elementMultiplier}`,
-                    `→ base ${short(hit.baseDamage)}`,
-                    `pos ×${hit.positionModifier}`,
-                    ...(hit.defenseReduction > 0 ? [`brace ×${short(1 - hit.defenseReduction)}`] : []),
-                    `var ×${short(hit.variance)}`,
-                    `= ${short(hit.finalDamage)}`,
-                    ...(hit.hits > 1 ? [`(${hit.hits} hits)`] : []),
-                ];
-
-                lines.push({
-                    key,
-                    tone: 'damage',
-                    text: `${attacker} → ${target}: −${short(hit.finalDamage)} HP`,
-                    detail: `${chain.join(' · ')} · HP ${short(hit.targetHpBefore)} → ${short(hit.targetHpAfter)}`,
+                const chain = t('playground.combat.log.attackRatio', {
+                    ratio: short(hit.attackValue / Math.max(1, hit.defenseValue)),
+                    element: hit.elementMultiplier,
+                    base: short(hit.baseDamage),
+                    position: hit.positionModifier,
+                    variance: short(hit.variance),
+                    final: short(hit.finalDamage),
+                    brace: hit.defenseReduction > 0
+                        ? t('playground.combat.log.brace', { value: short(1 - hit.defenseReduction) })
+                        : '',
+                    hits: hit.hits > 1
+                        ? t('playground.combat.log.hits', { count: hit.hits })
+                        : '',
                 });
+
+                push(nameOf(hit.attackerId), lineOf(
+                    key,
+                    t('playground.combat.log.hit', {
+                        target: nameOf(hit.targetId),
+                        amount: short(hit.finalDamage),
+                    }),
+                    `${chain} · ${stats} · ${t('playground.combat.log.hp', {
+                        before: short(hit.targetHpBefore),
+                        after: short(hit.targetHpAfter),
+                    })}`,
+                ));
                 break;
             }
 
             case 'healed':
-                lines.push({
+                push(nameOf(event.resolution.sourceId), lineOf(
                     key,
-                    tone: 'heal',
-                    text: `${nameOf(event.resolution.sourceId)} → ${nameOf(event.resolution.targetId)}: +${event.resolution.amount} HP`,
-                    detail: `HP ${event.resolution.targetHpAfter}`,
-                });
+                    t('playground.combat.log.heal', {
+                        target: nameOf(event.resolution.targetId),
+                        amount: short(event.resolution.amount),
+                    }),
+                    t('playground.combat.log.hpAfter', { hp: short(event.resolution.targetHpAfter) }),
+                ));
                 break;
 
             case 'effect_applied':
-                lines.push({
+                push(nameOf(event.unitId), lineOf(
                     key,
-                    tone: 'effect',
-                    text: `${nameOf(event.unitId)} gains ${event.statusEffect ?? event.effectId}`,
-                    detail: event.turns === null ? 'until combat ends' : `${event.turns} turn(s)`,
-                });
+                    t('playground.combat.log.gain', { effect: event.statusEffect ?? event.effectId }),
+                    event.turns === null
+                        ? t('playground.combat.log.untilEnd')
+                        : t('playground.combat.log.turns', { count: event.turns }),
+                ));
                 break;
 
             case 'effect_expired':
-                lines.push({
+                push(nameOf(event.unitId), lineOf(
                     key,
-                    tone: 'effect',
-                    text: `${nameOf(event.unitId)} loses ${event.effectId}`,
-                });
+                    t('playground.combat.log.lose', { effect: event.effectId }),
+                ));
+                break;
+
+            case 'effect_resisted':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    event.captured
+                        ? t('playground.combat.log.capture', { effect: event.statusEffect ?? event.effectId })
+                        : t('playground.combat.log.resist', { effect: event.statusEffect ?? event.effectId }),
+                ));
+                break;
+
+            case 'effect_deferred':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.deferredEffect', { effect: event.statusEffect ?? event.effectId }),
+                ));
                 break;
 
             case 'resource_changed':
-                lines.push({
+                push(nameOf(event.unitId), lineOf(
                     key,
-                    tone: 'resource',
-                    text: `${nameOf(event.unitId)}: ${event.resource.toUpperCase()} ${event.previous} → ${event.next}`,
-                });
+                    t('playground.combat.log.resource', {
+                        resource: event.resource.toUpperCase(),
+                        previous: short(event.previous),
+                        next: short(event.next),
+                    }),
+                ));
                 break;
 
             case 'unit_defeated':
-                lines.push({ key, tone: 'death', text: `${nameOf(event.unitId)} is defeated` });
+                push(nameOf(event.unitId), lineOf(key, t('playground.combat.log.defeated')));
+                break;
+
+            case 'unit_revived':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.revived', { caster: nameOf(event.casterId) }),
+                ));
                 break;
 
             case 'unit_line_changed':
-                lines.push({
+                push(nameOf(event.unitId), lineOf(
                     key,
-                    tone: 'action',
-                    text: `${nameOf(event.unitId)} moves to the ${event.line} line`,
-                });
+                    t('playground.combat.log.line', {
+                        line: t(`playground.combat.log.lines.${event.line}`),
+                    }),
+                ));
                 break;
 
             case 'action_postponed':
-                lines.push({
+                push(nameOf(event.unitId), lineOf(
                     key,
-                    tone: 'action',
-                    text: `${nameOf(event.unitId)}'s next action is pushed ${event.slots} slot${event.slots === 1 ? '' : 's'} back`,
-                });
+                    t('playground.combat.log.postponed', { count: event.slots }),
+                ));
                 break;
 
             case 'weather_changed':
-                lines.push({
+                push(event.label, lineOf(
                     key,
-                    tone: 'action',
-                    text: `${event.label} rolls over the field (${event.rounds} round${event.rounds === 1 ? '' : 's'})`,
-                });
+                    t('playground.combat.log.weatherChanged', { count: event.rounds }),
+                ));
                 break;
 
             case 'weather_ended':
-                lines.push({
-                    key,
-                    tone: 'action',
-                    text: `${event.id} clears from the field`,
-                });
+                push(event.id, lineOf(key, t('playground.combat.log.weatherEnded')));
                 break;
 
             case 'attack_retried':
-                lines.push({
+                push(nameOf(event.attackerId), lineOf(
                     key,
-                    tone: 'action',
-                    text: `${nameOf(event.attackerId)} re-shoots at ${nameOf(event.targetId)}`,
-                });
+                    t('playground.combat.log.retried', { target: nameOf(event.targetId) }),
+                ));
                 break;
 
-            case 'flee_attempted':
-                lines.push({
+            case 'ability_triggered':
+                push(event.abilityName, lineOf(
                     key,
-                    tone: 'end',
-                    text: `${nameOf(event.unitId)} ${event.escaped ? 'escaped' : 'failed to escape'}`,
+                    t('playground.combat.log.ability', { unit: nameOf(event.unitId) }),
+                    event.targetIds.length > 0
+                        ? t('playground.combat.log.on', { targets: event.targetIds.map(nameOf).join(', ') })
+                        : undefined,
+                ));
+                break;
+
+            case 'unit_summoned':
+                push(event.name, lineOf(
+                    key,
+                    t('playground.combat.log.summoned', {
+                        source: nameOf(event.sourceId),
+                        line: t(`playground.combat.log.lines.${event.line}`),
+                    }),
+                ));
+                break;
+
+            case 'unit_transformed':
+                push(event.name, lineOf(key, t('playground.combat.log.transformed')));
+                break;
+
+            case 'damage_reflected':
+                push(event.abilityName, lineOf(
+                    key,
+                    event.isHit
+                        ? t('playground.combat.log.reflected', {
+                            amount: short(event.amount),
+                            target: nameOf(event.targetId),
+                        })
+                        : t('playground.combat.log.reflectedMiss', { target: nameOf(event.targetId) }),
+                    t('playground.combat.log.hpAfter', { hp: short(event.targetHpAfter) }),
+                ));
+                break;
+
+            case 'shield_absorbed':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.shield', {
+                        effect: event.effectId,
+                        amount: short(event.amount),
+                    }),
+                    t('playground.combat.log.shieldLeft', { remaining: short(event.remaining) }),
+                ));
+                break;
+
+            case 'turn_skipped':
+                push(nameOf(event.unitId), lineOf(key, t('playground.combat.log.turnSkipped')));
+                break;
+
+            case 'action_cancelled':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.cancelled', {
+                        action: event.actionId,
+                        effect: event.effectId,
+                    }),
+                ));
+                break;
+
+            case 'action_interrupted':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.interrupted', {
+                        action: event.actionId,
+                        effect: event.statusEffect ?? event.effectId,
+                    }),
+                ));
+                break;
+
+            case 'damage_deferred':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.deferred', { amount: short(event.amount) }),
+                    t('playground.combat.log.from', { source: nameOf(event.sourceId) }),
+                ));
+                break;
+
+            case 'unit_rewound': {
+                const pools = t('playground.combat.log.rewindPools', {
+                    hp: short(event.restoredHp),
+                    mana: short(event.restoredMana),
+                    stamina: short(event.restoredStamina),
                 });
+                const removed = event.removedEffectIds.length > 0
+                    ? t('playground.combat.log.rewindRemoved', { effects: event.removedEffectIds.join(', ') })
+                    : '';
+
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.rewind', { count: event.turns }),
+                    [pools, removed].filter(Boolean).join(' · '),
+                ));
+                break;
+            }
+
+            case 'flee_attempted':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    event.escaped
+                        ? t('playground.combat.log.escaped')
+                        : t('playground.combat.log.escapeFailed'),
+                ));
+                break;
+
+            case 'weapon_durability_changed':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.weaponDurability', {
+                        weapon: event.weaponId,
+                        previous: event.previous,
+                        next: event.next,
+                    }),
+                ));
+                break;
+
+            case 'weapon_broken':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.weaponBroken', { weapon: event.weaponName }),
+                ));
+                break;
+
+            case 'weapon_equipped':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.weaponEquipped', { weapon: event.weaponName }),
+                ));
+                break;
+
+            case 'weapon_ammo_changed':
+                push(nameOf(event.unitId), lineOf(
+                    key,
+                    t('playground.combat.log.ammo', {
+                        item: event.itemId,
+                        state: t(event.consumed
+                            ? 'playground.combat.log.ammoSpent'
+                            : 'playground.combat.log.ammoKept'),
+                        remaining: event.remaining,
+                    }),
+                ));
+                break;
+
+            case 'loot_gained':
+                push(event.itemName, lineOf(
+                    key,
+                    t('playground.combat.log.loot', { quantity: event.quantity }),
+                    t('playground.combat.log.lootFrom', { source: nameOf(event.sourceId) }),
+                ));
                 break;
 
             case 'combat_ended':
-                lines.push({
-                    key,
-                    tone: 'end',
-                    text: `Combat over: ${event.outcome}`,
-                    detail: event.reason,
-                });
+                push(
+                    t('playground.combat.log.system'),
+                    lineOf(
+                        key,
+                        t('playground.combat.log.combatOver', { outcome: event.outcome }),
+                        event.reason,
+                    ),
+                    true,
+                );
                 break;
 
             case 'turn_ended':
                 // The next `turn_started` already delimits a turn; logging both doubles the noise.
                 break;
-
-            case 'weapon_durability_changed':
-                lines.push({
-                    key,
-                    tone: 'resource',
-                    text: `${nameOf(event.unitId)}: ${event.weaponId} durability ${event.previous} → ${event.next}`,
-                });
-                break;
-
-            case 'weapon_broken':
-                lines.push({
-                    key,
-                    tone: 'death',
-                    text: `${nameOf(event.unitId)}'s ${event.weaponName} breaks!`,
-                });
-                break;
-
-            case 'weapon_equipped':
-                lines.push({
-                    key,
-                    tone: 'resource',
-                    text: `${nameOf(event.unitId)} takes ${event.weaponName} in hand (no turn spent)`,
-                });
-                break;
-
-            case 'weapon_ammo_changed':
-                lines.push({
-                    key,
-                    tone: 'resource',
-                    text: `${nameOf(event.unitId)}: ${event.itemId} ${event.consumed ? 'spent' : 'kept'} (${event.remaining} left)`,
-                });
-                break;
-
-            case 'loot_gained':
-                lines.push({
-                    key,
-                    tone: 'end',
-                    text: `Loot: ${event.itemName} ×${event.quantity}`,
-                    detail: `from ${nameOf(event.sourceId)}`,
-                });
-                break;
         }
     }
 
-    return lines;
+    return groups;
 }
 
-/** Running commentary on a playground fight: actions, rolls, damage maths and deaths. */
+/**
+ * Running commentary on a playground fight: actions, rolls, damage maths and deaths.
+ *
+ * The log is a panel that floats over the right edge of the battle, never a column
+ * that steals width from it. It opens and closes from its own header, and each
+ * subject — a character, an ability, a weather front — gets one block with a
+ * `[NAME]` header, a white line and a muted detail line.
+ */
 export function TestCombatLog({ events, units, onClear, className = '' }: TestCombatLogProps) {
     const { t } = useTranslation('playground');
+    const [open, setOpen] = useState(true);
     const boxRef = useRef<HTMLDivElement | null>(null);
 
-    const lines = useMemo(() => {
+    const groups = useMemo(() => {
         const names = new Map(units.map((unit) => [unit.id, unit.name]));
-        return formatEvents(events, (unitId) => names.get(unitId) ?? unitId);
-    }, [events, units]);
+        return formatEvents(events, (unitId) => names.get(unitId) ?? unitId, t);
+    }, [events, units, t]);
 
-    // Follow the fight: the newest line is the one being looked at.
+    // Follow the fight: the newest block is the one being looked at. Closing the
+    // panel stops the chasing, so returning to it shows the same place it was left.
     useEffect(() => {
+        if (!open) return;
         const box = boxRef.current;
         if (box) box.scrollTop = box.scrollHeight;
-    }, [lines.length]);
+    }, [groups.length, open]);
 
     return (
-        <section
-            aria-label={t('playground.combat.logTitle')}
-            className={`flex min-h-0 flex-col border-game border-white/15 bg-black/40 ${className}`}
-        >
-            <header className="flex shrink-0 items-center justify-between gap-2 border-b-game border-white/15 px-2 py-1">
-                <h3 className="text-[11px] uppercase tracking-[0.15em] text-white/55">
-                    {t('playground.combat.logTitle')}
-                </h3>
+        <div className={`pointer-events-none absolute bottom-2 right-2 top-12 z-30 flex flex-col items-end ${className}`}>
+            {open ? (
+                <section
+                    aria-label={t('playground.combat.log.title')}
+                    className="pointer-events-auto flex min-h-0 w-[min(19rem,calc(100vw-2rem))] flex-1 flex-col border-game border-white/70 bg-galatime-dark/95 shadow-[0_0_24px_rgba(0,0,0,0.65)] backdrop-blur-sm"
+                >
+                    <header className="flex shrink-0 items-center gap-2 border-b-game border-white/15 px-2.5 py-1.5">
+                        <h3 className="mr-auto text-[11px] uppercase tracking-[0.15em] text-white">
+                            {t('playground.combat.log.title')}
+                        </h3>
 
-                {onClear && lines.length > 0 && (
-                    <CommonButton
-                        variant="ghost"
-                        size="sm"
-                        className="text-[10px] tracking-[0.12em] border-0 opacity-40 hover:opacity-100"
-                        onPress={onClear}
-                    >
-                        {t('playground.combat.logClear')}
-                    </CommonButton>
-                )}
-            </header>
+                        {events.length > 0 && (
+                            <span className="text-[10px] tabular-nums text-white/35">
+                                {t('playground.combat.log.events', { count: events.length })}
+                            </span>
+                        )}
 
-            <div ref={boxRef} className="min-h-0 flex-1 overflow-y-auto px-2 py-1.5">
-                {lines.length === 0 ? (
-                    <p className="text-[11px] text-white/35">{t('playground.combat.logEmpty')}</p>
-                ) : (
-                    <ol className="flex flex-col gap-1.5 font-mono text-[11px]">
-                        {lines.map((line) => (
-                            <li key={line.key} className="flex flex-col">
-                                <span className={TONE_CLASSES[line.tone]}>{line.text}</span>
-                                {line.detail && (
-                                    <span className="text-white/35">{line.detail}</span>
-                                )}
-                            </li>
-                        ))}
-                    </ol>
-                )}
-            </div>
-        </section>
+                        {onClear && groups.length > 0 && (
+                            <CommonButton
+                                variant="ghost"
+                                size="sm"
+                                className="text-[10px] tracking-[0.12em] opacity-40 hover:opacity-100"
+                                onPress={onClear}
+                            >
+                                {t('playground.combat.log.clear')}
+                            </CommonButton>
+                        )}
+
+                        <CommonButton
+                            variant="ghost"
+                            size="sm"
+                            icon={<CloseIcon className="h-4 w-4" />}
+                            className="p-1 opacity-50 hover:opacity-100"
+                            aria-label={t('playground.combat.log.close')}
+                            onPress={() => setOpen(false)}
+                        />
+                    </header>
+
+                    <div ref={boxRef} className="min-h-0 flex-1 overflow-y-auto px-2.5 py-2">
+                        {groups.length === 0 ? (
+                            <p className="text-[11px] text-white/35">{t('playground.combat.log.empty')}</p>
+                        ) : (
+                            <ol className="flex flex-col gap-4">
+                                {groups.map((group) => (
+                                    <li key={group.key} className="flex flex-col gap-1 border-l border-white/10 pl-2">
+                                        <span className="text-[10px] uppercase leading-none tracking-[0.16em] text-white">
+                                            [{group.title.toUpperCase()}]
+                                        </span>
+
+                                        <div className="flex flex-col gap-1">
+                                            {group.lines.map((line) => (
+                                                <div key={line.key} className="flex flex-col">
+                                                    <span className="text-[11px] leading-snug text-white">
+                                                        {line.text}
+                                                    </span>
+                                                    {line.detail && (
+                                                        <span className="text-[10px] leading-snug text-white/35">
+                                                            {line.detail}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ol>
+                        )}
+                    </div>
+                </section>
+            ) : (
+                <CommonButton
+                    variant="outline"
+                    size="sm"
+                    className="pointer-events-auto bg-galatime-dark/90 backdrop-blur-sm"
+                    onPress={() => setOpen(true)}
+                >
+                    {t('playground.combat.log.open')}
+                    {events.length > 0 && (
+                        <span className="text-[10px] tabular-nums text-white/40">{events.length}</span>
+                    )}
+                </CommonButton>
+            )}
+        </div>
     );
 }
 
