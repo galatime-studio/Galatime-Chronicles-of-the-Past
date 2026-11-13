@@ -519,6 +519,10 @@ export function CombatFormationEntity({
                                             alt={entity.name}
                                             fallbackSrc={UNKNOWN_ENTITY_IMAGE}
                                             className="h-8 w-8 sm:h-16 sm:w-16"
+                                            /* 32px combat sprites sit in an 80px box; rendering 3x larger
+                                               and letting the browser reduce it keeps every source
+                                               pixel the same width (the plain box scale does not). */
+                                            supersample={3}
                                         />
                                     </span>
                                 </div>

@@ -292,9 +292,11 @@ function readSourceRaster(
  * Renders `image` into `canvas` so that it fills `boxWidth` x `boxHeight` CSS pixels while keeping
  * its aspect ratio, using the given image rendering mode.
  *
- * `canvas` ends up with an intrinsic size equal to the box multiplied by `dpr` and by the interface
- * zoom, so the browser draws it one device pixel per canvas pixel and never rescales the filtered
- * result.
+ * `canvas` ends up with an intrinsic size equal to the box multiplied by `dpr`, by the interface
+ * zoom and by `supersample`, so the browser draws it one device pixel per canvas pixel and never
+ * rescales the filtered result. A `supersample` above 1 is the exception on purpose: the canvas is
+ * rasterised much larger than its box and the browser reduces it evenly, which keeps the pixels of
+ * a tiny sprite the same width when the box is not an integer multiple of the source.
  */
 export function drawSprite(
   canvas: HTMLCanvasElement,
@@ -304,6 +306,7 @@ export function drawSprite(
   boxHeight: number,
   dpr: number,
   cacheKey: string,
+  supersample = 1,
 ): void {
   const naturalWidth = image.naturalWidth || image.width;
   const naturalHeight = image.naturalHeight || image.height;
@@ -311,8 +314,10 @@ export function drawSprite(
     return;
   }
 
-  const deviceWidth = Math.max(1, Math.round(boxWidth * dpr * interfaceZoom));
-  const deviceHeight = Math.max(1, Math.round(boxHeight * dpr * interfaceZoom));
+  // Rounded so a fractional request (a 1.5x zoom, say) still yields stable integer pixels.
+  const oversampling = Math.max(1, Math.round(supersample));
+  const deviceWidth = Math.max(1, Math.round(boxWidth * dpr * interfaceZoom * oversampling));
+  const deviceHeight = Math.max(1, Math.round(boxHeight * dpr * interfaceZoom * oversampling));
 
   // Replicates `object-fit: contain`: the sprite is centred inside its box and never stretched.
   const fit = Math.min(deviceWidth / naturalWidth, deviceHeight / naturalHeight);

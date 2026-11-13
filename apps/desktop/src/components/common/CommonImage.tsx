@@ -15,13 +15,19 @@ interface CommonImageProps {
   title?: string;
   /** Loaded when `src` fails to load; if it fails too, the image is hidden. */
   fallbackSrc?: string;
+  /**
+   * Draws the sprite at this multiple of its on-screen size and lets the browser
+   * downscale it.
+   *
+   * Tiny pixel art shown at a fractional scale (a 32px sprite in an 80px box) is
+   * resampled very unevenly by CSS. Rendering a much larger raster and reducing it
+   * gives the browser enough samples to keep every source pixel the same width.
+   * Costs `supersample²` canvas pixels, so opt in where the sprite is large on
+   * screen; the default keeps the old exact-size behaviour.
+   */
+  supersample?: number;
 }
 
-/**
- * Matches both file sources (`…/loading_0.svg`, `…/loading_0.svg?v=d41d`) and the data URIs
- * Vite substitutes when it inlines a small `.svg` asset at build time — vector sources must go
- * through the `<img>` branch, since a rasterised canvas needs intrinsic pixel dimensions.
- */
 /**
  * Matches both file sources (`…/loading_0.svg`, `…/loading_0.svg?v=d41d`) and the data URIs
  * Vite substitutes when it inlines a small `.svg` asset at build time — vector sources must go
@@ -58,6 +64,7 @@ export default function CommonImage({
   style,
   title,
   fallbackSrc,
+  supersample = 1,
 }: CommonImageProps) {
   const [render, setRender] = useState<RenderState>(() => ({
     mode: getImageRenderingMode(),
@@ -163,6 +170,7 @@ export default function CommonImage({
         render.height,
         (window.devicePixelRatio || 1) * render.interfaceZoom,
         activeSrc,
+        supersample,
       );
     };
 
@@ -181,7 +189,7 @@ export default function CommonImage({
     return () => {
       cancelled = true;
     };
-  }, [activeSrc, render, fallbackSrc]);
+  }, [activeSrc, render, fallbackSrc, supersample]);
 
   if (failed) {
     return null;
@@ -225,7 +233,9 @@ export default function CommonImage({
           width: '100%',
           height: '100%',
           display: 'block',
-          // The canvas already holds its final pixels: do not let the browser resample them.
+          // A supersampled canvas holds more pixels than its box, so `auto` lets the
+          // browser reduce it evenly instead of picking neighbours unevenly. At
+          // supersample 1 the canvas already matches the box and `auto` is a no-op.
           imageRendering: 'auto',
         }}
       />
