@@ -33,10 +33,12 @@ import type {
     AiSituationEffect,
     AiSituationHistory,
     AiSituationHorizon,
+    AiSituationKit,
     AiSituationPressure,
     AiSituationUnit,
 } from '../../../types/AiSituationType';
 import type {
+    CombatAction,
     CombatEffectInstance,
     CombatEvent,
     CombatSide,
@@ -84,6 +86,7 @@ export function buildAiSituation(context: AiDecisionContext): AiSituation {
         enemies,
     );
     const pressure = buildPressure(allies, enemies);
+    const kit = buildKit(actor, livingAllies);
 
     return {
         round: state.round,
@@ -95,6 +98,7 @@ export function buildAiSituation(context: AiDecisionContext): AiSituation {
         history,
         horizon,
         pressure,
+        kit,
         weather: state.weather
             ? {
                 id: state.weather.id,
@@ -434,6 +438,101 @@ function buildPressure(
     };
 }
 
+/**
+ * Reads the actor's kit for combinations that already exist on paper.
+ *
+ * A "setup" is an action that applies a status or boosts an element; a "payoff"
+ * is anything the same side can cash that setup in with: a `bonus_vs_status`,
+ * `bonus_per_charge`, `guaranteed_crit_vs_status` or `consume_stacks` trait, or a
+ * damaging action in an element the setup boosts. Counting the pairs is what lets
+ * the modulation raise `effect_value` for a unit that is built to set up, even
+ * before a single status has landed.
+ */
+function buildKit(actor: CombatUnit, livingAllies: readonly CombatUnit[]): AiSituationKit {
+    let setups = 0;
+    let selfCombos = 0;
+    let teamCombos = 0;
+
+    for (const action of actor.actions) {
+        // A setup only enables a payoff when it lands on the enemy; a self-buff
+        // that happens to carry a status is not a combo.
+        if (!isHostileSetup(action)) continue;
+        const setup = setupOf(action);
+        if (!setup) continue;
+        setups += 1;
+
+        if (hasPayoff(actor.actions, action, setup)) {
+            selfCombos += 1;
+            continue;
+        }
+        const ally = livingAllies.find((unit) => (
+            unit.id !== actor.id && hasPayoff(unit.actions, action, setup)
+        ));
+        if (ally) teamCombos += 1;
+    }
+
+    return {
+        setups,
+        selfCombos,
+        teamCombos,
+        comboPotential: clamp((selfCombos + teamCombos * 0.5) / 2, 0, 1),
+    };
+}
+
+/** Whether the action can put its payload on the other side. */
+function isHostileSetup(action: CombatAction): boolean {
+    const targeting = action.targeting ?? '';
+    return targeting !== 'self' && !targeting.startsWith('allies');
+}
+
+/** The statuses or element boosts an action would apply, if any. */
+function setupOf(action: CombatAction): { statuses: string[]; elements: string[] } | null {
+    const statuses: string[] = [];
+    const elements: string[] = [];
+
+    for (const effect of action.effects) {
+        const status = normalizeStatus(effect.status_effect);
+        if (status) statuses.push(status);
+        const modulation = effect.element_modulation;
+        if (!modulation) continue;
+        for (const [element, multiplier] of Object.entries(modulation)) {
+            if (multiplier > 1) elements.push(element.toLowerCase());
+        }
+    }
+
+    if (statuses.length === 0 && elements.length === 0) return null;
+    return { statuses, elements };
+}
+
+/** Whether a side's actions can cash in the setup. */
+function hasPayoff(
+    actions: readonly CombatAction[],
+    setupAction: CombatAction,
+    setup: { statuses: string[]; elements: string[] },
+): boolean {
+    for (const action of actions) {
+        if (action === setupAction) continue;
+
+        for (const status of setup.statuses) {
+            if ((action.bonusVsStatus ?? []).some(
+                (bonus) => normalizeStatus(bonus.status) === status,
+            )) return true;
+            if (normalizeStatus(action.bonusPerCharge?.status) === status) return true;
+            if (normalizeStatus(action.guaranteedCritVsStatus) === status) return true;
+            if (action.consumeStacks?.some(
+                (entry) => normalizeStatus(entry.status) === status,
+            )) return true;
+        }
+
+        if (action.dealsDamage) {
+            const element = (action.elementId ?? '').toLowerCase();
+            if (element !== '' && setup.elements.includes(element)) return true;
+        }
+    }
+
+    return false;
+}
+
 function hpPoolFraction(units: readonly AiSituationUnit[]): number {
     if (units.length === 0) return 0;
     const current = poolHp(units);
@@ -468,7 +567,7 @@ function magnitude(delta: CombatStatDelta | null | undefined): number {
 
 function normalizeStatus(raw: unknown): string | null {
     if (typeof raw !== 'string') return null;
-    const trimmed = raw.trim().toLowerCase();
+    const trimmed = raw.trim().toLowerCase().replace(/[_-]+/g, ' ');
     return trimmed.length > 0 ? trimmed : null;
 }
 

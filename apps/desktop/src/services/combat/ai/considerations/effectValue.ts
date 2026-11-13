@@ -32,6 +32,8 @@ import {
 } from '../../../../utils/combatUtils';
 import { effectiveStats } from '../../effectResolver';
 import { candidateTargetUnits } from '../aiCandidates';
+import { expectedDamageFor, impactFor } from '../aiImpacts';
+import { estimateThreatAgainst } from '../aiThreat';
 
 /** Turns an authored `turns` field reads as, when it is a number. */
 const DEFAULT_DOT_TURNS = 3;
@@ -73,7 +75,8 @@ export const effectValue: AiConsideration = {
             score += shieldValue(record.shield);
             score += cleanseValue(record, negativeStatuses);
             score += controlValue(record);
-            score += protectionValue(record);
+            score += protectionValue(record) * protectionNeed(context, targets);
+            score += protectionCoverage(context, record, targets);
             score += resourceValue(record, referenceMana, referenceStamina);
             score += payoffValue(record, referenceHp);
             score += statusValue(record, context, targets);
@@ -128,8 +131,9 @@ function statusValue(
     )).length;
     if (resisted > 0) base /= 1 + resisted * 0.5;
 
-    // Setup is worth more when a living ally can cash it in.
-    const synergy = teamSynergy(context, status);
+    // Setup is worth more when a living ally can cash it in, either through a
+    // payoff trait or through the status's own element modulation.
+    const synergy = teamSynergy(context, status) + modulationSynergy(context, record, targets);
     return clamp(base * duration + synergy, 0, 0.9);
 }
 
@@ -195,14 +199,55 @@ function teamSynergy(context: AiDecisionContext, status: string): number {
             if (action.consumeStacks?.some((entry) => normalizeStatus(entry.status) === status)) {
                 score += 0.06;
             }
-            if (status === 'wet' && action.dealsDamage
-                && (action.elementId === 'aqua' || action.elementId === 'chaos')) {
-                score += 0.03;
-            }
         }
     }
 
     return clamp(score, 0, 0.3);
+}
+
+/**
+ * What the status's own `element_modulation` table is worth to this side's kit.
+ *
+ * Wet is the clearest case: its payload quarters ignis and doubles aqua and
+ * chaos. That knowledge is data, not a rule — the effect carries the table — so
+ * instead of hardcoding it this reads every element the status boosts and prices
+ * it against the heaviest hit the side owns in that element, measured against the
+ * target's health bar. A kit with a chaos nuke therefore values Wet far more than
+ * a kit of fireballs, and a boosted element the side never casts pays nothing.
+ *
+ * The extra damage is discounted rather than paid in full: the follow-up still
+ * costs a turn and may never land, so a doubled nuke is worth a fraction of the
+ * bar it would add.
+ */
+function modulationSynergy(
+    context: AiDecisionContext,
+    record: Record<string, unknown>,
+    targets: readonly CombatUnit[],
+): number {
+    const modulation = asRecord(record.element_modulation);
+    if (!modulation || targets.length === 0) return 0;
+
+    const side = context.actor.side;
+    const attackers = context.state.units.filter((unit) => unit.side === side && unit.status === 'alive');
+    let best = 0;
+
+    for (const [element, rawMultiplier] of Object.entries(modulation)) {
+        const multiplier = readNumber(rawMultiplier, 1);
+        if (multiplier <= 1) continue;
+
+        for (const attacker of attackers) {
+            for (const action of attacker.actions) {
+                if (!action.dealsDamage || action.elementId !== element) continue;
+                for (const target of targets) {
+                    const maxHp = Math.max(1, effectiveStats(target).maxHp);
+                    const gain = ((multiplier - 1) * expectedDamageFor(context, action, target)) / maxHp;
+                    if (gain > best) best = gain;
+                }
+            }
+        }
+    }
+
+    return clamp(best * 2.5, 0, 0.4);
 }
 
 function normalizeStatus(value: unknown): string | null {
@@ -274,6 +319,92 @@ function controlValue(record: Record<string, unknown>): number {
     if (hasEntries(record.fatigue_recovery_delay)) score += 0.1;
 
     return score;
+}
+
+/**
+ * How much a protection is worth on the unit that would receive it.
+ *
+ * A barrier on an ally nobody is attacking is a wasted turn; the same barrier
+ * on an ally that is about to lose half its bar is the turn that decides the
+ * fight. The multiplier reads the projected damage that ally would take this
+ * round, plus how much of its bar is already gone, and stays bounded so a
+ * wall can never outscore a kill.
+ */
+function protectionNeed(context: AiDecisionContext, targets: readonly CombatUnit[]): number {
+    let need = 0;
+    for (const target of targets) {
+        const maxHp = Math.max(1, effectiveStats(target).maxHp);
+        const incoming = clamp(estimateThreatAgainst(context, target) / maxHp, 0, 1.5);
+        const missing = 1 - clamp(target.currentHp / maxHp, 0, 1);
+        need = Math.max(need, incoming * (0.6 + 0.8 * missing));
+    }
+    return clamp(0.35 + need * 1.1, 0.35, 1.9);
+}
+
+/** Elements a protective payload guards against. */
+function coveredElements(record: Record<string, unknown>): string[] {
+    const elements = new Set<string>();
+    const collect = (value: unknown): void => {
+        if (Array.isArray(value)) {
+            for (const entry of value) {
+                const element = typeof entry === 'string' ? entry : null;
+                if (element) elements.add(element.toLowerCase());
+            }
+            return;
+        }
+        for (const key of Object.keys(asRecord(value) ?? {})) elements.add(key.toLowerCase());
+    };
+    collect(record.prevent_elements);
+    collect(record.element_modulation);
+    return [...elements];
+}
+
+/**
+ * The threat the target is actually facing: the heaviest expected hit from the
+ * other side, its element, and how hard that element lands on this target.
+ */
+function strongestIncoming(
+    context: AiDecisionContext,
+    target: CombatUnit,
+): { elementId: string; damage: number; multiplier: number } | null {
+    const attackers = context.state.units.filter((unit) => unit.side !== target.side && unit.status === 'alive');
+    let best: { elementId: string; damage: number; multiplier: number } | null = null;
+    for (const attacker of attackers) {
+        for (const action of attacker.actions) {
+            if (!action.dealsDamage) continue;
+            const damage = expectedDamageFor(context, action, target);
+            if (damage <= 0) continue;
+            if (!best || damage > best.damage) {
+                const multiplier = impactFor(context, action, target)?.elementMultiplier ?? 1;
+                best = { elementId: action.elementId, damage, multiplier };
+            }
+        }
+    }
+    return best;
+}
+
+/**
+ * Bonus for a protection whose element actually covers the weakness.
+ *
+ * This is the "Stone Wall on the ally who is about to eat the element they are
+ * weak to" case: the payload is the same, the timing is what makes it a plan.
+ */
+function protectionCoverage(
+    context: AiDecisionContext,
+    record: Record<string, unknown>,
+    targets: readonly CombatUnit[],
+): number {
+    const covered = coveredElements(record);
+    if (covered.length === 0) return 0;
+
+    let bonus = 0;
+    for (const target of targets) {
+        const incoming = strongestIncoming(context, target);
+        if (!incoming || incoming.multiplier <= 1) continue;
+        if (!covered.includes(incoming.elementId.toLowerCase())) continue;
+        bonus = Math.max(bonus, clamp((incoming.multiplier - 1) * 0.45, 0, 0.5));
+    }
+    return bonus;
 }
 
 /** Defensive payload and target-denial tools. */

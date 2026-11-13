@@ -100,6 +100,9 @@ function buildFactors(situation: AiSituation): Record<AiConsiderationId, number>
         1,
     );
 
+    /** `0` = nothing to combine, `1` = two live setups with payoffs. */
+    const comboPotential = clamp(situation.kit.comboPotential, 0, 1);
+
     return {
         // Damage is always good; it is worth more when a kill ends the fight.
         expected_damage: 1 + 0.35 * lateGame,
@@ -108,8 +111,11 @@ function buildFactors(situation: AiSituation): Record<AiConsiderationId, number>
         // Elemental advantage pays off over several hits, so it needs a fight.
         element_edge: 1 + 0.2 * earlyGame,
 
-        // Setups are the future: worth more with time and when they land.
-        effect_value: (1 - 0.45 * lateGame + 0.5 * timeToPlan) * (1 - 0.5 * resistance),
+        // Setups are the future: worth more with time, when they land, and when
+        // the kit actually holds the payoff for them.
+        effect_value: (1 - 0.45 * lateGame + 0.5 * timeToPlan)
+            * (1 - 0.5 * resistance)
+            * (1 + 0.45 * comboPotential),
 
         survival: 1 + 1.1 * ownHp + 0.5 * threat + 0.35 * outnumbered,
         flee: 1,

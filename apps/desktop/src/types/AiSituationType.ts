@@ -159,6 +159,25 @@ export interface AiSituationPressure {
     outnumbered: number;
 }
 
+/**
+ * What the actor's own kit can combine, read field by field.
+ *
+ * The score layer prices one skill's payload; this is the weight-level signal
+ * that the unit holds both halves of a plan. A status applier plus a payoff
+ * action is a combo even before anything is cast, which is what lets the
+ * situational layer raise `effect_value` for a caster that is built to set up.
+ */
+export interface AiSituationKit {
+    /** Actor actions that apply a status or boost an element. */
+    setups: number;
+    /** Setups the actor itself also holds a payoff for. */
+    selfCombos: number;
+    /** Setups only another living ally can cash in. */
+    teamCombos: number;
+    /** `0`–`1`, saturating once two live combos are available. */
+    comboPotential: number;
+}
+
 /** Everything one decision knows about the fight around it. */
 export interface AiSituation {
     round: number;
@@ -170,6 +189,7 @@ export interface AiSituation {
     history: AiSituationHistory;
     horizon: AiSituationHorizon;
     pressure: AiSituationPressure;
+    kit: AiSituationKit;
     /** Active battlefield weather, when any. */
     weather: {
         id: string;
