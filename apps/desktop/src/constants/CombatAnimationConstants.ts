@@ -49,6 +49,29 @@ export const ARENA_STEP_MS = 460;
 export const ARENA_STEP_STAGGER_MS = 110;
 
 /**
+ * Extra delay between consecutive targets of the same action.
+ *
+ * A multi-target blow would otherwise pop every number on the same frame. Staggering
+ * them by target reads as a wave travelling across the board, and the health pools
+ * still drain together when the state swaps at the impact.
+ */
+export const ARENA_HIT_STAGGER_MS = 110;
+
+/**
+ * Extra delay between the rattles of a multi-hit blow.
+ *
+ * The target is knocked once per landed strike, capped so a five-hit flurry does not
+ * outlast the settle.
+ */
+export const ARENA_MULTI_HIT_STAGGER_MS = 70;
+
+/** How long a buff/debuff label lingers over the unit it just landed on. */
+export const ARENA_STATUS_MS = 900;
+
+/** Extra delay between two status labels landing on the same unit. */
+export const ARENA_STATUS_STAGGER_MS = 90;
+
+/**
  * Scale of the rear line on the two-row ground plane.
  *
  * Documentation only: the live value is the CSS var `--arena-row-scale` in

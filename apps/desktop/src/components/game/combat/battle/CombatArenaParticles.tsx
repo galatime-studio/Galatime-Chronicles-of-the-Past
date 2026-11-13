@@ -15,6 +15,7 @@ import {
     ARENA_HIT_PARTICLES,
     ARENA_HIT_SPARK_OPTIONS,
     ARENA_IMPACT_MS,
+    ARENA_MULTI_HIT_STAGGER_MS,
     elementTint,
 } from '../../../../constants/CombatAnimationConstants';
 import { useParticleLayer } from '../../../../hooks/useParticleLayer';
@@ -96,8 +97,22 @@ export function CombatArenaParticles({ sequence, boardRef }: CombatArenaParticle
         };
 
         for (const hit of sequence.hits) {
-            if (hit.kind === 'damage' && hit.isHit) {
-                burst(sparkLayer, sparkContainer, hit.targetId, ARENA_HIT_PARTICLES, elementTint(hit.elementId), ARENA_IMPACT_MS);
+            // Ambient ticks (DoT, regen, upkeep) have no blow to spark; they only
+            // print their number on the unit.
+            if (hit.ambient || hit.kind !== 'damage' || !hit.isHit) continue;
+
+            // A multi-hit flurry throws one burst per landed strike, capped so a
+            // long combo does not outlast the settle.
+            const bursts = hit.hits > 1 ? Math.min(3, hit.hits) : 1;
+            for (let index = 0; index < bursts; index += 1) {
+                burst(
+                    sparkLayer,
+                    sparkContainer,
+                    hit.targetId,
+                    ARENA_HIT_PARTICLES,
+                    elementTint(hit.elementId),
+                    ARENA_IMPACT_MS + hit.delayMs + index * ARENA_MULTI_HIT_STAGGER_MS,
+                );
             }
         }
 

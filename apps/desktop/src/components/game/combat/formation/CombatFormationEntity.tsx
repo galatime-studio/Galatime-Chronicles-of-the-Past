@@ -9,13 +9,15 @@ import {
     ARENA_ENTER_STAGGER_MS,
     ARENA_IMPACT_MS,
     ARENA_LUNGE_MS,
+    ARENA_STATUS_MS,
+    ARENA_STATUS_STAGGER_MS,
     ARENA_STEP_MS,
     ARENA_STEP_STAGGER_MS,
     elementTint,
 } from '../../../../constants/CombatAnimationConstants';
 import { ELEMENT_DAMAGE_MULTIPLIERS } from '../../../../constants/CombatConstants';
 import { CombatFormationHealthMeter } from './CombatFormationHealthMeter';
-import { hitFor, type ArenaSequence } from '../battle/combatArenaSequence';
+import { hitsFor, type ArenaHit, type ArenaSequence } from '../battle/combatArenaSequence';
 import type { CombatFormationEntity as CombatFormationEntityData, CombatFormationLaneId, CombatFormationSideId } from './CombatFormationHUD.types';
 import type { CombatActionImpact } from '../../../../types/CombatType';
 import { CombatFormationTooltip } from './CombatFormationTooltip';
@@ -69,6 +71,58 @@ function effectivenessChip(multiplier: number): string {
 function multiplierLabel(multiplier: number): string {
     return `x${Math.round(multiplier * 100) / 100}`;
 }
+
+/**
+ * The efficacy colour of a damage number.
+ *
+ * Reads the same ladder as the element tooltip: green when the target answers the
+ * blow strongly (it takes less), white at neutral, red when it is weak to it. The
+ * dark rungs still get a white halo from {@link floatingNumberStyle}, so the digits
+ * stay readable on the dark board.
+ */
+function damageNumberTone(multiplier: number): string {
+    const ladder = ELEMENT_DAMAGE_MULTIPLIERS;
+    if (multiplier === ladder.immune) return 'text-galatime-element-immune';
+    if (multiplier <= ladder.super_strong) return 'text-galatime-element-superStrong';
+    if (multiplier < ladder.normal) return 'text-galatime-element-strong';
+    if (multiplier === ladder.normal) return 'text-white';
+    if (multiplier < ladder.super_weak) return 'text-galatime-element-weak';
+    return 'text-galatime-element-superWeak';
+}
+
+/** Text colour of a buff/debuff label; the success/error hovers stay legible on the board. */
+const STATUS_TONE_TEXT: Record<'buff' | 'debuff' | 'neutral', string> = {
+    buff: 'text-galatime-successHover',
+    debuff: 'text-galatime-errorHover',
+    neutral: 'text-white/80',
+};
+
+/** The animation a floating number plays, and the delay before it starts. */
+function numberAnimation(hit: ArenaHit): string {
+    return hit.isHit ? 'combat-rise' : 'combat-miss';
+}
+
+/** The message a number carries: a miss, or the signed amount. */
+function numberText(hit: ArenaHit, miss: string): string {
+    if (!hit.isHit) return miss;
+    const rounded = Math.round(hit.amount);
+    // An immunity still lands ("hit") for zero; print `0`, never `-0`.
+    if (hit.kind === 'damage' && rounded <= 0) return '0';
+    return `${hit.kind === 'heal' ? '+' : '-'}${rounded}`;
+}
+
+/** Outline and halo that keep a floating number readable on the dark arena. */
+const FLOATING_NUMBER_STYLE: CSSProperties = {
+    WebkitTextStroke: '2.5px rgba(0,0,0,0.85)',
+    paintOrder: 'stroke fill',
+    textShadow: '0 0 8px rgba(255,255,255,0.45), 0 2px 4px rgba(0,0,0,0.9)',
+};
+
+/** The same treatment at a smaller scale, so a tick's thin digits are not swallowed. */
+const AMBIENT_NUMBER_STYLE: CSSProperties = {
+    ...FLOATING_NUMBER_STYLE,
+    WebkitTextStroke: '1.5px rgba(0,0,0,0.85)',
+};
 
 interface CombatFormationEntityProps {
     entity: CombatFormationEntityData;
@@ -190,9 +244,15 @@ export function CombatFormationEntity({
     // The party stands on the left and faces right into the fight, the enemies on the
     // right face left: one var drives every sideways reaction, from lunges to knocks.
     const arenaDir = side === 'allies' ? 1 : -1;
-    const hit = hitFor(sequence, entity.id);
+    const hitBeats = hitsFor(sequence, entity.id);
+    // The direct blow drives the reaction (knockback, flash, sparks); ambient ticks
+    // (DoT, regen) are shown in the same column but never shake the unit.
+    const hit = hitBeats.find((beat) => !beat.ambient);
     const isActor = sequence?.actorId === entity.id;
     const reflected = sequence?.reflected.find((beat) => beat.unitId === entity.id);
+    const statusBeats = (sequence?.statuses ?? [])
+        .filter((beat) => beat.unitId === entity.id)
+        .slice(0, MAX_STATUS_BADGES);
     // A newly drawn unit enters: it mounts when the state swaps and plays its arrival
     // on the layer that also carries the lunge. Index inside its own burst staggers
     // simultaneous entrants so they land one after another, not on top of each other.
@@ -206,7 +266,7 @@ export function CombatFormationEntity({
     const stepped = steppedIndex >= 0;
     // A unit taking part in the choreography shows its health, so the bar is there to drain
     // (or fill) when the blow lands instead of only under the pointer.
-    const arenaReveal = isActor || hit !== undefined || reflected !== undefined;
+    const arenaReveal = isActor || hitBeats.length > 0 || reflected !== undefined;
 
     const enterDelay = entering ? enterIndex * ARENA_ENTER_STAGGER_MS : 0;
     const stepDelay = stepped ? steppedIndex * ARENA_STEP_STAGGER_MS : 0;
@@ -232,22 +292,14 @@ export function CombatFormationEntity({
     };
     const hitStyle: ArenaLayerStyle = {
         '--arena-dir': arenaDir,
-        animation: hit ? `combat-hit 420ms ease-out ${ARENA_IMPACT_MS}ms both` : undefined,
+        // A miss is dodged, not struck: only a landed damaging blow knocks the unit.
+        animation: hit && hit.kind === 'damage' && hit.isHit
+            ? `${hit.hits > 1 ? 'combat-hit-multi 520ms' : 'combat-hit 420ms'} ease-out ${ARENA_IMPACT_MS + hit.delayMs}ms both`
+            : undefined,
     };
 
     const flashTint = hit && hit.kind === 'damage' && hit.isHit ? elementTint(hit.elementId) : null;
-    const hitText = hit
-        ? (!hit.isHit
-            ? t('combat.miss')
-            : `${hit.kind === 'heal' ? '+' : '-'}${Math.round(hit.amount)}`)
-        : null;
-    const hitTextClass = !hit
-        ? ''
-        : !hit.isHit
-            ? 'text-white/85'
-            : hit.kind === 'heal'
-                ? 'text-galatime-stats-gain-health'
-                : 'text-galatime-stats-damage';
+    const healFlash = hit?.kind === 'heal';
     const statusLabel = entity.statusBadges.length > 0
         ? `, ${entity.statusBadges.map((badge) => badge.label).join(', ')}`
         : '';
@@ -478,7 +530,19 @@ export function CombatFormationEntity({
                                         style={{
                                             backgroundColor: flashTint,
                                             mixBlendMode: 'screen',
-                                            animation: `combat-flash 340ms ease-out ${ARENA_IMPACT_MS}ms both`,
+                                            animation: `combat-flash 340ms ease-out ${ARENA_IMPACT_MS + (hit?.delayMs ?? 0)}ms both`,
+                                        }}
+                                    />
+                                )}
+                                {/* A heal warms the sprite instead of striking it: the same
+                                    clipped wash, in the health-gain colour. */}
+                                {healFlash && (
+                                    <span
+                                        aria-hidden="true"
+                                        className="pointer-events-none absolute inset-0 bg-galatime-stats-gain-health"
+                                        style={{
+                                            mixBlendMode: 'screen',
+                                            animation: `combat-heal 560ms ease-out ${ARENA_IMPACT_MS + (hit?.delayMs ?? 0)}ms both`,
                                         }}
                                     />
                                 )}
@@ -490,6 +554,27 @@ export function CombatFormationEntity({
                                     className="pointer-events-none absolute left-1/2 top-0 z-40 h-8 w-8 -translate-x-1/2 border-game border-galatime-stats-manaTo sm:h-16 sm:w-16"
                                     style={{ animation: `combat-shield 460ms ease-out ${ARENA_IMPACT_MS}ms both` }}
                                 />
+                            )}
+                            {/* The buff/debuff that just landed (or was resisted), centred
+                                over the sprite so it never collides with the rising number.
+                                Its outline carries the element it came from, like the chip. */}
+                            {statusBeats.length > 0 && (
+                                <span className="pointer-events-none absolute left-1/2 top-1/2 z-40 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5">
+                                    {statusBeats.map((beat, index) => (
+                                        <span
+                                            key={`${beat.unitId}-${beat.label ?? beat.tone}-${index}`}
+                                            className={`whitespace-nowrap border-game border-black/60 bg-galatime-background/90 px-1 font-pixel text-[8px] uppercase tracking-[0.06em] sm:text-[10px] ${STATUS_TONE_TEXT[beat.tone]}`}
+                                            style={{
+                                                borderColor: beat.elementId ? elementTint(beat.elementId) : undefined,
+                                                animation: `combat-status-pop ${ARENA_STATUS_MS}ms ease-out ${ARENA_IMPACT_MS + index * ARENA_STATUS_STAGGER_MS}ms both`,
+                                            }}
+                                        >
+                                            {beat.resisted
+                                                ? t('combat.resist')
+                                                : beat.label ?? t(`combat.${beat.tone === 'buff' ? 'statusBuff' : beat.tone === 'debuff' ? 'statusDebuff' : 'statusNeutral'}`)}
+                                        </span>
+                                    ))}
+                                </span>
                             )}
                             {/* Live status effects, at the sprite's top-left corner: the
                                 effectiveness chip owns the top-right one. The chip is
@@ -524,20 +609,37 @@ export function CombatFormationEntity({
                                     />
                                 </div>
                             )}
-                            {/* What the blow cost, or gave back, rising off the sprite. */}
-                            {hit && (
-                                <span className="pointer-events-none absolute left-1/2 top-0 z-50 -translate-x-1/2">
+                            {/* What the blow cost, or gave back, rising off the sprite. A
+                                direct hit speaks first; an ambient tick (DoT, regen, upkeep)
+                                is drawn smaller underneath and never shakes the unit. */}
+                            {hitBeats.slice(0, 2).map((beat, index) => (
+                                <span
+                                    key={`${beat.targetId}-${beat.kind}-${beat.ambient}-${index}`}
+                                    className="pointer-events-none absolute left-1/2 z-50 -translate-x-1/2"
+                                    style={{ top: index * 16 }}
+                                >
                                     <span
-                                        className={`block font-pixel text-xs font-bold tabular-nums sm:text-sm ${hitTextClass}`}
+                                        className={`block whitespace-nowrap font-pixel font-bold tabular-nums ${beat.ambient ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-sm'} ${
+                                            !beat.isHit
+                                                ? 'text-white/85'
+                                                : beat.kind === 'heal'
+                                                    ? 'text-galatime-stats-gain-health'
+                                                    : beat.ambient
+                                                        ? 'text-galatime-stats-damage'
+                                                        : damageNumberTone(beat.multiplier)
+                                        }`}
                                         style={{
-                                            animation: `combat-rise 760ms ease-out ${ARENA_IMPACT_MS}ms both`,
-                                            textShadow: '0 2px 4px rgba(0,0,0,0.85)',
+                                            ...(beat.ambient ? AMBIENT_NUMBER_STYLE : FLOATING_NUMBER_STYLE),
+                                            animation: `${numberAnimation(beat)} 760ms ease-out ${ARENA_IMPACT_MS + beat.delayMs}ms both`,
                                         }}
                                     >
-                                        {hitText}
+                                        {numberText(beat, t('combat.miss'))}
+                                        {beat.kind === 'damage' && beat.isHit && beat.hits > 1 && (
+                                            <span className="ml-0.5 align-top text-[0.65em] text-white/80">×{beat.hits}</span>
+                                        )}
                                     </span>
                                 </span>
-                            )}
+                            ))}
                         </div>
                     </div>
                 </div>

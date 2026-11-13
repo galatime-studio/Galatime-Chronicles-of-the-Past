@@ -11,16 +11,20 @@
 import {
     ARENA_ENTER_MS,
     ARENA_ENTER_STAGGER_MS,
+    ARENA_HIT_STAGGER_MS,
     ARENA_IMPACT_MS,
     ARENA_QUIET_TOTAL_MS,
+    ARENA_SETTLE_MS,
     ARENA_SHAKE_RATIO,
+    ARENA_STATUS_MS,
+    ARENA_STATUS_STAGGER_MS,
     ARENA_STEP_MS,
     ARENA_STEP_STAGGER_MS,
     ARENA_TOTAL_MS,
 } from '../../../../constants/CombatAnimationConstants';
 import type { CombatEvent, CombatState, CombatUnit } from '../../../../types/CombatType';
 
-/** One unit taking damage or being healed by the action. */
+/** One unit taking damage or being healed, already totalled per source. */
 export interface ArenaHit {
     targetId: string;
     /** Damage dealt (positive) or health restored, already resolved. */
@@ -30,16 +34,41 @@ export interface ArenaHit {
     isHit: boolean;
     /** Element of the action, for the flash/spark tint. */
     elementId: string | null;
-    /** Element efficacy (`x0`…`x1.6`), kept for a possible emphasis later. */
+    /** Element efficacy (`x0`…`x1.6`), read by the damage number's colour. */
     multiplier: number;
     /** The hit brought the target to 0. */
     fatal: boolean;
+    /**
+     * How many individual blows this entry stands for.
+     *
+     * A multi-hit action rolls once and reports its strike count; the arena then
+     * rattles the target per blow and prints `×N` beside the total.
+     */
+    hits: number;
+    /**
+     * The reaction waits this long after the impact.
+     *
+     * Consecutive targets of one action are staggered so the numbers do not all
+     * appear on the same frame.
+     */
+    delayMs: number;
+    /**
+     * A health tick that did not come from a direct action: a damage-over-time,
+     * a regen, an upkeep or an item. Drawn smaller, without a knockback or sparks.
+     */
+    ambient: boolean;
 }
 
-/** A status effect landing on a unit. */
+/** A status effect landing on a unit, or being shrugged off. */
 export interface ArenaStatusBeat {
     unitId: string;
     label: string | null;
+    /** How the effect reads: a buff, a debuff, or neither. */
+    tone: 'buff' | 'debuff' | 'neutral';
+    /** Element the effect came from, for the label's outline. */
+    elementId: string | null;
+    /** The target resisted the effect; the label says so instead of naming it. */
+    resisted: boolean;
 }
 
 /** Damage thrown back at the unit that dealt it. */
@@ -87,6 +116,31 @@ function findActionElement(units: readonly CombatUnit[], actionId: string): stri
 }
 
 /**
+ * How one applied effect reads once the new state is in place.
+ *
+ * The event names the effect but not its tone; the instance carries the derived
+ * polarity and the element, so the label can be drawn in the same colours as the
+ * status chips already are.
+ */
+function findAppliedEffect(
+    units: readonly CombatUnit[],
+    unitId: string,
+    effectId: string,
+): { tone: ArenaStatusBeat['tone']; elementId: string | null; label: string | null } {
+    const effect = units
+        .find((unit) => unit.id === unitId)
+        ?.effects.find((candidate) => candidate.effectId === effectId);
+
+    if (!effect) return { tone: 'neutral', elementId: null, label: null };
+
+    return {
+        tone: effect.polarity === 'positive' ? 'buff' : effect.polarity === 'negative' ? 'debuff' : 'neutral',
+        elementId: effect.elementId,
+        label: effect.statusEffect,
+    };
+}
+
+/**
  * Builds the choreography for one resolved step.
  *
  * Returns `null` when the step has nothing to show — an empty event list, or events that
@@ -100,7 +154,12 @@ export function buildArenaSequence(
 ): ArenaSequence | null {
     const actionUsed = events.find((event) => event.type === 'action_used');
 
-    const hits: ArenaHit[] = [];
+    // Direct blows are merged per target: a chain or splash can land more than one
+    // `attack_resolved` on the same unit, and the board should print one total, not
+    // one number per hop. Ambient ticks (DoT, regen, upkeep) are kept apart so they
+    // never borrow the action's element colour.
+    const directHits = new Map<string, ArenaHit>();
+    const ambientHits = new Map<string, ArenaHit>();
     const statuses: ArenaStatusBeat[] = [];
     const defeated: string[] = [];
     const reflected: ArenaReflectBeat[] = [];
@@ -108,6 +167,23 @@ export function buildArenaSequence(
     const transformed: string[] = [];
     const stepped: string[] = [];
     let shake = false;
+
+    const pushDirectHit = (
+        key: string,
+        hit: Omit<ArenaHit, 'delayMs' | 'ambient'>,
+    ) => {
+        const existing = directHits.get(key);
+        if (!existing) {
+            directHits.set(key, { ...hit, hits: hit.isHit ? hit.hits : 0, delayMs: 0, ambient: false });
+            return;
+        }
+
+        existing.amount += hit.amount;
+        existing.isHit = existing.isHit || hit.isHit;
+        existing.fatal = existing.fatal || hit.fatal;
+        // A missed hop still produces a resolution; it must not inflate `×N`.
+        existing.hits += hit.isHit ? hit.hits : 0;
+    };
 
     for (const event of events) {
         switch (event.type) {
@@ -121,7 +197,7 @@ export function buildArenaSequence(
                     shake = true;
                 }
 
-                hits.push({
+                pushDirectHit(`damage:${resolution.targetId}`, {
                     targetId: resolution.targetId,
                     amount: resolution.finalDamage,
                     kind: 'damage',
@@ -129,12 +205,13 @@ export function buildArenaSequence(
                     elementId: findActionElement(state.units, resolution.actionId),
                     multiplier: resolution.elementMultiplier,
                     fatal,
+                    hits: Math.max(1, resolution.hits),
                 });
                 break;
             }
             case 'healed': {
                 const { resolution } = event;
-                hits.push({
+                pushDirectHit(`heal:${resolution.targetId}`, {
                     targetId: resolution.targetId,
                     amount: resolution.amount,
                     kind: 'heal',
@@ -142,11 +219,61 @@ export function buildArenaSequence(
                     elementId: findActionElement(state.units, resolution.actionId),
                     multiplier: 1,
                     fatal: false,
+                    hits: 1,
                 });
                 break;
             }
-            case 'effect_applied':
-                statuses.push({ unitId: event.unitId, label: event.statusEffect });
+            case 'resource_changed': {
+                // Only health is choreographed: the idle mana/stamina curve runs every
+                // turn and would bury the board in numbers.
+                if (event.resource !== 'hp' || event.previous === event.next) break;
+
+                const amount = Math.abs(event.next - event.previous);
+                const kind: ArenaHit['kind'] = event.next < event.previous ? 'damage' : 'heal';
+                const fatal = kind === 'damage' && event.next <= 0;
+                const key = `${kind}:${event.unitId}`;
+                const existing = ambientHits.get(key);
+
+                if (fatal) shake = true;
+
+                if (existing) {
+                    existing.amount += amount;
+                    existing.fatal = existing.fatal || fatal;
+                } else {
+                    ambientHits.set(key, {
+                        targetId: event.unitId,
+                        amount,
+                        kind,
+                        isHit: true,
+                        elementId: null,
+                        multiplier: 1,
+                        fatal,
+                        hits: 1,
+                        delayMs: 0,
+                        ambient: true,
+                    });
+                }
+                break;
+            }
+            case 'effect_applied': {
+                const applied = findAppliedEffect(state.units, event.unitId, event.effectId);
+                statuses.push({
+                    unitId: event.unitId,
+                    label: event.statusEffect ?? applied.label,
+                    tone: applied.tone,
+                    elementId: applied.elementId,
+                    resisted: false,
+                });
+                break;
+            }
+            case 'effect_resisted':
+                statuses.push({
+                    unitId: event.unitId,
+                    label: event.statusEffect,
+                    tone: 'neutral',
+                    elementId: actionUsed?.elementId ?? null,
+                    resisted: true,
+                });
                 break;
             case 'unit_defeated':
                 if (!defeated.includes(event.unitId)) defeated.push(event.unitId);
@@ -167,6 +294,17 @@ export function buildArenaSequence(
                 break;
         }
     }
+
+    // One stagger step per target, in the order the action reached them.
+    const targetOrder = new Map<string, number>();
+    for (const hit of directHits.values()) {
+        if (!targetOrder.has(hit.targetId)) targetOrder.set(hit.targetId, targetOrder.size);
+    }
+    for (const hit of directHits.values()) {
+        hit.delayMs = (targetOrder.get(hit.targetId) ?? 0) * ARENA_HIT_STAGGER_MS;
+    }
+
+    const hits: ArenaHit[] = [...directHits.values(), ...ambientHits.values()];
 
     const actorId = actionUsed?.actorId ?? null;
     const actorName = actorId
@@ -195,11 +333,16 @@ export function buildArenaSequence(
 
     // Entrances and line changes mount at the impact and can run longer than the
     // settle that follows a blow, so they extend the whole beat when they need to —
-    // staggered per extra unit, since they wait for each other to land.
+    // staggered per extra unit, since they wait for each other to land. Targets are
+    // staggered too: the last one's number must still finish before the next turn.
     const enterBursts = Math.max(summoned.length, transformed.length);
     const stepBursts = stepped.length;
+    const lastHitDelay = hits.reduce((latest, hit) => Math.max(latest, hit.delayMs), 0);
+    const lastStatusDelay = Math.max(0, Math.min(statuses.length - 1, 3)) * ARENA_STATUS_STAGGER_MS;
     const totalMs = Math.max(
         quiet ? ARENA_QUIET_TOTAL_MS : ARENA_TOTAL_MS,
+        hits.length > 0 ? ARENA_IMPACT_MS + lastHitDelay + ARENA_SETTLE_MS : 0,
+        statuses.length > 0 ? ARENA_IMPACT_MS + lastStatusDelay + ARENA_STATUS_MS : 0,
         enterBursts > 0
             ? ARENA_IMPACT_MS + ARENA_ENTER_MS + Math.max(0, enterBursts - 1) * ARENA_ENTER_STAGGER_MS
             : 0,
@@ -226,10 +369,19 @@ export function buildArenaSequence(
     };
 }
 
-/** The hit a unit took in a sequence, if any. */
+/** Every beat a unit took in a sequence: the direct hit first, then any ambient tick. */
+export function hitsFor(
+    sequence: ArenaSequence | null | undefined,
+    unitId: string,
+): ArenaHit[] {
+    if (!sequence) return [];
+    return sequence.hits.filter((hit) => hit.targetId === unitId);
+}
+
+/** The direct hit a unit took in a sequence, if any (ambient ticks excluded). */
 export function hitFor(
     sequence: ArenaSequence | null | undefined,
     unitId: string,
 ): ArenaHit | undefined {
-    return sequence?.hits.find((hit) => hit.targetId === unitId);
+    return hitsFor(sequence, unitId).find((hit) => !hit.ambient);
 }
