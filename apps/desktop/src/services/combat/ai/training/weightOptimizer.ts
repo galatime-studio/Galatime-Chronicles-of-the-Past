@@ -581,6 +581,7 @@ export async function optimizeAiWeights(
     return {
         generatedAt: new Date().toISOString(),
         seed,
+        scenarioSeeds: [...(options.scenarioSeeds ?? [String(options.seed ?? 'ai-weight-optimizer')])],
         difficulty,
         opponent: { id: options.opponent.id, label: options.opponent.label },
         generations,
@@ -627,6 +628,7 @@ export function formatAiWeightOptimizationReport(report: AiWeightOptimizationRep
         'Galatime AI weight optimization',
         `generated: ${report.generatedAt}`,
         `seed: ${report.seed}`,
+        `scenario seeds: ${report.scenarioSeeds.join(', ')}`,
         `opponent: ${report.opponent.id} (${report.opponent.label})`,
         `difficulty: ${report.difficulty}`,
         `CEM: ${report.generations} generations × ${report.populationSize} population, elite ${report.eliteCount}`,

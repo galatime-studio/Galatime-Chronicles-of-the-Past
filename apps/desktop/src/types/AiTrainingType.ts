@@ -422,6 +422,12 @@ export interface AiWeightOptimizerOptions {
     /** Stop after this many generations without validation improvement; defaults to 2. */
     validationPatience?: number;
     seed?: number | string;
+    /**
+     * Suite seeds the given scenarios came from. Reporting only: the search sees
+     * a flat scenario list, and seed diversity is the caller's responsibility —
+     * give it several independent suites or the vector overfits to one draw.
+     */
+    scenarioSeeds?: readonly string[];
     /** Dimensions optimized; defaults to every consideration except flee/item. */
     activeConsiderationIds?: readonly AiConsiderationId[];
     onGeneration?: (generation: AiOptimizerGeneration) => void;
@@ -431,6 +437,8 @@ export interface AiWeightOptimizerOptions {
 export interface AiWeightOptimizationReport {
     generatedAt: string;
     seed: number;
+    /** Suite seeds the train/validation/test scenarios were generated from. */
+    scenarioSeeds: string[];
     difficulty: Difficulty;
     opponent: { id: string; label: string };
     generations: number;
