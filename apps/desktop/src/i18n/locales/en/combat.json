@@ -11,6 +11,18 @@
 		"statusBuff": "BUFF",
 		"statusDebuff": "DEBUFF",
 		"statusNeutral": "EFFECT",
+		"tooltip": {
+			"effects": "Effects",
+			"abilities": "Abilities",
+			"skills": "Skills",
+			"weapon": "Weapon",
+			"noElements": "No known elements",
+			"loadingSkills": "Loading skills...",
+			"ammo": "Ammo {{remaining}} ({{item}})",
+			"turns_one": "{{count}} turn",
+			"turns_other": "{{count}} turns",
+			"untilEnd": "Until the fight ends"
+		},
 		"stalled": "This unit has nothing it can do.",
 		"inventoryTitle": "Use an item",
 		"inventoryEmpty": "This unit carries no usable items.",

@@ -12,6 +12,14 @@ export interface CombatStatusBadge {
     id: string;
     /** The authored label (`Frozen`, `Wet`), or a generic one for a pure stat change. */
     label: string;
+    /**
+     * Whether the effect carries an authored name.
+     *
+     * A named effect (`Wet`, `Frozen`, `Burning`) is worth listing as a status in the
+     * tooltip; an unnamed one is only a stat delta, already summarised by
+     * {@link CombatStatModifier}, so listing it would repeat the same information twice.
+     */
+    named: boolean;
     /** Element the effect came from, used for the chip's tint. */
     elementId: string | null;
     tone: 'buff' | 'debuff' | 'neutral';

@@ -141,16 +141,25 @@ function toStatusBadges(unit: CombatUnit): CombatStatusBadge[] {
     return unit.effects.map((effect) => {
         const buffed = effect.buff !== null || effect.statMultipliers !== null;
         const debuffed = effect.debuff !== null || (effect.preventActions?.length ?? 0) > 0;
-        const tone: CombatStatusBadge['tone'] = buffed && !debuffed
+        // The authored polarity wins when it says something: an authored `Wet` is neutral,
+        // while an ability or training status declares its own sign. Authored attack
+        // statuses leave it neutral, so the shape of the effect remains the fallback.
+        const derived: CombatStatusBadge['tone'] = buffed && !debuffed
             ? 'buff'
             : debuffed && !buffed
                 ? 'debuff'
                 : 'neutral';
+        const tone: CombatStatusBadge['tone'] = effect.polarity === 'positive'
+            ? 'buff'
+            : effect.polarity === 'negative'
+                ? 'debuff'
+                : derived;
 
         return {
             id: effect.effectId,
             label: effect.statusEffect
                 ?? (tone === 'buff' ? 'Buff' : tone === 'debuff' ? 'Debuff' : 'Effect'),
+            named: effect.statusEffect !== null,
             elementId: effect.elementId,
             tone,
             turns: effect.turns,
