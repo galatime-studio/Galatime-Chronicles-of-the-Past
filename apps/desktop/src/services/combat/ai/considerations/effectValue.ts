@@ -20,7 +20,7 @@
  * healing estimators fold it in.
  */
 
-import { AI_EFFECT_REFERENCE, AI_HEAL_REFERENCE_FRACTION, AI_HORIZON_TURN_FLOOR } from '../../../../constants/AiConstants';
+import { AI_DAMAGE_REFERENCE_FRACTION, AI_EFFECT_REFERENCE, AI_HEAL_REFERENCE_FRACTION, AI_HORIZON_TURN_FLOOR, AI_STAT_EFFECT_CAP, AI_STAT_TURN_VALUE } from '../../../../constants/AiConstants';
 import type { AiConsideration, AiDecisionContext } from '../../../../types/AiType';
 import type { CombatUnit } from '../../../../types/CombatType';
 import {
@@ -58,33 +58,94 @@ export const effectValue: AiConsideration = {
         for (const effect of action.effects) {
             const record = asRecord(effect) ?? {};
             const turns = horizonTurns(context, readDotTurns(record.turns));
-            const duration = clamp(turns / DEFAULT_DOT_TURNS, 0.5, 1.5);
+
+            let effectScore = 0;
 
             const damagePerTurn = readNumber(record.damage_per_turn, 0);
-            if (damagePerTurn > 0) score += clamp((damagePerTurn * turns) / referenceHp, 0, 1);
+            if (damagePerTurn > 0) {
+                effectScore += clamp(
+                    (damagePerTurn * turns) / referenceHp / AI_DAMAGE_REFERENCE_FRACTION,
+                    0,
+                    1,
+                );
+            }
 
-            if (Array.isArray(record.prevent_actions) && record.prevent_actions.length > 0) score += 0.8;
-            if (record.prevent_skills === true) score += 0.4;
-            if (hasEntries(record.prevent_ranges)) score += 0.2;
-            if (hasEntries(record.prevent_elements)) score += 0.2;
+            if (Array.isArray(record.prevent_actions) && record.prevent_actions.length > 0) effectScore += 0.8;
+            if (record.prevent_skills === true) effectScore += 0.4;
+            if (hasEntries(record.prevent_ranges)) effectScore += 0.2;
+            if (hasEntries(record.prevent_elements)) effectScore += 0.2;
 
-            score += (magnitude(readStatDelta(record.buff)) * duration) / AI_EFFECT_REFERENCE;
-            score += (magnitude(readStatDelta(record.debuff)) * duration) / AI_EFFECT_REFERENCE;
-            score += multiplierMagnitude(record.stat_multipliers) / AI_EFFECT_REFERENCE;
+            effectScore += statValue(context, record, targets, turns);
 
-            score += shieldValue(record.shield);
-            score += cleanseValue(record, negativeStatuses);
-            score += controlValue(record);
-            score += protectionValue(record) * protectionNeed(context, targets);
-            score += protectionCoverage(context, record, targets);
-            score += resourceValue(record, referenceMana, referenceStamina);
-            score += payoffValue(record, referenceHp);
-            score += statusValue(record, context, targets);
+            effectScore += shieldValue(record.shield);
+            effectScore += cleanseValue(record, negativeStatuses);
+            effectScore += controlValue(record);
+            effectScore += protectionValue(record) * protectionNeed(context, targets);
+            effectScore += protectionCoverage(context, record, targets);
+            effectScore += resourceValue(record, referenceMana, referenceStamina);
+            effectScore += payoffValue(record, referenceHp);
+            effectScore += statusValue(record, context, targets);
+
+            score += renewalFactor(record, targets, turns) * effectScore;
         }
 
         return clamp(score, 0, 1);
     },
 };
+
+/**
+ * How much of an effect is still worth paying a turn for.
+ *
+ * Re-casting a buff that is already up is how three units can spend a whole
+ * fight decorating themselves: the payload was priced identically whether the
+ * status was fresh or had three turns left. The reuse rule is that only the
+ * *extension* has value — a three-turn buff re-applied with three turns left
+ * gives nothing, and one re-applied on its last turn is worth two of the three.
+ *
+ * Charge and stack families keep a positive reuse value because every
+ * application advances them, and an effect already on some but not all targets
+ * keeps a partial value, since the rest of the board still gains.
+ */
+function renewalFactor(
+    record: Record<string, unknown>,
+    targets: readonly CombatUnit[],
+    turns: number,
+): number {
+    if (targets.length === 0) return 1;
+
+    const key = normalizeStatus(record.status_effect) ?? normalizeStatus(record.effect_id);
+    if (!key) return 1;
+
+    const carries = (target: CombatUnit): boolean => target.effects.some((active) => (
+        (normalizeStatus(active.statusEffect) ?? normalizeStatus(active.effectId)) === key
+    ));
+    const carried = targets.filter(carries);
+    if (carried.length === 0) return 1;
+    if (carried.length < targets.length) return PARTIAL_RENEWAL;
+
+    const stacking = record.can_stack === true || hasEntries(record.charges) || key.includes('freez');
+    if (stacking) return STACKING_RENEWAL;
+
+    let remaining = 0;
+    for (const target of targets) {
+        for (const active of target.effects) {
+            if ((normalizeStatus(active.statusEffect) ?? normalizeStatus(active.effectId)) !== key) continue;
+            // A null `turns` means "until the fight ends": no cast can extend it.
+            const left = active.turns === null || active.turns === undefined
+                ? Number.POSITIVE_INFINITY
+                : active.turns;
+            remaining = Math.max(remaining, left);
+        }
+    }
+    if (!Number.isFinite(remaining)) return 0;
+    return clamp((turns - remaining) / Math.max(1, turns), 0, 1);
+}
+
+/** Reuse value when only some of the targets already carry the effect. */
+const PARTIAL_RENEWAL = 0.7;
+
+/** Reuse value for charge and stack families, where each cast advances them. */
+const STACKING_RENEWAL = 0.6;
 
 /**
  * Named-status setup value.
@@ -110,19 +171,13 @@ function statusValue(
     let base = statusBaseValue(status, supportiveTarget);
     if (base <= 0) return 0;
 
-    // Reapplying a status that is already there is usually wasted; charge and
-    // stack statuses are the exception, because each application advances them.
-    const alreadyCarrying = targets.filter((target) => (
-        target.effects.some((effect) => normalizeStatus(effect.statusEffect) === status)
-    )).length;
-    if (targets.length > 0 && alreadyCarrying === targets.length) {
-        const stacking = record.can_stack === true
-            || hasEntries(record.charges)
-            || status.includes('freez');
-        base *= stacking ? 0.6 : 0.15;
-    } else if (alreadyCarrying > 0) {
-        base *= 0.7;
-    }
+    // A status that carries a payload the loop already priced (a stat buff, a
+    // DoT, a shield) must not also be paid for by its name: Battle Fury was
+    // counted once as "+18 attack for three turns" and once again as a named
+    // buff, which alone made it worth sixty times an attack. The name value is
+    // for bare statuses — Wet, Mud, Freezing — whose worth is the plan, not the
+    // numbers.
+    if (!hasNamedValue(status) && hasRatedPayload(record)) return 0;
 
     // A resisted application is a real signal that this target is a bad plan;
     // the recent log is the only place that information survives.
@@ -176,6 +231,28 @@ function statusBaseValue(status: string, supportiveTarget: boolean): number {
     const supportive = SUPPORTIVE_STATUS_VALUE[status];
     if (supportive !== undefined) return supportive;
     return supportiveTarget ? 0.18 : 0.08;
+}
+
+/** Whether the status has a curated setup value of its own. */
+function hasNamedValue(status: string): boolean {
+    return OFFENSIVE_STATUS_VALUE[status] !== undefined || SUPPORTIVE_STATUS_VALUE[status] !== undefined;
+}
+
+/** Whether the effect carries numbers the payload loop already converts to a score. */
+function hasRatedPayload(record: Record<string, unknown>): boolean {
+    return readNumber(record.damage_per_turn, 0) > 0
+        || magnitude(readStatDelta(record.buff)) > 0
+        || magnitude(readStatDelta(record.debuff)) > 0
+        || multiplierMagnitude(record.stat_multipliers) > 0
+        || hasEntries(record.shield)
+        || hasEntries(record.barrier)
+        || hasEntries(record.heal)
+        || hasEntries(record.heal_percent_of_max)
+        || hasEntries(record.regen_per_turn)
+        || hasEntries(record.regen_per_turn_percent)
+        || hasEntries(record.resource_regen)
+        || hasEntries(record.resource_drain)
+        || hasEntries(record.cleanse);
 }
 
 /**
@@ -271,6 +348,65 @@ function multiplierMagnitude(raw: unknown): number {
     let total = 0;
     for (const value of Object.values(delta)) total += Math.abs(value - 1);
     return total;
+}
+
+/** Authored stat keys to the field of `CombatStats` that carries the base value. */
+const STAT_BASE: Record<string, keyof ReturnType<typeof effectiveStats>> = {
+    physical_attack: 'physicalAttack',
+    magical_attack: 'magicalAttack',
+    physical_defense: 'physicalDefense',
+    magical_defense: 'magicalDefense',
+    speed: 'speed',
+    accuracy: 'accuracy',
+    evasion: 'evasion',
+};
+
+/**
+ * What a stat change is worth over its duration, in decisive hits.
+ *
+ * A buff used to be priced as "points added, divided by a 40-point reference",
+ * which made `+10 attack for three turns` worth 0.45 - thirty times a real hit,
+ * and more than twice the whole of a fresh attack's score. Three units then spent
+ * an entire fight re-applying their own buffs, which is exactly what the player
+ * saw. Points only mean something relative to the unit that carries them, so the
+ * value is the share of its own stat a buff adds, times the turns it lasts: a
+ * +10% attack buff for three turns is three tenths of an extra hit's worth of
+ * damage, not a third of a health bar.
+ */
+function statValue(
+    context: AiDecisionContext,
+    record: Record<string, unknown>,
+    targets: readonly CombatUnit[],
+    turns: number,
+): number {
+    const bearer = targets[0] ?? context.actor;
+    const stats = effectiveStats(bearer);
+
+    let share = statShare(readStatDelta(record.buff), stats);
+    share += statShare(readStatDelta(record.debuff), stats);
+    share += multiplierMagnitude(record.stat_multipliers);
+
+    return clamp(share * turns * AI_STAT_TURN_VALUE, 0, AI_STAT_EFFECT_CAP);
+}
+
+/**
+ * Sum of `|delta| / base` over a stat block.
+ *
+ * A stat the damage chain does not expose falls back to `AI_EFFECT_REFERENCE`,
+ * which keeps an authored rarity worth something instead of dropping to zero.
+ */
+function statShare(
+    delta: Record<string, number> | null,
+    stats: ReturnType<typeof effectiveStats>,
+): number {
+    if (!delta) return 0;
+    let share = 0;
+    for (const [key, value] of Object.entries(delta)) {
+        const field = STAT_BASE[key];
+        const base = field ? readNumber(stats[field], 0) : 0;
+        share += Math.abs(value) / Math.max(base > 0 ? base : AI_EFFECT_REFERENCE, 1);
+    }
+    return share;
 }
 
 /** A shield is worth the share of max HP it can absorb. */

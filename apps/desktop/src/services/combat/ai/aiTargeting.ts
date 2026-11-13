@@ -101,6 +101,11 @@ type ActionIntent = 'offensive' | 'supportive' | 'neutral';
  * that drains) is treated as offensive, because its target choice is the enemy.
  * Without this, a pure shield or cleanse had no side and could be aimed at an
  * enemy without penalty.
+ *
+ * A raw stat reduction on its own is not enough to make an action offensive:
+ * defensive buffs often trade a little of one stat away, and reading that as
+ * "aim it at the enemy" made the AI cast its own walls on the other side. The
+ * precedence is real harm first, then benefit, then a bare debuff.
  */
 export function actionIntent(action: CombatAction): ActionIntent {
     if (action.dealsDamage) return 'offensive';
@@ -112,24 +117,20 @@ export function actionIntent(action: CombatAction): ActionIntent {
     if (action.targeting === 'enemies_all' || action.targeting === 'enemies_lane') return 'offensive';
     if (action.targeting === 'both_teams') return 'neutral';
 
-    let offensive = false;
-    let supportive = false;
+    let harmful = false;
+    let helpful = false;
+    let debuff = false;
+
     for (const effect of action.effects) {
         const record = asRecord(effect);
         if (!record) continue;
 
         const status = normalizeStatus(record.status_effect);
-        if (status && OFFENSIVE_STATUS_NAMES.has(status)) offensive = true;
-        if (status && SUPPORTIVE_STATUS_NAMES.has(status)) supportive = true;
-        if (status) {
-            const applyTo = typeof record.apply_to === 'string' ? record.apply_to : '';
-            if (applyTo === 'self' || applyTo.startsWith('allies')) supportive = true;
-            if (applyTo === 'target' || applyTo.startsWith('enemies')) offensive = true;
-        }
+        if (status && OFFENSIVE_STATUS_NAMES.has(status)) harmful = true;
+        if (status && SUPPORTIVE_STATUS_NAMES.has(status)) helpful = true;
 
         if (hasEntries(record.damage_per_turn)
             || readNumber(record.damage, 0) > 0
-            || hasEntries(record.debuff)
             || hasEntries(record.resource_drain)
             || hasEntries(record.prevent_actions)
             || record.prevent_skills === true
@@ -145,8 +146,12 @@ export function actionIntent(action: CombatAction): ActionIntent {
             || hasEntries(record.cost_multiplier)
             || hasEntries(record.end_cost)
             || hasEntries(record.on_death_blast)) {
-            offensive = true;
+            harmful = true;
         }
+
+        // A stat reduction is only a plan of its own when nothing else on the
+        // effect explains what the cast is for.
+        if (hasEntries(record.debuff)) debuff = true;
 
         if (action.heals
             || hasEntries(record.buff)
@@ -166,12 +171,13 @@ export function actionIntent(action: CombatAction): ActionIntent {
             || hasEntries(record.cleanse_per_turn)
             || hasEntries(record.resource_regen)
             || hasEntries(record.resource_transfer)) {
-            supportive = true;
+            helpful = true;
         }
     }
 
-    if (offensive) return 'offensive';
-    if (supportive) return 'supportive';
+    if (harmful) return 'offensive';
+    if (helpful) return 'supportive';
+    if (debuff) return 'offensive';
     return 'neutral';
 }
 

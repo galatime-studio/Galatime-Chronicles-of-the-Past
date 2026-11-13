@@ -171,6 +171,18 @@ export const AI_PLANNER_WEIGHT = 0.75;
 /** AoE damage may sum past one full health bar, but not without a ceiling. */
 export const AI_AOE_DAMAGE_CAP = 1.5;
 
+/**
+ * Fraction of a health bar that reads as a decisive hit.
+ *
+ * Damage, mitigation and damage over time are all measured in fractions of a
+ * bar, so they divide by the same reference and stay comparable. Without it a
+ * hit was worth `damage / maxHp / AI_AOE_DAMAGE_CAP` (about 0.01) while a buff
+ * scored against a 40-point stat reference (about 0.6), and the AI would rather
+ * re-buff forever than attack. An ordinary attack now lands in the 0.2-0.6
+ * band and a finisher saturates at 1.
+ */
+export const AI_DAMAGE_REFERENCE_FRACTION = 0.1;
+
 /** A heal worth this fraction of the target's max HP counts as a full mend. */
 export const AI_HEAL_REFERENCE_FRACTION = 0.25;
 
@@ -182,6 +194,46 @@ export const AI_TARGET_BIAS_FLOOR = 0.5;
 
 /** Guards the threat normalisation against a divide by zero. */
 export const AI_MIN_THREAT = 1;
+
+/**
+ * Share of its bar a unit must have lost before bracing is worth a turn.
+ *
+ * Below it, mitigation is discounted proportionally: an unhurt unit that braces
+ * spends a turn and changes nothing, while the enemy keeps acting. This is what
+ * stops a losing 1-v-2 from turning into "brace forever and lose slowly".
+ */
+export const AI_BRACE_HP_FRACTION = 0.35;
+
+/**
+ * Discount on a brace that is not preventing death.
+ *
+ * Bracing is tempo, not progress. Unless the incoming round would kill the unit,
+ * a brace buys a round of life at the cost of a round of damage, so it is priced
+ * at a quarter of the health it saves. A losing unit would otherwise brace
+ * forever against two enemies acting three times each.
+ */
+export const AI_BRACE_SPECULATION = 0.25;
+
+/**
+ * How much of the threat upper bound is assumed to be real before the log says
+ * otherwise. Enemies buff, rest and shuffle; half of "every enemy lands its best
+ * hit every turn" is a fair opening guess.
+ */
+export const AI_THREAT_REALISM_DISCOUNT = 0.5;
+
+/**
+ * Worth of one turn of a *doubled* stat, in decisive hits.
+ *
+ * `+100% attack for one turn` roughly doubles one hit, and a hit is worth about
+ * a quarter of the decisive-hit reference once accuracy and mitigation are in the
+ * way. It also makes the numbers comparable: a `+10% attack, three turns` buff
+ * reads ~0.07 against an ordinary attack's ~0.14, so casting is a choice and not
+ * a free win.
+ */
+export const AI_STAT_TURN_VALUE = 0.25;
+
+/** Ceiling for a single effect's stat payload, so one huge buff cannot dominate. */
+export const AI_STAT_EFFECT_CAP = 0.4;
 
 /**
  * How much more a wounded unit values protection.
