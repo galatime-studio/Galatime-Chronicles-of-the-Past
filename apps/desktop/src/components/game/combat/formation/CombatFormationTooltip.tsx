@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
+import { useMemo, useState, type CSSProperties, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/react';
 import { ArrowDown, ArrowUp, ElementIcon } from '../../../../assets/GalatimeIcon';
 import CommonHoverElement from '../../../common/CommonHoverElement';
 import CommonTooltipCard from '../../../common/CommonTooltipCard';
-import { fetchAttack } from '../../../../controllers/attackController';
 import { elementTint } from '../../../../constants/CombatAnimationConstants';
 import type { CombatStats } from '../../../../types/CombatType';
 import type {
@@ -22,13 +21,6 @@ interface CombatFormationTooltipProps {
     style: CSSProperties;
     onPointerEnter: () => void;
     onPointerLeave: () => void;
-}
-
-interface FormationSkill {
-    id: string;
-    name: string;
-    elementId: string;
-    isKnown: boolean;
 }
 
 function displayElementName(id: string) {
@@ -73,7 +65,7 @@ function formatDelta(delta: number): string {
 function TooltipSection({ title, children }: { title: string; children: ReactNode }) {
     return (
         <section className="mt-2.5 border-t-game border-white/15 pt-2 sm:mt-3 sm:pt-2.5">
-            <p className="mb-1.5 font-pixel text-[9px] uppercase tracking-[0.18em] text-white/40 sm:text-[10px]">
+            <p className="mb-1.5 font-pixel text-[10px] uppercase tracking-[0.18em] text-white/40 sm:text-[11px]">
                 {title}
             </p>
             {children}
@@ -160,7 +152,7 @@ function FormationEffects({ statuses, modifiers }: FormationEffectsProps) {
                         />
                         <span className={STATUS_TONE_TEXT[status.tone]}>{status.label}</span>
                         <span
-                            className="ml-auto pl-3 font-pixel text-[10px] tabular-nums text-white/40 sm:text-xs"
+                            className="ml-auto pl-3 font-pixel text-[11px] tabular-nums text-white/40 sm:text-xs"
                             title={status.turns === null ? t('combat.tooltip.untilEnd') : undefined}
                         >
                             {status.turns === null ? '∞' : t('combat.tooltip.turns', { count: status.turns })}
@@ -249,7 +241,7 @@ function FormationElements({ elementIds: combinationIds, showWeaknesses }: Forma
 }
 
 /**
- * Entity identity, with catalogue-resolved skill details when the fighting tooltip setting is on.
+ * Entity identity, with the unit's cached skills when the fighting tooltip setting is on.
  *
  * The card reads top-down as a hierarchy: who the unit is, what is happening to it, what it
  * is made of, what it can cast, and finally what it is holding. Sections are separated by a
@@ -267,42 +259,11 @@ export function CombatFormationTooltip({
 }: CombatFormationTooltipProps) {
     const { t } = useTranslation('combat');
     const elementIds = useMemo(() => [...new Set(entity.elementIds ?? [])], [entity.elementIds]);
-    const skillIds = useMemo(() => [...new Set(entity.skillIds ?? [])], [entity.skillIds]);
+    const skills = entity.skills ?? [];
     const abilities = entity.abilities ?? [];
     const modifiers = entity.modifiers ?? [];
     const statusBadges = entity.statusBadges ?? [];
     const weapon = entity.weapon ?? null;
-    const [skills, setSkills] = useState<FormationSkill[] | null>(null);
-
-    useEffect(() => {
-        let cancelled = false;
-        setSkills(null);
-
-        if (!showDetails || skillIds.length === 0) {
-            setSkills([]);
-            return () => { cancelled = true; };
-        }
-
-        const resolveSkills = async () => {
-            const resolved: FormationSkill[] = [];
-            for (const skillId of skillIds) {
-                if (cancelled) return;
-                try {
-                    const attack = await fetchAttack(skillId);
-                    resolved.push(attack
-                        ? { id: skillId, name: attack.name, elementId: attack.element_id, isKnown: true }
-                        : { id: skillId, name: displayElementName(skillId), elementId: 'unknown', isKnown: false });
-                } catch (error) {
-                    console.error(`Failed to resolve formation skill "${skillId}":`, error);
-                    resolved.push({ id: skillId, name: displayElementName(skillId), elementId: 'unknown', isKnown: false });
-                }
-            }
-            if (!cancelled) setSkills(resolved);
-        };
-        void resolveSkills();
-
-        return () => { cancelled = true; };
-    }, [skillIds, showDetails]);
 
     return (
         <CommonTooltipCard
@@ -338,7 +299,7 @@ export function CombatFormationTooltip({
                                     {ability.name}
                                 </span>
                                 {ability.description && (
-                                    <span className="font-pixel text-[10px] leading-snug text-white/55 sm:text-xs">
+                                    <span className="font-pixel text-[11px] leading-snug text-white/55 sm:text-xs">
                                         {ability.description}
                                     </span>
                                 )}
@@ -348,17 +309,12 @@ export function CombatFormationTooltip({
                 </TooltipSection>
             )}
 
-            {showDetails && (skills === null ? (
-                <TooltipSection title={t('combat.tooltip.skills')}>
-                    <p className="font-pixel text-xs text-white/40">{t('combat.tooltip.loadingSkills')}</p>
-                </TooltipSection>
-            ) : skills.length > 0 ? (
+            {showDetails && skills.length > 0 && (
                 <TooltipSection title={t('combat.tooltip.skills')}>
                     <div className="flex flex-col gap-y-1">
                         {skills.map((skill) => (
                             <span
                                 key={skill.id}
-                                title={skill.isKnown ? undefined : skill.id}
                                 className="flex items-center gap-1 whitespace-nowrap font-pixel text-xs text-white/85 sm:text-sm"
                             >
                                 <ElementIcon id={skill.elementId} className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -367,7 +323,7 @@ export function CombatFormationTooltip({
                         ))}
                     </div>
                 </TooltipSection>
-            ) : null)}
+            )}
 
             {/* The equipped weapon closes the card: what is in this unit's hands right now,
                 with its live ammo when the weapon feeds on any. Only meaningful with the
@@ -377,17 +333,17 @@ export function CombatFormationTooltip({
                     <div className="flex flex-col gap-y-0.5">
                         <span className="flex items-baseline gap-1.5 font-pixel text-xs text-white/90 sm:text-sm">
                             {weapon.name}
-                            <span className="text-[10px] uppercase tracking-[0.08em] text-white/40 sm:text-xs">
+                            <span className="text-[11px] uppercase tracking-[0.08em] text-white/40 sm:text-xs">
                                 {weapon.type}
                             </span>
                         </span>
                         {weapon.summary && (
-                            <span className="font-pixel text-[10px] leading-snug text-white/55 sm:text-xs">
+                            <span className="font-pixel text-[11px] leading-snug text-white/55 sm:text-xs">
                                 {weapon.summary}
                             </span>
                         )}
                         {weapon.ammo && (
-                            <span className="font-pixel text-[10px] text-white/45 sm:text-xs">
+                            <span className="font-pixel text-[11px] text-white/45 sm:text-xs">
                                 {t('combat.tooltip.ammo', { remaining: weapon.ammo.remaining, item: weapon.ammo.item })}
                             </span>
                         )}

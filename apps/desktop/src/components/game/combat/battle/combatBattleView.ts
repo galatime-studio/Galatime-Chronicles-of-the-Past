@@ -178,11 +178,19 @@ export function toFormationEntity(
         id: unit.id,
         name: unit.name,
         elementIds: unit.elementIds,
-        skillIds: unit.actions
-            .filter((action) => action.kind === 'skill')
-            .map((action) => action.id),
-        // Abilities are authored data, not catalogue references, so they resolve
-        // to display strings here rather than through a fetch like skills do.
+        // The unit was built with its skills already resolved into actions; the
+        // tooltip reads that cached list instead of re-resolving ids per hover.
+        skills: [...new Map(
+            unit.actions
+                .filter((action) => action.kind === 'skill')
+                .map((action) => [action.id, {
+                    id: action.id,
+                    name: action.name,
+                    elementId: action.elementId,
+                }]),
+        ).values()],
+        // Abilities already carry their display strings; no catalogue lookup is
+        // needed here either.
         abilities: unit.abilities
             .filter((ability) => ability.definition.display?.visible !== false)
             .map((ability) => ({

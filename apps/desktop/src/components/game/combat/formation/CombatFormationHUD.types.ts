@@ -53,12 +53,21 @@ export interface CombatWeaponDisplay {
     ammo: { item: string; remaining: number } | null;
 }
 
+/** A skill the unit carries into the fight, flattened for the tooltip. */
+export interface CombatFormationSkill {
+    id: string;
+    name: string;
+    /** The element the skill was authored with, cached on the unit's action. */
+    elementId: string;
+}
+
 /** Display-only entity data. Supply HP only when live current/max values are available. */
 export interface CombatFormationEntity {
     id: string;
     name: string;
     elementIds: string[];
-    skillIds: string[];
+    /** The unit's resolved skills, read from the actions it was built with. */
+    skills: CombatFormationSkill[];
     /** Authored abilities, already resolved to their display strings. */
     abilities: AbilityDisplayEntry[];
     /** The unit's equipped weapon, or `null` for an unarmed unit. */

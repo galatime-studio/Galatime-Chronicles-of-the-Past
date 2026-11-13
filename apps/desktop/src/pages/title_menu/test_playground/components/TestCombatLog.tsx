@@ -456,15 +456,15 @@ export function TestCombatLog({ events, units, onClear, className = '' }: TestCo
             {open ? (
                 <section
                     aria-label={t('playground.combat.log.title')}
-                    className="pointer-events-auto flex min-h-0 w-[min(19rem,calc(100vw-2rem))] flex-1 flex-col border-game border-white/70 bg-galatime-dark/95 shadow-[0_0_24px_rgba(0,0,0,0.65)] backdrop-blur-sm"
+                    className="pointer-events-auto flex min-h-0 w-[min(22rem,calc(100vw-2rem))] flex-1 flex-col border-game border-white/70 bg-galatime-dark/95 shadow-[0_0_24px_rgba(0,0,0,0.65)] backdrop-blur-sm sm:w-[24rem]"
                 >
-                    <header className="flex shrink-0 items-center gap-2 border-b-game border-white/15 px-2.5 py-1.5">
-                        <h3 className="mr-auto text-[11px] uppercase tracking-[0.15em] text-white">
+                    <header className="flex shrink-0 items-center gap-2 border-b-game border-white/15 px-3 py-2">
+                        <h3 className="mr-auto text-base uppercase leading-none tracking-[0.12em] text-white">
                             {t('playground.combat.log.title')}
                         </h3>
 
                         {events.length > 0 && (
-                            <span className="text-[10px] tabular-nums text-white/35">
+                            <span className="text-xs tabular-nums text-white/40">
                                 {t('playground.combat.log.events', { count: events.length })}
                             </span>
                         )}
@@ -473,7 +473,7 @@ export function TestCombatLog({ events, units, onClear, className = '' }: TestCo
                             <CommonButton
                                 variant="ghost"
                                 size="sm"
-                                className="text-[10px] tracking-[0.12em] opacity-40 hover:opacity-100"
+                                className="text-xs tracking-[0.1em] opacity-50 hover:opacity-100"
                                 onPress={onClear}
                             >
                                 {t('playground.combat.log.clear')}
@@ -483,32 +483,32 @@ export function TestCombatLog({ events, units, onClear, className = '' }: TestCo
                         <CommonButton
                             variant="ghost"
                             size="sm"
-                            icon={<CloseIcon className="h-4 w-4" />}
-                            className="p-1 opacity-50 hover:opacity-100"
+                            icon={<CloseIcon className="h-5 w-5" />}
+                            className="p-1 opacity-60 hover:opacity-100"
                             aria-label={t('playground.combat.log.close')}
                             onPress={() => setOpen(false)}
                         />
                     </header>
 
-                    <div ref={boxRef} className="min-h-0 flex-1 overflow-y-auto px-2.5 py-2">
+                    <div ref={boxRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-2.5">
                         {groups.length === 0 ? (
-                            <p className="text-[11px] text-white/35">{t('playground.combat.log.empty')}</p>
+                            <p className="text-sm text-white/40">{t('playground.combat.log.empty')}</p>
                         ) : (
-                            <ol className="flex flex-col gap-4">
+                            <ol className="flex flex-col gap-5">
                                 {groups.map((group) => (
-                                    <li key={group.key} className="flex flex-col gap-1 border-l border-white/10 pl-2">
-                                        <span className="text-[10px] uppercase leading-none tracking-[0.16em] text-white">
+                                    <li key={group.key} className="flex flex-col gap-1.5 border-l border-white/10 pl-2.5">
+                                        <span className="text-sm uppercase leading-none tracking-[0.14em] text-white">
                                             [{group.title.toUpperCase()}]
                                         </span>
 
-                                        <div className="flex flex-col gap-1">
+                                        <div className="flex flex-col gap-1.5">
                                             {group.lines.map((line) => (
                                                 <div key={line.key} className="flex flex-col">
-                                                    <span className="text-[11px] leading-snug text-white">
+                                                    <span className="text-sm leading-snug text-white">
                                                         {line.text}
                                                     </span>
                                                     {line.detail && (
-                                                        <span className="text-[10px] leading-snug text-white/35">
+                                                        <span className="text-xs leading-snug text-white/40">
                                                             {line.detail}
                                                         </span>
                                                     )}
@@ -530,7 +530,7 @@ export function TestCombatLog({ events, units, onClear, className = '' }: TestCo
                 >
                     {t('playground.combat.log.open')}
                     {events.length > 0 && (
-                        <span className="text-[10px] tabular-nums text-white/40">{events.length}</span>
+                        <span className="text-xs tabular-nums text-white/40">{events.length}</span>
                     )}
                 </CommonButton>
             )}
