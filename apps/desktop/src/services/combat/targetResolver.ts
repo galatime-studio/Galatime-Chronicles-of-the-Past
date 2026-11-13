@@ -54,7 +54,11 @@ export function candidateTargets(
     })();
 
     return reachable.filter((unit) => {
-        if (unit.id !== actor.id && isUntargetable(unit)) return false;
+        // A unit is always a legal target for itself: untargetability protects it
+        // from other units (and from enemy reach/element filters), not from its
+        // own self-heal or self-buff.
+        if (unit.id === actor.id) return true;
+        if (isUntargetable(unit)) return false;
         if (untargetableRangesFor(unit).includes(action.range)) return false;
         if (untargetableElementsFor(unit).includes(action.elementId)) return false;
         return true;

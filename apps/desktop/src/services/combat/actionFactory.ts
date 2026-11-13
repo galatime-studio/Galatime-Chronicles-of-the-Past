@@ -17,6 +17,7 @@ import {
     DEFAULT_SKILL_RANGE,
     DEFAULT_WEAPON_RANGE,
     FRAGILE_WEAPON_BREAK_CHANCE,
+    SWITCH_LINE_STAMINA_COST,
     WEAPON_DAMAGE_TYPE,
 } from '../../constants/CombatConstants';
 import { WEAPON_SFX_ID } from '../../constants/CombatSoundConstants';
@@ -682,6 +683,7 @@ function universalAction(
     name: string,
     kind: CombatAction['kind'],
     description: string,
+    staminaCost = 0,
 ): CombatAction {
     return {
         id,
@@ -694,7 +696,7 @@ function universalAction(
         power: 0,
         accuracy: DEFAULT_ACCURACY,
         hitCount: 1,
-        costs: { mana: 0, stamina: 0, hp: 0, cooldown: 0 },
+        costs: { mana: 0, stamina: staminaCost, hp: 0, cooldown: 0 },
         targeting: 'self',
         effects: [],
         damageVariance: null,
@@ -727,7 +729,13 @@ export function createUniversalActions(): CombatAction[] {
             'Recover mana and stamina exponentially.',
         ),
         universalAction('inventory', 'Inventory', 'inventory', 'Open your backpack and use an item or switch weapons.'),
-        universalAction('switch_line', 'Switch Line', 'switch_line', 'Move to the other battle line, if there is room.'),
+        universalAction(
+            'switch_line',
+            'Switch Line',
+            'switch_line',
+            'Move to the other battle line, if there is room. The committed move costs stamina.',
+            SWITCH_LINE_STAMINA_COST,
+        ),
     ];
 }
 

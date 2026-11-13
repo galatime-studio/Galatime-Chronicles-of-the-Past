@@ -28,12 +28,14 @@ import type {
     CarriedWeapon,
     CombatTurnResult,
     CombatUnit,
+    CombatUnitOverride,
     StartCombatOptions,
 } from '../types/CombatType';
 import { combatFail, combatOk, createCombatError, trimLog } from '../utils/combatUtils';
 import type { AiDecisionContext } from '../types/AiType';
 import type { LootEntry } from '../types/EntityDataType';
 import { resolveCombatAction } from './actionResolver';
+import { createUniversalActions } from './combat/actionFactory';
 import { passiveTriggerContext } from './combat/abilityContext';
 import {
     resolveAbilityEvent,
@@ -91,7 +93,8 @@ import { legalTargetIds, reachableTargets, validateTargetRule } from './combat/t
 import { advanceTurnIndex, planTurnOrder } from './combat/turnOrderService';
 import { effectiveActionCost } from './combat/weaponEffects';
 import { effectiveThresholds, resolveAiTuning } from './combat/ai/aiDifficulty';
-import { instantiateUnit, loadUnitBlueprint, preloadAbilityBlueprints } from './combat/unitBlueprint';
+import { createAiProfile } from './combat/ai/aiProfileFactory';
+import { instantiateUnit, loadUnitBlueprint, preloadAbilityBlueprints, resolveSkillActionsFromIds } from './combat/unitBlueprint';
 import { equipCarriedWeapon, isWeaponUsable, resolveCarriedWeapon } from './combat/weaponLoadout';
 import { getAllElementsDataService } from './elementService';
 import { getCharacterData, getMobData } from './entityService';
@@ -568,9 +571,18 @@ interface BuiltRoster {
 }
 
 /** Loads every member's blueprint and builds the roster. */
-async function buildUnits(encounter: CombatEncounter): Promise<CombatResult<BuiltRoster>> {
+async function buildUnits(
+    encounter: CombatEncounter,
+    unitOverrides?: readonly CombatUnitOverride[],
+): Promise<CombatResult<BuiltRoster>> {
     const units: CombatUnit[] = [];
     const declaredInventories = new Map<string, Record<string, number>>();
+    const overridesBySlot = new Map(
+        (unitOverrides ?? []).map((override) => [
+            `${override.side}:${override.line}:${override.slot}`,
+            override,
+        ]),
+    );
     const groups: Array<{ side: CombatSide; members: CombatEncounterMember[] }> = [
         { side: 'allies', members: encounter.allies },
         { side: 'enemies', members: encounter.enemies },
@@ -607,6 +619,14 @@ async function buildUnits(encounter: CombatEncounter): Promise<CombatResult<Buil
                 declaredInventories.set(id, { ...member.inventory });
             }
 
+            const override = overridesBySlot.get(`${side}:${member.line}:${slot}`);
+            // Generated units replace the authored loadout: the blueprint still
+            // supplies the sprite, abilities and default weapon, while skills,
+            // stats, elements and opening statuses come from the overlay.
+            const generatedActions = override?.skillIds
+                ? [...await resolveSkillActionsFromIds(override.skillIds), ...createUniversalActions()]
+                : undefined;
+
             // A declared loadout replaces the entity's own weapon; without one the
             // blueprint's default weapon is what the unit carries.
             let weapons: CarriedWeapon[] | undefined;
@@ -637,10 +657,19 @@ async function buildUnits(encounter: CombatEncounter): Promise<CombatResult<Buil
                 side,
                 line: member.line,
                 slot,
-                isPlayerControlled: member.isPlayerControlled ?? side === 'allies',
-                name: member.name,
+                isPlayerControlled: override?.isPlayerControlled
+                    ?? member.isPlayerControlled
+                    ?? side === 'allies',
+                name: override?.name ?? member.name,
                 hp: member.hp,
                 weapons,
+                actions: generatedActions,
+                stats: override?.stats,
+                elementIds: override?.elementIds,
+                startingEffects: override?.startingEffects,
+                aiProfile: override?.aiStyle
+                    ? createAiProfile({ style: override.aiStyle }, blueprint.abilities)
+                    : undefined,
             }));
         }
     }
@@ -669,7 +698,7 @@ export async function startCombat(
         }));
     }
 
-    const built = await buildUnits(encounter);
+    const built = await buildUnits(encounter, options.unitOverrides);
     if (!built.ok) return built;
 
     // A summon or transform resolves its target entity by id at trigger time and
@@ -1049,6 +1078,8 @@ export function getCombatDecisionContext(
         profile: actor.aiProfile,
         tuning,
         thresholds: effectiveThresholds(actor.aiProfile, tuning),
+        history: { recentEvents: state.log.slice(-60) },
+        inventory: getUnitInventory(session, actor),
     });
 }
 

@@ -14,9 +14,8 @@ import { decideCombatAction } from '../aiDecider';
 
 export function requestFromCandidate(candidate: AiCandidate): CombatActionRequest {
     const request: CombatActionRequest = { actionId: candidate.action.id };
-    if (candidate.action.targeting === 'any_one' && candidate.targetId) {
-        request.targetId = candidate.targetId;
-    }
+    if (candidate.itemId) request.itemId = candidate.itemId;
+    if (candidate.targetId) request.targetId = candidate.targetId;
     return request;
 }
 

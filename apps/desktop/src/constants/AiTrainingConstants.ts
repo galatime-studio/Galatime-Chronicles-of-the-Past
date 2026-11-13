@@ -13,6 +13,31 @@ export const AI_WEIGHT_VECTOR_SIZE = 14;
 export const AI_WEIGHT_MIN = 0;
 export const AI_WEIGHT_MAX = 3;
 
+/**
+ * Per-dimension search floors.
+ *
+ * Without them the CEM reliably drives `effect_value` to ~0.15, and since the
+ * situational layer is multiplicative (`modulateAiWeights`) that mutes the only
+ * weight carrying the battle horizon. Floors keep every consideration able to
+ * influence a decision while leaving real room to search below the authored
+ * baseline. Ids absent here keep `AI_WEIGHT_MIN`.
+ */
+export const AI_WEIGHT_FLOORS: Readonly<Partial<Record<AiConsiderationId, number>>> = Object.freeze({
+    expected_damage: 0.7,
+    kill_secure: 1.0,
+    element_edge: 0.2,
+    effect_value: 0.45,
+    survival: 0.45,
+    heal_ally: 0.6,
+    heal_self: 0.6,
+    defend: 0.35,
+    rest: 0.3,
+    reposition: 0.3,
+    resource_guard: 0.2,
+    resource_share: 0.5,
+    item: 0.5,
+});
+
 export const AI_HISTORY_TURNS = 5;
 export const AI_DEFAULT_TEAM_SIZE = 4;
 export const AI_MIN_TEAM_SIZE = 2;

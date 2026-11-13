@@ -12,7 +12,7 @@
 
 import type { AttackEffect, PublicAttack } from './AttackDataType';
 import type { CombatAbilityInstance } from './AbilityType';
-import type { AiProfile } from './AiType';
+import type { AiProfile, AiStyleId } from './AiType';
 import type { Difficulty } from '../constants/DifficultyConstants';
 import type { EntitiesData, WeaponEntry } from './EntityDataType';
 import type { WeaponActionSpec, WeaponRuntimeState, WeaponStatDelta } from './WeaponType';
@@ -1537,10 +1537,41 @@ export type CombatResult<T> =
     | { ok: true; data: T }
     | { ok: false; error: CombatError };
 
+/**
+ * Training/test overlay for one encounter slot.
+ *
+ * The overlay replaces authored unit data after the entity blueprint resolves,
+ * without mutating the cached blueprint. It exists so generated training units
+ * can reuse an entity's sprite/name while fighting with sampled stats, elements,
+ * skills and opening statuses.
+ */
+export interface CombatUnitOverride {
+    side: CombatSide;
+    line: CombatLine;
+    /** Zero-based position inside the line, matching the roster build order. */
+    slot: number;
+    stats?: Partial<CombatStats>;
+    elementIds?: string[];
+    /** Catalogue skill ids; replaces the entity's own skill actions. */
+    skillIds?: string[];
+    startingEffects?: CombatEffectInstance[];
+    /** Resolved AI personality; overrides the borrowed entity's authored `ai:`. */
+    aiStyle?: AiStyleId;
+    isPlayerControlled?: boolean;
+    name?: string;
+}
+
 /** Options accepted when a fight is started. */
 export interface StartCombatOptions {
     /** Replaces the encounter file (scripted fights, tests). */
     encounter?: CombatEncounter;
+    /**
+     * Per-slot unit overlays for generated scenarios and tests.
+     *
+     * Keys are `side:line:slot`; overrides never touch the blueprint cache, so
+     * the same entity can spawn with different loadouts in different fights.
+     */
+    unitOverrides?: readonly CombatUnitOverride[];
     /** Deterministic randomness. Defaults to `Math.random`. */
     random?: CombatRandom;
     /**

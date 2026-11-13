@@ -206,6 +206,15 @@ export const DEFEND_DAMAGE_REDUCTION = 0.4;
 export const DEFEND_EVASION_BONUS = 8;
 
 /**
+ * Stamina a lane change costs.
+ *
+ * Repositioning is a committed move: it trades a real slice of the unit's
+ * endurance for the tactical switch, so it cannot be used as a free shuffle
+ * every turn.
+ */
+export const SWITCH_LINE_STAMINA_COST = 20;
+
+/**
  * Idle-regen payout floor: a resource left unspent regenerates at least this
  * much on the next turn, no matter how small the pool is.
  */

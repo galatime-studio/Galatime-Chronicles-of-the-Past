@@ -14,13 +14,16 @@
 import type {
     CarriedWeapon,
     CombatAction,
+    CombatEffectInstance,
     CombatEntityType,
     CombatLine,
     CombatSide,
+    CombatStats,
     CombatUnit,
 } from '../../types/CombatType';
 import type { CombatAbilityInstance } from '../../types/AbilityType';
-import { resolveEntitySkill } from '../attackContentService';
+import type { AiProfile } from '../../types/AiType';
+import { resolveAttack, resolveEntitySkill } from '../attackContentService';
 import type { ResolvedAttack } from '../attackContentService';
 import { getCharacterData, getMobData } from '../entityService';
 import { createAbilityInstances, readAbilityEntityTarget } from './abilityFactory';
@@ -64,6 +67,16 @@ export interface UnitInstantiationParams {
      * one is equipped. An empty list fights unarmed.
      */
     weapons?: CarriedWeapon[];
+    /** Replaces the blueprint's actions (used by generated training units). */
+    actions?: CombatAction[];
+    /** Stat overlay merged over the entity's base stats. */
+    stats?: Partial<CombatStats>;
+    /** Element overlay; defaults to the entity's elements. */
+    elementIds?: string[];
+    /** Opening statuses, cloned per unit. */
+    startingEffects?: CombatEffectInstance[];
+    /** Resolved AI profile override; defaults to the entity's authored block. */
+    aiProfile?: AiProfile;
 }
 
 /** How many transform/summon hops a preload follows before it gives up. */
@@ -80,12 +93,48 @@ async function resolveSkillActions(entity: CombatEntitySource): Promise<CombatAc
     const skillTiers = new Map<string, ResolvedAttack>();
     for (const skill of Array.isArray(entity.skills) ? entity.skills : []) {
         const resolved = await resolveEntitySkill(skill);
-        if (!resolved) continue;
+        if (!resolved) {
+            warnUnresolvedSkill(skill);
+            continue;
+        }
         const current = skillTiers.get(resolved.baseId);
         if (!current || resolved.level > current.level) skillTiers.set(resolved.baseId, resolved);
     }
 
     return [...skillTiers.values()].map((resolved) => createCombatActionFromSkill(resolved.attack));
+}
+
+/**
+ * Resolves catalogue skill ids into actions for generated units.
+ *
+ * Unknown ids are skipped with a development warning, matching the authored
+ * entity path. Trees are not consulted: a generated unit is a combatant, not a
+ * player progressing through a skill tree.
+ */
+export async function resolveSkillActionsFromIds(
+    skillIds: readonly string[],
+): Promise<CombatAction[]> {
+    const skillTiers = new Map<string, ResolvedAttack>();
+    for (const skillId of skillIds) {
+        const resolved = await resolveAttack(skillId);
+        if (!resolved) {
+            warnUnresolvedSkill(skillId);
+            continue;
+        }
+        const current = skillTiers.get(resolved.baseId);
+        if (!current || resolved.level > current.level) skillTiers.set(resolved.baseId, resolved);
+    }
+
+    return [...skillTiers.values()].map((resolved) => createCombatActionFromSkill(resolved.attack));
+}
+
+/** Invalid authoring is a content bug; surface it without breaking a live fight. */
+function warnUnresolvedSkill(reference: unknown): void {
+    if (!import.meta.env.DEV) return;
+    const label = typeof reference === 'string'
+        ? reference
+        : (reference as { id?: unknown })?.id;
+    console.warn(`[unitBlueprint] Unresolved entity skill "${String(label ?? 'unknown')}" was skipped.`);
 }
 
 /**
@@ -150,11 +199,15 @@ export function instantiateUnit(
         side: params.side,
         line: params.line,
         slot: params.slot,
-        actions: blueprint.actions,
+        actions: params.actions ?? blueprint.actions,
         abilities: blueprint.abilities.map((ability) => ({ ...ability })),
         isPlayerControlled: params.isPlayerControlled ?? false,
         name: params.name,
         hp: params.hp,
+        stats: params.stats,
+        elementIds: params.elementIds,
+        startingEffects: params.startingEffects,
+        aiProfile: params.aiProfile,
     });
 
     unit.carriedWeapons = (params.weapons ?? blueprint.weapons).map(cloneCarriedWeapon);

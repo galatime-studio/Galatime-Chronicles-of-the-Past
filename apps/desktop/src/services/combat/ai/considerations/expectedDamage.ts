@@ -5,6 +5,10 @@
  * target's max HP, so a hit that would take half a bar reads as `0.5`. A
  * multi-target action sums its targets but with a ceiling, so a huge AoE cannot
  * dwarf a decisive single-target strike.
+ *
+ * Friendly fire is signed out, not just discounted by the target bias: an AoE
+ * that clips the caster's own line has to earn back that damage, and a
+ * single-target blow aimed at an ally scores nothing.
  */
 
 import { AI_AOE_DAMAGE_CAP } from '../../../../constants/AiConstants';
@@ -27,7 +31,9 @@ export const expectedDamage: AiConsideration = {
         for (const target of targets) {
             const maxHp = effectiveStats(target).maxHp;
             if (maxHp <= 0) continue;
-            fraction += expectedDamageFor(context, action, target) / maxHp;
+
+            const hit = expectedDamageFor(context, action, target) / maxHp;
+            fraction += target.side === context.actor.side ? -hit : hit;
         }
 
         return clamp(fraction, 0, AI_AOE_DAMAGE_CAP) / AI_AOE_DAMAGE_CAP;

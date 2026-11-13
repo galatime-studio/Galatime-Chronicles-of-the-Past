@@ -12,6 +12,7 @@ import type {
     AiStyleId,
     AiWeights,
 } from './AiType';
+import type { Difficulty } from '../constants/DifficultyConstants';
 import type { AiScoredCandidate } from '../services/combat/ai/aiDecider';
 import type {
     CombatAction,
@@ -185,6 +186,16 @@ export interface AiCombatMetrics {
 }
 
 /** Result returned by the offline runner. */
+/** Why a headless run could not submit another action. */
+export interface AiHeadlessStall {
+    reason: 'missing_actor' | 'context_failed' | 'policy_null' | 'submit_failed';
+    actorId: string | null;
+    /** The request the policy returned, when it got that far. */
+    request: CombatActionRequest | null;
+    /** Combat service error text, when the submission was rejected. */
+    error: string | null;
+}
+
 export interface AiHeadlessCombatResult {
     scenarioId: string;
     seed: number;
@@ -192,6 +203,8 @@ export interface AiHeadlessCombatResult {
     history: AiTurnHistoryEntry[];
     metrics: AiCombatMetrics;
     stoppedReason: 'combat_ended' | 'max_turns' | 'stall';
+    /** Present only when `stoppedReason` is `stall`. */
+    stall?: AiHeadlessStall;
 }
 
 /**
@@ -232,4 +245,171 @@ export interface AiScenarioMountResult {
     state: CombatState;
     units: CombatUnit[];
     encounter: CombatEncounter;
+}
+
+/** One named policy in a batch evaluation. */
+export interface AiBatchPolicy {
+    id: string;
+    label: string;
+    policy: AiHeadlessActionPolicy;
+}
+
+/** Per-split record of a batch evaluation. */
+export interface AiBatchPolicySplitStats {
+    battles: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    stalls: number;
+    maxTurns: number;
+    combatEnded: number;
+    winRate: number;
+}
+
+/** Aggregated results for one policy over the whole batch. */
+export interface AiBatchPolicyStats {
+    policyId: string;
+    label: string;
+    battles: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    stalls: number;
+    maxTurns: number;
+    combatEnded: number;
+    winRate: number;
+    avgTurns: number;
+    avgRounds: number;
+    avgDamage: number;
+    avgKills: number;
+    avgStatusesExploited: number;
+    avgBacklaneToFrontlaneSynergies: number;
+    avgProtagonistDamage: number;
+    avgProtagonistStatusBenefits: number;
+    bySplit: Record<AiScenarioSplit, AiBatchPolicySplitStats>;
+}
+
+export interface AiBatchProgress {
+    policyId: string;
+    scenarioId: string;
+    completed: number;
+    total: number;
+    result: AiHeadlessCombatResult;
+}
+
+/** Batch configuration. Every policy sees the same scenario/seed pairs. */
+export interface AiBatchRunOptions {
+    scenarios: readonly AiTrainingScenario[];
+    policies: readonly AiBatchPolicy[];
+    /** Independent fights per scenario; defaults to 1. */
+    repetitions?: number;
+    /** Session difficulty; defaults to `hard`. */
+    difficulty?: Difficulty;
+    /**
+     * Fixed opponent for the non-protagonist side. When omitted, each candidate
+     * plays both sides. Set this for candidate-vs-opponent evaluation.
+     */
+    opponent?: AiBatchPolicy;
+    onProgress?: (progress: AiBatchProgress) => void;
+}
+
+export interface AiBatchReport {
+    generatedAt: string;
+    scenarioCount: number;
+    repetitions: number;
+    battlesPerPolicy: number;
+    difficulty: Difficulty;
+    splitCounts: Record<AiScenarioSplit, number>;
+    /** Fixed non-protagonist policy, or `null` for self-play. */
+    opponent: { id: string; label: string } | null;
+    policies: AiBatchPolicyStats[];
+}
+
+/** Evaluation of one weight vector against a fixed opponent on one split. */
+export interface AiWeightEvaluation {
+    battles: number;
+    wins: number;
+    losses: number;
+    draws: number;
+    stalls: number;
+    maxTurns: number;
+    combatEnded: number;
+    winRate: number;
+    /** Wilson 95% confidence interval for the win rate. */
+    winRateCi: [number, number];
+    avgTurns: number;
+    avgDamage: number;
+    avgKills: number;
+    avgHpMargin: number;
+    avgKillMargin: number;
+    fitness: number;
+}
+
+/** One cross-entropy generation. */
+export interface AiOptimizerGeneration {
+    generation: number;
+    population: number;
+    eliteCount: number;
+    bestFitness: number;
+    meanFitness: number;
+    eliteFitness: number;
+    /** Standard deviation averaged over the active dimensions. */
+    meanStd: number;
+    bestWeights: AiWeights;
+}
+
+/** Optimizer configuration. Validation and test are evaluated, never optimized. */
+export interface AiWeightOptimizerOptions {
+    /** Training scenarios only. */
+    scenarios: readonly AiTrainingScenario[];
+    validation?: readonly AiTrainingScenario[];
+    test?: readonly AiTrainingScenario[];
+    opponent: AiBatchPolicy;
+    baseline?: AiWeights;
+    repetitions?: number;
+    difficulty?: Difficulty;
+    generations?: number;
+    populationSize?: number;
+    /** Fraction of the population kept for the next distribution; defaults to 0.3. */
+    eliteFraction?: number;
+    initialStd?: number;
+    minStd?: number;
+    /** Stop after this many generations without validation improvement; defaults to 2. */
+    validationPatience?: number;
+    seed?: number | string;
+    /** Dimensions optimized; defaults to every consideration except flee/item. */
+    activeConsiderationIds?: readonly AiConsiderationId[];
+    onGeneration?: (generation: AiOptimizerGeneration) => void;
+}
+
+/** Auditable optimizer output: weights, history and baseline/optimized scores. */
+export interface AiWeightOptimizationReport {
+    generatedAt: string;
+    seed: number;
+    difficulty: Difficulty;
+    opponent: { id: string; label: string };
+    generations: number;
+    populationSize: number;
+    eliteCount: number;
+    activeConsiderationIds: AiConsiderationId[];
+    weightBounds: [number, number];
+    /** Per-dimension search floors; ids absent here use `weightBounds[0]`. */
+    weightFloors: Partial<Record<AiConsiderationId, number>>;
+    baselineWeights: AiWeights;
+    optimizedWeights: AiWeights;
+    /** Best train candidate seen, even when validation selected the baseline. */
+    bestTrainWeights: AiWeights;
+    bestTrainFitness: number;
+    bestFitness: number;
+    baseline: {
+        train: AiWeightEvaluation;
+        validation: AiWeightEvaluation | null;
+        test: AiWeightEvaluation | null;
+    };
+    optimized: {
+        train: AiWeightEvaluation;
+        validation: AiWeightEvaluation | null;
+        test: AiWeightEvaluation | null;
+    };
+    history: AiOptimizerGeneration[];
 }

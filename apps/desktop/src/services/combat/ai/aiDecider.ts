@@ -6,20 +6,27 @@
  *
  * 1. {@link buildAiCandidates} expands the legal actions into *(action × target)*
  *    pairs (the service already validated every rule);
- * 2. each pair is scored as `Σ (weight × consideration)`, then biased by the
+ * 2. the board is snapshotted once ({@link buildAiSituation}) and the profile's
+ *    weights are scaled by it ({@link modulateAiWeights});
+ * 3. each pair is scored as `Σ (weight × consideration)`, then biased by the
  *    profile's `prefer`/`avoid` lists;
- * 3. the difficulty blurs, widens or randomises the choice;
- * 4. a `defend` brace is the floor when nothing is legal.
+ * 4. the difficulty blurs, widens or randomises the choice;
+ * 5. a `defend` brace is the floor when nothing is legal.
  *
  * Nothing here writes to the state — the caller submits the request through the
  * same path a player does.
  */
 
+import { AI_PLANNER_TOP_K, AI_PLANNER_WEIGHT } from '../../../constants/AiConstants';
 import type { AiCandidate, AiConsiderationId, AiDecisionContext } from '../../../types/AiType';
+import type { AiSituation } from '../../../types/AiSituationType';
 import type { CombatActionRequest } from '../../../types/CombatType';
 import { clamp } from '../../../utils/combatUtils';
 import { buildAiCandidates } from './aiCandidates';
+import { tacticalPlanBonus } from './aiPlanner';
+import { buildAiSituation } from './aiSituation';
 import { targetBias } from './aiTargeting';
+import { modulateAiWeights, type AiWeightModulation } from './aiWeightModulation';
 import { AI_CONSIDERATIONS } from './considerations';
 
 /** One scored candidate, kept for logging. */
@@ -28,6 +35,8 @@ export interface AiScoredCandidate {
     actionId: string;
     targetId: string | null;
     score: number;
+    /** The two-ply setup bonus, when the candidate was worth planning. */
+    planner?: number;
     /** The `[0, 1]` each active consideration gave it. */
     considerations: Partial<Record<AiConsiderationId, number>>;
 }
@@ -38,39 +47,69 @@ export interface AiDecision {
     request: CombatActionRequest | null;
     /** Every candidate, best first. */
     ranking: AiScoredCandidate[];
+    /** The situational snapshot the decision was scored against. */
+    situation?: AiSituation;
+    /** The situational weight scaling applied before scoring. */
+    modulation?: AiWeightModulation;
 }
 
 /** Internal candidate + score, before the public projection. */
 interface Scored {
     candidate: AiCandidate;
     score: number;
+    planner?: number;
     considerations: Partial<Record<AiConsiderationId, number>>;
 }
 
-/** Picks the next action for a unit nobody plays. */
+/**
+ * Picks the next action for a unit nobody plays.
+ *
+ * The board is snapshotted once per decision: the situational weights are
+ * derived from it and the considerations read it through `context.situation`.
+ * The copy is local to this call, so the caller's context is never written.
+ */
 export function decideCombatAction(context: AiDecisionContext): AiDecision {
     const candidates = buildAiCandidates(context);
     if (candidates.length === 0) {
         return { request: braceFallback(context), ranking: [] };
     }
 
-    const scored = candidates.map((candidate) => scoreCandidate(context, candidate));
+    const working: AiDecisionContext = { ...context };
+    const situation = buildAiSituation(working);
+    working.situation = situation;
+    const modulation = modulateAiWeights(working.profile.weights, situation);
+
+    const scored = candidates.map((candidate) => (
+        scoreCandidate(working, candidate, modulation.weights)
+    ));
     scored.sort((a, b) => b.score - a.score || a.candidate.key.localeCompare(b.candidate.key));
 
-    const chosen = pickWithDifficulty(context, scored);
-    return { request: toRequest(chosen.candidate), ranking: scored.map(toRanking) };
+    const planned = applyTacticalPlanning(working, scored);
+    planned.sort((a, b) => b.score - a.score || a.candidate.key.localeCompare(b.candidate.key));
+
+    const chosen = pickWithDifficulty(working, planned);
+    return {
+        request: toRequest(chosen.candidate),
+        ranking: planned.map(toRanking),
+        situation,
+        modulation,
+    };
 }
 
 /** `Σ (weight × consideration)`, then the target bias. */
-function scoreCandidate(context: AiDecisionContext, candidate: AiCandidate): Scored {
-    const { profile, tuning } = context;
+function scoreCandidate(
+    context: AiDecisionContext,
+    candidate: AiCandidate,
+    weights: Readonly<Record<AiConsiderationId, number>>,
+): Scored {
+    const { tuning } = context;
     const considerations: Partial<Record<AiConsiderationId, number>> = {};
     let total = 0;
 
-    for (const id of Object.keys(profile.weights) as AiConsiderationId[]) {
+    for (const id of Object.keys(weights) as AiConsiderationId[]) {
         if (tuning.disabled.includes(id)) continue;
 
-        const weight = profile.weights[id];
+        const weight = weights[id];
         if (weight === 0) continue;
 
         const consideration = AI_CONSIDERATIONS[id];
@@ -82,7 +121,57 @@ function scoreCandidate(context: AiDecisionContext, candidate: AiCandidate): Sco
     }
 
     total *= targetBias(context, candidate);
+    total *= repetitionPenalty(context, candidate);
     return { candidate, score: total, considerations };
+}
+
+/**
+ * Adds the two-ply setup bonus to the best few candidates.
+ *
+ * Planning is intentionally bounded: it only looks at the top Utility
+ * candidates, and only those that actually apply an effect will spend time in
+ * the planner. The rest keep their one-ply score, so the behaviour stays
+ * explainable and cheap.
+ */
+function applyTacticalPlanning(
+    context: AiDecisionContext,
+    scored: readonly Scored[],
+): Scored[] {
+    const planned = scored.slice(0, AI_PLANNER_TOP_K).map((entry) => {
+        const bonus = tacticalPlanBonus(context, entry.candidate);
+        if (bonus <= 0) return entry;
+        return {
+            ...entry,
+            planner: bonus,
+            score: entry.score + bonus * AI_PLANNER_WEIGHT,
+        };
+    });
+
+    return [...planned, ...scored.slice(AI_PLANNER_TOP_K)];
+}
+
+/**
+ * A small penalty for repeating the same skill turn after turn.
+ *
+ * The Utility score is otherwise memoryless: a long-cooldown setup that just
+ * fizzled looks exactly as good as one that has not been tried. The recent log
+ * provides the missing context. Only offensive skills are penalised; universal
+ * moves (defend, rest, switch_line) and basic weapon attacks remain available as
+ * the stable fallback.
+ */
+function repetitionPenalty(context: AiDecisionContext, candidate: AiCandidate): number {
+    if (candidate.action.kind !== 'skill') return 1;
+
+    const recent = context.history?.recentEvents ?? [];
+    let repeats = 0;
+    for (let index = recent.length - 1; index >= 0; index -= 1) {
+        const event = recent[index];
+        if (event.type !== 'action_used' || event.actorId !== context.actor.id) continue;
+        if (event.actionId !== candidate.action.id) break;
+        repeats += 1;
+    }
+
+    return 1 - Math.min(0.3, repeats * 0.15);
 }
 
 /**
@@ -117,9 +206,8 @@ function pickWithDifficulty(context: AiDecisionContext, scored: readonly Scored[
 /** The request the service accepts. */
 function toRequest(candidate: AiCandidate): CombatActionRequest {
     const request: CombatActionRequest = { actionId: candidate.action.id };
-    if (candidate.action.targeting === 'any_one' && candidate.targetId) {
-        request.targetId = candidate.targetId;
-    }
+    if (candidate.itemId) request.itemId = candidate.itemId;
+    if (candidate.targetId) request.targetId = candidate.targetId;
     return request;
 }
 
@@ -144,6 +232,7 @@ function toRanking(entry: Scored): AiScoredCandidate {
         actionId: entry.candidate.action.id,
         targetId: entry.candidate.targetId,
         score: entry.score,
+        ...(entry.planner === undefined ? {} : { planner: entry.planner }),
         considerations: entry.considerations,
     };
 }

@@ -33,7 +33,7 @@ export const DEFAULT_AI_WEIGHTS: Record<AiConsiderationId, number> = {
     reposition: 0.6,
     resource_guard: 0.3,
     resource_share: 1.0,
-    item: 0.0,
+    item: 0.8,
 };
 
 export const DEFAULT_AI_THRESHOLDS: AiThresholds = {
@@ -149,6 +149,16 @@ export const AI_DIFFICULTY_TUNING: Record<Difficulty, AiTuning> = {
     },
 };
 
+/**
+ * Two-ply tactical planning.
+ *
+ * Only the best few Utility candidates are planned, so the cost stays bounded
+ * even in a large fight. The bonus is added after the Utility score and is not
+ * a learnable weight: it represents the second ply, not a preference.
+ */
+export const AI_PLANNER_TOP_K = 6;
+export const AI_PLANNER_WEIGHT = 0.75;
+
 /** AoE damage may sum past one full health bar, but not without a ceiling. */
 export const AI_AOE_DAMAGE_CAP = 1.5;
 
@@ -163,3 +173,34 @@ export const AI_TARGET_BIAS_FLOOR = 0.5;
 
 /** Guards the threat normalisation against a divide by zero. */
 export const AI_MIN_THREAT = 1;
+
+/**
+ * Situational model.
+ *
+ * The decider snapshots the board and the recent log once per decision, then
+ * scales the profile's weights by how the fight is going. A fight that has time
+ * left rewards setting up; a fight about to end rewards finishing. The snapshot
+ * is derived state only: it never enters `CombatState`.
+ */
+export const AI_SITUATION_HISTORY_EVENTS = 40;
+
+/** Rounds a "normal" fight is expected to last; the horizon's reference. */
+export const AI_FUTURE_REFERENCE_ROUNDS = 3;
+
+/** Never plan for fewer than this many rounds, nor for more than the cap. */
+export const AI_HORIZON_MIN_ROUNDS = 0.5;
+export const AI_HORIZON_MAX_ROUNDS = 20;
+
+/** How far `AI_FUTURE_REFERENCE_ROUNDS` may be stretched when read as a window. */
+export const AI_SETUP_WINDOW_MIN = 0.35;
+export const AI_SETUP_WINDOW_MAX = 1.75;
+
+/** Bounds on any single dynamic weight multiplier. */
+export const AI_MODULATION_MIN = 0.4;
+export const AI_MODULATION_MAX = 2.2;
+
+/** A factor this far from `1` is worth explaining in the modulation notes. */
+export const AI_MODULATION_NOTE_THRESHOLD = 0.15;
+
+/** Turns left before the horizon stops discounting a setup's payoff. */
+export const AI_HORIZON_TURN_FLOOR = 1;

@@ -14,6 +14,7 @@ import {
 } from '../../constants/CombatConstants';
 import type { EntitiesData } from '../../types/EntityDataType';
 import type { CombatAbilityInstance } from '../../types/AbilityType';
+import type { AiProfile } from '../../types/AiType';
 import type { WeaponRuntimeState, WeaponStatDelta } from '../../types/WeaponType';
 import type {
     CombatAction,
@@ -46,6 +47,20 @@ export interface CreateUnitParams {
     slot: number;
     /** Actions available to the unit (skills, weapon, universal movements). */
     actions: CombatAction[];
+    /**
+     * Generated-unit stat overlay. Merged over the entity's `base_stats`; the
+     * current pools start full at the resolved maxima.
+     */
+    stats?: Partial<CombatStats>;
+    /** Generated-unit element overlay; defaults to the entity's `elements`. */
+    elementIds?: string[];
+    /** Opening statuses, cloned per unit so two generated units never share one. */
+    startingEffects?: CombatEffectInstance[];
+    /**
+     * Resolved AI profile override. Generated units use their scenario
+     * personality here instead of inheriting the borrowed entity's `ai:` block.
+     */
+    aiProfile?: AiProfile;
     /**
      * Abilities to give the unit.
      *
@@ -102,12 +117,18 @@ export function buildCombatStats(entity: CombatEntitySource): CombatStats {
 
 /** Builds a fresh, full-health combat unit from an entity. */
 export function createCombatUnit(params: CreateUnitParams): CombatUnit {
-    const stats = buildCombatStats(params.entity);
+    const stats: CombatStats = {
+        ...buildCombatStats(params.entity),
+        ...(params.stats ?? {}),
+    };
+    stats.maxHp = Math.max(1, Math.round(stats.maxHp));
+    stats.maxMana = Math.max(0, Math.round(stats.maxMana));
+    stats.maxStamina = Math.max(0, Math.round(stats.maxStamina));
     const maxHp = params.hp && params.hp > 0 ? Math.round(params.hp) : stats.maxHp;
     const resolved: CombatStats = { ...stats, maxHp };
 
     const abilities = params.abilities ?? createAbilityInstances(params.entity.abilities);
-    const aiProfile = createAiProfile(params.entity.ai, abilities);
+    const aiProfile = params.aiProfile ?? createAiProfile(params.entity.ai, abilities);
 
     // Fleeing is opt-in: the player always carries it, an enemy only when its
     // profile authors `ai.flee`. Appending here keeps the cached blueprint
@@ -116,6 +137,11 @@ export function createCombatUnit(params: CreateUnitParams): CombatUnit {
     const actions = mayFlee && !params.actions.some((action) => action.kind === 'flee')
         ? [...params.actions, createFleeAction()]
         : params.actions;
+
+    const elementIds = params.elementIds
+        ?? (Array.isArray(params.entity.elements)
+            ? params.entity.elements.filter((element): element is string => typeof element === 'string')
+            : []);
 
     const unit: CombatUnit = {
         id: params.id,
@@ -127,15 +153,13 @@ export function createCombatUnit(params: CreateUnitParams): CombatUnit {
         slot: params.slot,
         isPlayerControlled: params.isPlayerControlled ?? false,
         status: 'alive',
-        elementIds: Array.isArray(params.entity.elements)
-            ? params.entity.elements.filter((element): element is string => typeof element === 'string')
-            : [],
+        elementIds,
         stats: resolved,
         currentHp: resolved.maxHp,
         currentMana: resolved.maxMana,
         currentStamina: resolved.maxStamina,
         actions,
-        effects: [],
+        effects: params.startingEffects?.map((effect) => structuredClone(effect)) ?? [],
         abilities,
         aiProfile,
         immunities: [],

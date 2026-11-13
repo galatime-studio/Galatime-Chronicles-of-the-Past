@@ -14,10 +14,12 @@
  */
 
 import type { Difficulty } from '../constants/DifficultyConstants';
+import type { AiSituation } from './AiSituationType';
 import type {
     CombatAction,
     CombatActionPreview,
     CombatElementIndex,
+    CombatEvent,
     CombatRandom,
     CombatState,
     CombatUnit,
@@ -166,6 +168,8 @@ export interface AiCandidate {
     targetId: string | null;
     /** Every unit the action would land on (one for `any_one`). */
     targetIds: string[];
+    /** Item id when the candidate is an `inventory` use. */
+    itemId?: string;
 }
 
 /**
@@ -189,6 +193,28 @@ export interface AiDecisionContext {
     tuning: AiTuning;
     /** `profile.thresholds` with the level's overrides folded in. */
     thresholds: AiThresholds;
+    /**
+     * A short, read-only view of the recent battle log. Live decisions use it to
+     * avoid repeating a skill that just failed or fizzled, and to see whether a
+     * status landed or was resisted. Manual/test contexts may omit it.
+     */
+    history?: AiDecisionHistory;
+    /**
+     * The actor's current item stock, item id to quantity. Present in live
+     * decisions so the candidate builder can offer usable combat items.
+     */
+    inventory?: Readonly<Record<string, number>>;
+    /**
+     * The situational snapshot for this decision, set by the decider right
+     * after it builds one. Considerations read it to value an action against
+     * the fight that is actually happening. Absent in manual contexts.
+     */
+    situation?: AiSituation;
+}
+
+/** The slice of `CombatState.log` exposed to a decision. */
+export interface AiDecisionHistory {
+    recentEvents: readonly CombatEvent[];
 }
 
 /**

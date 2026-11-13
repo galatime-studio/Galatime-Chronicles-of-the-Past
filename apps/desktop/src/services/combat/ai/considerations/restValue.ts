@@ -1,9 +1,12 @@
 /**
  * `rest` — recovering the resource that gates the kit.
  *
- * Only scores when a pool is below its `rest` threshold, and more the emptier it
- * is. A rest that would re-enable a skill the unit cannot currently afford earns
- * a bonus, so a caster tops its mana back up instead of throwing a weak spell.
+ * Only scores when a pool is genuinely low: above its `rest` threshold the unit
+ * should spend the turn on an action, not idle. The ramp is quadratic, so a pool
+ * barely below the gate is a weak reason to rest while an almost-empty pool is a
+ * near-maximal one. A rest that would re-enable a skill the unit cannot currently
+ * afford earns a bonus, so a caster tops its mana back up instead of throwing a
+ * weak spell.
  */
 
 import type { AiConsideration } from '../../../../types/AiType';
@@ -26,14 +29,13 @@ export const restValue: AiConsideration = {
         const manaFraction = stats.maxMana > 0 ? actor.currentMana / stats.maxMana : 1;
         const staminaFraction = stats.maxStamina > 0 ? actor.currentStamina / stats.maxStamina : 1;
 
-        let score = 0;
-        if (thresholds.restMana > 0 && manaFraction < thresholds.restMana) {
-            score = Math.max(score, clamp((thresholds.restMana - manaFraction) / thresholds.restMana, 0, 1));
-        }
-        if (thresholds.restStamina > 0 && staminaFraction < thresholds.restStamina) {
-            score = Math.max(score, clamp((thresholds.restStamina - staminaFraction) / thresholds.restStamina, 0, 1));
-        }
-        if (score <= 0) return 0;
+        const manaPressure = pressure(manaFraction, thresholds.restMana);
+        const staminaPressure = pressure(staminaFraction, thresholds.restStamina);
+        const resourcePressure = Math.max(manaPressure, staminaPressure);
+        if (resourcePressure <= 0) return 0;
+
+        // Quadratic: the closer the pool is to empty, the more the turn is worth.
+        let score = resourcePressure * resourcePressure;
 
         // The resolver advances the streak by one and pays the step it reaches.
         const manaRestore = stats.maxMana > 0
@@ -52,6 +54,13 @@ export const restValue: AiConsideration = {
             return blockedNow && affordableAfter;
         });
 
-        return clamp(unlocks ? score + UNLOCK_BONUS : score, 0, 1);
+        if (unlocks) score += UNLOCK_BONUS;
+        return clamp(score, 0, 1);
     },
 };
+
+/** `0` while a pool is at or above its rest gate, rising to `1` as it empties. */
+function pressure(fraction: number, threshold: number): number {
+    if (threshold <= 0) return 0;
+    return clamp((threshold - fraction) / threshold, 0, 1);
+}
