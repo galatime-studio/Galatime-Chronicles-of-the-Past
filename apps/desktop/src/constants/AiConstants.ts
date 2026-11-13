@@ -150,6 +150,15 @@ export const AI_DIFFICULTY_TUNING: Record<Difficulty, AiTuning> = {
 };
 
 /**
+ * The levels that change how the opponents play.
+ *
+ * `hardcore` is deliberately absent: it is the same AI as `hard`, and the level
+ * only takes away the player's retries. A picker that offered it would promise a
+ * behavioural difference that does not exist.
+ */
+export const AI_DIFFICULTY_LEVELS: readonly Difficulty[] = ['easy', 'normal', 'hard'];
+
+/**
  * Two-ply tactical planning.
  *
  * Only the best few Utility candidates are planned, so the cost stays bounded

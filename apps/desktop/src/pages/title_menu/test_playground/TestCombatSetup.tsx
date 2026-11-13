@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CommonButton from '../../../components/common/CommonButton';
 import { playSfx } from '../../../controllers/audioController';
+import { AI_DIFFICULTY_LEVELS } from '../../../constants/AiConstants';
+import type { Difficulty } from '../../../constants/DifficultyConstants';
 import {
     SETUP_LINES,
     SETUP_SIDES,
@@ -35,6 +37,9 @@ interface TestCombatSetupProps {
     hour: number;
     /** Moves the world's clock, and with it the hour of the next fight. */
     onHourChange: (hour: number) => void;
+    /** How well the opponents will play. Sent to the fight, not saved anywhere. */
+    difficulty: Difficulty;
+    onDifficultyChange: (difficulty: Difficulty) => void;
     onFill: (side: CombatSide, line: CombatLine, index: number, entity: CatalogueEntity) => void;
     onClear: (side: CombatSide, line: CombatLine, index: number) => void;
     onToggleControl: (side: CombatSide, line: CombatLine, index: number) => void;
@@ -63,13 +68,15 @@ export function TestCombatSetup({
     entities,
     hour,
     onHourChange,
+    difficulty,
+    onDifficultyChange,
     onFill,
     onClear,
     onToggleControl,
     onSetLoadout,
     onStart,
 }: TestCombatSetupProps) {
-    const { t } = useTranslation('playground');
+    const { t } = useTranslation(['playground', 'game']);
     const [target, setTarget] = useState<PickerTarget | null>(null);
     const [inventoryTarget, setInventoryTarget] = useState<PickerTarget | null>(null);
 
@@ -155,27 +162,55 @@ export function TestCombatSetup({
             </div>
 
             <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t-game border-white/10 pt-3">
-                {/* The hour of the day: a solar skill bites harder by day and a
-                    lunar one at night, so the fight is worth setting up in
-                    the light the author had in mind. */}
-                <label className="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-white/50">
-                    <span>{t('playground.combat.hour')}</span>
-                    <input
-                        type="range"
-                        min={0}
-                        max={23}
-                        step={1}
-                        value={hour}
-                        onChange={(event) => onHourChange(Number(event.target.value))}
-                        className="w-32 accent-white"
-                    />
-                    <span className="font-pixel tabular-nums text-white/80">
-                        {String(hour).padStart(2, '0')}:00
-                    </span>
-                    <span className="text-white/40">
-                        {hour >= 6 && hour < 18 ? t('playground.combat.day') : t('playground.combat.night')}
-                    </span>
-                </label>
+                <div className="flex flex-wrap items-center gap-4">
+                    {/* The hour of the day: a solar skill bites harder by day and a
+                        lunar one at night, so the fight is worth setting up in
+                        the light the author had in mind. */}
+                    <label className="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-white/50">
+                        <span>{t('playground.combat.hour')}</span>
+                        <input
+                            type="range"
+                            min={0}
+                            max={23}
+                            step={1}
+                            value={hour}
+                            onChange={(event) => onHourChange(Number(event.target.value))}
+                            className="w-32 accent-white"
+                        />
+                        <span className="font-pixel tabular-nums text-white/80">
+                            {String(hour).padStart(2, '0')}:00
+                        </span>
+                        <span className="text-white/40">
+                            {hour >= 6 && hour < 18 ? t('playground.combat.day') : t('playground.combat.night')}
+                        </span>
+                    </label>
+
+                    {/* How well the opponents play. The level is handed to the fight
+                        and never written to the save, so the same roster can be tried
+                        at every level without touching the game's own setting. */}
+                    <div
+                        role="group"
+                        aria-label={t('playground.combat.difficulty')}
+                        className="flex items-center gap-2"
+                    >
+                        <span className="text-xs uppercase tracking-[0.15em] text-white/50">
+                            {t('playground.combat.difficulty')}
+                        </span>
+                        <div className="flex gap-1">
+                            {AI_DIFFICULTY_LEVELS.map((level) => (
+                                <CommonButton
+                                    key={level}
+                                    variant={level === difficulty ? 'primary' : 'ghost'}
+                                    size="sm"
+                                    aria-pressed={level === difficulty}
+                                    onPress={() => onDifficultyChange(level)}
+                                >
+                                    {t(`game.settings.difficulty.${level}.label`)}
+                                </CommonButton>
+                            ))}
+                        </div>
+                    </div>
+                </div>
 
                 {/* Only a blocked start needs saying; a ready setup speaks for itself. */}
                 <p aria-live="polite" className="text-sm text-galatime-warning">

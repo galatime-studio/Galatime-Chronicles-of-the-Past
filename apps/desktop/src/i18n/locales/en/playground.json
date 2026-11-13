@@ -64,6 +64,7 @@
 			"controlOff": "Play this character yourself",
 			"needsBothSides": "Both sides need at least one entity to start.",
 			"hour": "Hour of the day",
+			"difficulty": "Difficulty",
 			"day": "(day)",
 			"night": "(night)",
 			"logTitle": "Combat log",
