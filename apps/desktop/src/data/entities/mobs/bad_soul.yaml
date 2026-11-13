@@ -20,8 +20,36 @@ base_stats:
   speed: 42
 
 skills:
-  - ravenous_drain
-  - avarice_burst
+  - id: darkness_II
+    name: Darkness II
+    description: "A thicker black mist smothers the target: ACC −15% and Evasion −5 for 2 turns."
+    element_id: umbra
+    kind: control
+    targeting: any_one
+    range: medium
+    costs: { mana: 3, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: darkness_effect
+        status_effect: Darkness
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { accuracy: 15, evasion: 5 }
+
+  - id: dark_ball
+    name: Dark Ball
+    description: "A sphere of devouring shadow deals power 10 magical damage at 95% accuracy."
+    element_id: umbra
+    kind: attack
+    targeting: any_one
+    range: medium
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 10 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
 
 loot:
   - item_id: gold_coin

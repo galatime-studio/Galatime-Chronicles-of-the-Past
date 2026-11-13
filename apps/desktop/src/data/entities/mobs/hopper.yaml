@@ -20,8 +20,20 @@ base_stats:
   speed: 37
 
 skills:
-  - headbutt
-  - kick
+  - id: headbutt
+    name: Headbutt
+    description: "The hopper springs headfirst into its target; one physical hit deals power 8 at 95% accuracy."
+    element_id: corporis
+    kind: attack
+    targeting: any_one
+    range: short
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 8 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 0, stamina: 4, cooldown: 0 }
 
 weapon:
 

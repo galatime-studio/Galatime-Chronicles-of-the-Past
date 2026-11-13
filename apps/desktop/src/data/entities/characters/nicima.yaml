@@ -15,17 +15,42 @@ elements:
 base_stats:
   hp: 1000
   mana: 84
-  stamina: 85
+  stamina: 42
   physical_attack: 25
   magical_attack: 44
-  physical_defense: 69
-  magical_defense: 50
+  physical_defense: 50
+  magical_defense: 69
   speed: 75
 
 skills:
-  - dazzling_gleam
-  - angels_blessing
-  - angels_guard
-  - serene_shroud
+  - radiant_mend
+  - morning_blessing
+  - ward_of_light
+  - smite
 
-weapon: golden_scepter
+weapon:
+  id: scepter_of_dawn
+  name: Scepter of Dawn
+  description: "A pale-gold scepter crowned with a shard of morning light. It strikes with Lux and returns a measure of mana to its bearer."
+  type: staff
+  element: lux
+  damage_type: magical
+  target: any_one
+  range: medium
+  power: 24
+  accuracy: 95
+  accuracy_by_range: { front: 85, rear: 100 }
+  hits: 1
+  stamina_cost: 2
+  durability: { max: 160, wear: 1 }
+  effects:
+    - effect_id: dawnwell
+      status_effect: Dawnwell
+      apply_to: self
+      turns: 1
+      polarity: positive
+      effect_hit_chance: 0.6
+      resource_regen:
+        mana: 6
+  display:
+    summary: "60% chance to restore 6 mana to the wielder on hit."

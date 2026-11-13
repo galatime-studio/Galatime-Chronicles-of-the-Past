@@ -20,9 +20,36 @@ base_stats:
   speed: 39
 
 skills:
-  - radiant_restoration
-  - sanctified_aegis
-  - dawnflare
+  - id: lightness_III
+    name: Lightness III
+    description: "A radiant uplift carries every ally: +14 SPD and +8 Evasion for 4 turns."
+    element_id: lux
+    kind: buff
+    targeting: allies_all
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: lightness
+        status_effect: Lightness
+        apply_to: allies_all
+        turns: 4
+        polarity: positive
+        buff: { speed: 14, evasion: 8 }
+
+  - id: angel_guard_II
+    name: Angel Guard II
+    description: "A stronger guardian light covers every ally for 3 turns: a shield worth 25% of max HP and +9 PDEF/MDEF."
+    element_id: lux
+    kind: buff
+    targeting: allies_all
+    costs: { mana: 9, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: angel_guard
+        status_effect: Angel Guard
+        apply_to: allies_all
+        turns: 3
+        polarity: positive
+        shield: { percent_of_max_hp: 25 }
+        buff: { physical_defense: 9, magical_defense: 9 }
 
 loot:
   - item_id: gold_coin

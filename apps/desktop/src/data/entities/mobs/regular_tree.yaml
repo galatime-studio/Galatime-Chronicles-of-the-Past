@@ -22,8 +22,37 @@ base_stats:
   speed: 8
 
 skills:
-  - explosive_apples
-  - apple_party
+  - id: explosive_apples
+    name: Explosive Apples
+    description: "A ripe apple bursts against the target for power 12 magical damage at 90% accuracy, splashing 40% of the hit onto its neighbours 60% of the time."
+    element_id: chaos
+    kind: attack
+    targeting: any_one
+    range: medium
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 12 }
+    damage_variance: [0.75, 1.25]
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+    collateral: { damage_multiplier: 0.4, chance: 0.6, include_primary_targets: false }
+
+  - id: apple_party
+    name: Apple Party
+    description: "A rain of explosive apples falls on every enemy for power 9 magical damage at 85% accuracy."
+    element_id: chaos
+    kind: attack
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 9 }
+    damage_variance: [0.8, 1.2]
+    accuracy: 85
+    hit_count: 1
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
 
 weapon: 
 

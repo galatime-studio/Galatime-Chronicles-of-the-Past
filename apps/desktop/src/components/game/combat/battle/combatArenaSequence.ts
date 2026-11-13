@@ -16,6 +16,7 @@ import {
     ARENA_QUIET_TOTAL_MS,
     ARENA_SETTLE_MS,
     ARENA_SHAKE_RATIO,
+    ARENA_STATUS_DELAY_MS,
     ARENA_STATUS_MS,
     ARENA_STATUS_STAGGER_MS,
     ARENA_STEP_MS,
@@ -342,7 +343,7 @@ export function buildArenaSequence(
     const totalMs = Math.max(
         quiet ? ARENA_QUIET_TOTAL_MS : ARENA_TOTAL_MS,
         hits.length > 0 ? ARENA_IMPACT_MS + lastHitDelay + ARENA_SETTLE_MS : 0,
-        statuses.length > 0 ? ARENA_IMPACT_MS + lastStatusDelay + ARENA_STATUS_MS : 0,
+        statuses.length > 0 ? ARENA_IMPACT_MS + ARENA_STATUS_DELAY_MS + lastStatusDelay + ARENA_STATUS_MS : 0,
         enterBursts > 0
             ? ARENA_IMPACT_MS + ARENA_ENTER_MS + Math.max(0, enterBursts - 1) * ARENA_ENTER_STAGGER_MS
             : 0,

@@ -20,9 +20,50 @@ base_stats:
   speed: 50
 
 skills:
-  - fire_ball
-  - fire_tornado
-  - commet_dash
+  - id: fire_ball
+    name: Fire Ball
+    description: "A hurled ball of living flame deals power 12 magical damage at 95% accuracy and has a 35% chance to leave 1 Burn stack for 2 turns."
+    element_id: ignis
+    kind: attack
+    targeting: any_one
+    range: medium
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 12 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 5, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: fire_ball_burn
+        status_effect: Burn
+        apply_to: target
+        turns: 2
+        polarity: negative
+        effect_hit_chance: 0.35
+        damage_per_turn: 4
+        damage_timing: turn_end
+        stacking: { initial: 1, extend_turns: 1 }
+        expire_on_elements: [aqua, caeli]
+
+  - id: comet_dash
+    name: Comet Dash
+    description: "The cloak streaks across the field to the front line, striking for power 16 physical damage at 90% accuracy."
+    element_id: ignis
+    kind: attack
+    targeting: any_one
+    range: short
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 16 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 2, stamina: 6, cooldown: 0 }
+    effects:
+      - effect_id: comet_dash_move
+        apply_to: self
+        move: { who: self, to_line: front }
 
 weapon:
 

@@ -23,8 +23,37 @@ base_stats:
   speed: 24
 
 skills:
-  - vine
-  - vine_whip
+  - id: rock_thorns
+    name: Rock Thorns
+    description: "Jagged stone spikes rise for 3 turns: +10 PDEF, and attackers suffer 10 physical damage for up to 3 reflections."
+    element_id: lapis
+    kind: buff
+    targeting: self
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: rock_thorns
+        status_effect: Rock Thorns
+        apply_to: self
+        turns: 3
+        polarity: positive
+        buff: { physical_defense: 10 }
+        reflect: { power: 10, chance: 1, consume: false, charges: 3 }
+
+  - id: rock_sheets
+    name: Rock Sheets
+    description: "Sheets of stone fold over the caster for 3 turns: a shield worth 25% of max HP and 25% less physical damage taken."
+    element_id: lapis
+    kind: buff
+    targeting: self
+    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: rock_sheets
+        status_effect: Rock Sheets
+        apply_to: self
+        turns: 3
+        polarity: positive
+        shield: { percent_of_max_hp: 25 }
+        damage_channel_modulation: { physical: 0.75 }
 
 weapon:
 

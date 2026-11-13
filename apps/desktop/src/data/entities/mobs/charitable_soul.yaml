@@ -20,7 +20,36 @@ base_stats:
   speed: 30
 
 skills:
-  - radiant_mend
+  - id: lightness
+    name: Lightness
+    description: "A gentle glow lifts every ally: +8 SPD and +4 Evasion for 3 turns."
+    element_id: lux
+    kind: buff
+    targeting: allies_all
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: lightness
+        status_effect: Lightness
+        apply_to: allies_all
+        turns: 3
+        polarity: positive
+        buff: { speed: 8, evasion: 4 }
+
+  - id: angel_guard
+    name: Angel Guard
+    description: "A guardian light covers every ally for 2 turns: a shield worth 15% of max HP and +6 PDEF/MDEF."
+    element_id: lux
+    kind: buff
+    targeting: allies_all
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: angel_guard
+        status_effect: Angel Guard
+        apply_to: allies_all
+        turns: 2
+        polarity: positive
+        shield: { percent_of_max_hp: 15 }
+        buff: { physical_defense: 6, magical_defense: 6 }
 
 loot:
   - item_id: gold_coin

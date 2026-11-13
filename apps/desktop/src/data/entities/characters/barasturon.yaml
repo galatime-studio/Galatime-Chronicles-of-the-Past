@@ -24,9 +24,9 @@ base_stats:
   speed: 48
 
 skills:
-  - focus
-  - stone_body
-  - mega_punch
-  - earthen_roar
+  - bone_crusher
+  - perfect_ripple_punch
+  - battle_fury
+  - granite_hide
 
 weapon:

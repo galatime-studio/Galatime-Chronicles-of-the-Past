@@ -66,7 +66,15 @@ export const ARENA_HIT_STAGGER_MS = 110;
 export const ARENA_MULTI_HIT_STAGGER_MS = 70;
 
 /** How long a buff/debuff label lingers over the unit it just landed on. */
-export const ARENA_STATUS_MS = 900;
+export const ARENA_STATUS_MS = 760;
+
+/**
+ * How long after the impact the buff/debuff label appears.
+ *
+ * The damage number owns the first beat: reading the hit, then seeing the status
+ * that came with it, is easier to follow than both popping on the same frame.
+ */
+export const ARENA_STATUS_DELAY_MS = 360;
 
 /** Extra delay between two status labels landing on the same unit. */
 export const ARENA_STATUS_STAGGER_MS = 90;

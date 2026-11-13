@@ -25,9 +25,9 @@ base_stats:
   speed: 32
 
 skills:
-  - dig
-  - stone_minion
-  - vine
-  - nature_absorption
+  - challenger_stance
+  - stone_fortress
+  - granite_hide
+  - bark_aegis
 
 weapon: peace_maker

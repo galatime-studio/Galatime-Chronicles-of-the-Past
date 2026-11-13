@@ -20,8 +20,46 @@ base_stats:
   speed: 20
 
 skills:
-  - headbutt
-  - splash
+  - id: headbutt_II
+    name: Headbutt II
+    description: "The big slime crashes its bulk forward; one physical hit deals power 11 at 95% accuracy."
+    element_id: corporis
+    kind: attack
+    targeting: any_one
+    range: short
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 11 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 0, stamina: 6, cooldown: 0 }
+
+  - id: splash_III
+    name: Splash III
+    description: "A crashing wave of gel deals power 14 magical damage at 95% accuracy and leaves the target Wet for 5 turns."
+    element_id: aqua
+    kind: attack
+    targeting: any_one
+    range: medium
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 14 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: splash_wet
+        status_effect: Wet
+        apply_to: target
+        turns: 5
+        polarity: positive
+        element_modulation:
+          ignis: 0.25
+          aqua: 2
+          chaos: 2
+        expire_on_elements: [ignis]
 
 weapon: 
 

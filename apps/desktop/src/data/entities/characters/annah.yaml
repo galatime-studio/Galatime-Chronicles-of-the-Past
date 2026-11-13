@@ -26,9 +26,9 @@ base_stats:
   speed: 59
 
 skills:
-  - light_heal
-  - ice_barrage
-  - frost
-  - angels_judgement
+  - frostbite
+  - glacial_blades
+  - blizzard
+  - divine_blessing
 
 weapon: military_sword

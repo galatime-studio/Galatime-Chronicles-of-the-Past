@@ -27,7 +27,8 @@ base_stats:
 
 skills:
   - slowness
-  - hasten_IV
+  - haste_IV
   - night
+  - shadow_step_II 
 
 weapon:

@@ -24,6 +24,9 @@ base_stats:
   speed: 60
 
 skills:
-  - fire_ball
+  - fireball
+  - sunder_lance
+  - concussive_blast
+  - overcharge
 
 weapon: rusty_sword

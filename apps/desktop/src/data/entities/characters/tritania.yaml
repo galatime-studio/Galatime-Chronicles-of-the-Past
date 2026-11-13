@@ -24,6 +24,9 @@ base_stats:
   speed: 41
 
 skills:
-  - focus
+  - night_veil
+  - mass_terror
+  - total_darkness
+  - crimson_siphon
 
 weapon:

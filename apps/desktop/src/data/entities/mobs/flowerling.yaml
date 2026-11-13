@@ -21,8 +21,37 @@ base_stats:
   speed: 20
 
 skills:
-  - vine
-  - vine_whip
+  - id: vine
+    name: Vine
+    description: "A vine coils around the target: SPD −6 and Evasion −6 for 2 turns, and it cannot change lines."
+    element_id: florere
+    kind: control
+    targeting: any_one
+    range: medium
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: vine_bind
+        status_effect: Vined
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { speed: 6, evasion: 6 }
+        prevent_actions: [switch_line]
+
+  - id: vine_whip
+    name: Vine Whip
+    description: "The flowerling lashes with a thorned vine; one physical hit deals power 6 at 95% accuracy."
+    element_id: florere
+    kind: attack
+    targeting: any_one
+    range: short
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 6 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 3, stamina: 0, cooldown: 0 }
 
 weapon:
 

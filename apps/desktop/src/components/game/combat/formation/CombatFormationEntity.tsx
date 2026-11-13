@@ -3,12 +3,13 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { autoUpdate, flip, offset, shift, size, useFloating } from '@floating-ui/react';
 import CommonImage from '../../../common/CommonImage';
-import { SelectorIcon } from '../../../../assets/GalatimeIcon';
+import { ElementIcon, SelectorIcon } from '../../../../assets/GalatimeIcon';
 import {
     ARENA_ENTER_MS,
     ARENA_ENTER_STAGGER_MS,
     ARENA_IMPACT_MS,
     ARENA_LUNGE_MS,
+    ARENA_STATUS_DELAY_MS,
     ARENA_STATUS_MS,
     ARENA_STATUS_STAGGER_MS,
     ARENA_STEP_MS,
@@ -563,14 +564,15 @@ export function CombatFormationEntity({
                                 over the sprite so it never collides with the rising number.
                                 Its outline carries the element it came from, like the chip. */}
                             {statusBeats.length > 0 && (
-                                <span className="pointer-events-none absolute left-1/2 top-1/2 z-40 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5">
+                                <span className="pointer-events-none absolute left-full top-0 z-40 flex flex-col items-start gap-0.5 pl-1">
                                     {statusBeats.map((beat, index) => (
                                         <span
                                             key={`${beat.unitId}-${beat.label ?? beat.tone}-${index}`}
-                                            className={`whitespace-nowrap border-game border-black/60 bg-galatime-background/90 px-1 font-pixel text-[8px] uppercase tracking-[0.06em] sm:text-[10px] ${STATUS_TONE_TEXT[beat.tone]}`}
+                                            data-combat-status={beat.tone}
+                                            className={`whitespace-nowrap border-game border-black/60 bg-galatime-background/90 px-1 font-pixel text-[9px] uppercase tracking-[0.06em] sm:text-xs ${STATUS_TONE_TEXT[beat.tone]}`}
                                             style={{
                                                 borderColor: beat.elementId ? elementTint(beat.elementId) : undefined,
-                                                animation: `combat-status-pop ${ARENA_STATUS_MS}ms ease-out ${ARENA_IMPACT_MS + index * ARENA_STATUS_STAGGER_MS}ms both`,
+                                                animation: `combat-status-pop ${ARENA_STATUS_MS}ms ease-out ${ARENA_IMPACT_MS + ARENA_STATUS_DELAY_MS + index * ARENA_STATUS_STAGGER_MS}ms both`,
                                             }}
                                         >
                                             {beat.resisted
@@ -613,37 +615,60 @@ export function CombatFormationEntity({
                                     />
                                 </div>
                             )}
-                            {/* What the blow cost, or gave back, rising off the sprite. A
-                                direct hit speaks first; an ambient tick (DoT, regen, upkeep)
-                                is drawn smaller underneath and never shakes the unit. */}
-                            {hitBeats.slice(0, 2).map((beat, index) => (
-                                <span
-                                    key={`${beat.targetId}-${beat.kind}-${beat.ambient}-${index}`}
-                                    className="pointer-events-none absolute left-1/2 z-50 -translate-x-1/2"
-                                    style={{ top: index * 16 }}
-                                >
+                            {/* What the blow cost, or gave back, rising above the sprite
+                                (never over the face). A direct hit speaks first and carries
+                                its element orb; an ambient tick (DoT, regen, upkeep) is
+                                drawn smaller to the unit's right and never shakes it. */}
+                            {hitBeats.slice(0, 2).map((beat, index) => {
+                                const elementId = beat.kind === 'damage' && beat.isHit ? beat.elementId : null;
+
+                                return (
                                     <span
-                                        className={`block whitespace-nowrap font-pixel font-bold tabular-nums ${beat.ambient ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-sm'} ${
-                                            !beat.isHit
-                                                ? 'text-white/85'
-                                                : beat.kind === 'heal'
-                                                    ? 'text-galatime-stats-gain-health'
-                                                    : beat.ambient
-                                                        ? 'text-galatime-stats-damage'
-                                                        : damageNumberTone(beat.multiplier)
-                                        }`}
-                                        style={{
-                                            ...(beat.ambient ? AMBIENT_NUMBER_STYLE : FLOATING_NUMBER_STYLE),
-                                            animation: `${numberAnimation(beat)} 760ms ease-out ${ARENA_IMPACT_MS + beat.delayMs}ms both`,
-                                        }}
+                                        key={`${beat.targetId}-${beat.kind}-${beat.ambient}-${index}`}
+                                        data-combat-number={beat.ambient ? `${beat.kind}-ambient` : beat.kind}
+                                        className={`pointer-events-none absolute z-50 ${beat.ambient
+                                            ? 'left-full top-1/2 flex -translate-y-1/2 flex-col items-start gap-0.5 pl-1'
+                                            : 'left-1/2 flex -translate-x-1/2 flex-row items-center gap-1'}`}
+                                        style={beat.ambient ? undefined : { bottom: `calc(100% + ${4 + index * 24}px)` }}
                                     >
-                                        {numberText(beat, t('combat.miss'))}
-                                        {beat.kind === 'damage' && beat.isHit && beat.hits > 1 && (
-                                            <span className="ml-0.5 align-top text-[0.65em] text-white/80">×{beat.hits}</span>
+                                        {/* The attack's element, always readable: it is what
+                                            tells the player what just hit them. */}
+                                        {elementId && (
+                                            <ElementIcon id={elementId} className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+                                        )}
+                                        <span
+                                            className={`block whitespace-nowrap font-pixel font-bold leading-none tabular-nums ${beat.ambient ? 'text-xs sm:text-sm' : 'text-sm sm:text-lg'} ${
+                                                !beat.isHit
+                                                    ? 'text-white/85'
+                                                    : beat.kind === 'heal'
+                                                        ? 'text-galatime-stats-gain-health'
+                                                        : beat.ambient
+                                                            ? 'text-galatime-stats-damage'
+                                                            : damageNumberTone(beat.multiplier)
+                                            }`}
+                                            style={{
+                                                ...(beat.ambient ? AMBIENT_NUMBER_STYLE : FLOATING_NUMBER_STYLE),
+                                                animation: `${numberAnimation(beat)} 760ms ease-out ${ARENA_IMPACT_MS + beat.delayMs}ms both`,
+                                            }}
+                                        >
+                                            {numberText(beat, t('combat.miss'))}
+                                            {beat.kind === 'damage' && beat.isHit && beat.hits > 1 && (
+                                                <span className="ml-0.5 align-top text-[0.65em] text-white/80">×{beat.hits}</span>
+                                            )}
+                                        </span>
+                                        {/* The exact efficacy is tooltip-grade detail: it only
+                                            shows for players who asked for combat tooltips. */}
+                                        {elementId && showDetails && (
+                                            <span
+                                                className={`font-pixel text-[9px] font-bold tabular-nums sm:text-xs ${damageNumberTone(beat.multiplier)}`}
+                                                style={AMBIENT_NUMBER_STYLE}
+                                            >
+                                                {multiplierLabel(beat.multiplier)}
+                                            </span>
                                         )}
                                     </span>
-                                </span>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

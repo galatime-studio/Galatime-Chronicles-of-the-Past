@@ -25,9 +25,9 @@ base_stats:
   speed: 58
 
 skills:
-  - lunar_beam
-  - dark_energy
-  - electric_ball
-  - lunar_guard
+  - garden_of_renewal
+  - verdant_rite
+  - pollen_ward
+  - crimson_siphon
 
 weapon: military_sword

@@ -23,9 +23,48 @@ base_stats:
   speed: 71
 
 skills:
-  - wind_shield
-  - tornado
-  - gale_force
-  - tailwind
+  - gale_resonance
+  - eye_of_the_storm
+  - cloudpiercer
+  - id: galewing_arrow
+    name: Galewing Arrow
+    description: "A caeli arrow that bursts into a crosswind on impact, marking the target as exposed to the gale."
+    element_id: caeli
+    sfx: caeli
+    kind: attack
+    targeting: any_one
+    range: long
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 20 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: galewing_mark
+        status_effect: Galewing Mark
+        apply_to: target
+        turns: 3
+        polarity: negative
+        element_modulation: { caeli: 1.2 }
+        debuff: { evasion: 8, speed: 6 }
 
 weapon:
+  id: skyhunter_bow
+  name: Skyhunter Bow
+  description: "A longbow strung with spun wind, firing arrows of compressed air instead of wood and steel."
+  type: bow
+  element: caeli
+  damage_type: magical
+  target: any_one
+  range: long
+  power: 32
+  accuracy: 95
+  hits: 1
+  stamina_cost: 2
+  accuracy_by_range: { front: 90, rear: 100 }
+  durability: { max: 180, wear: 1 }
+  ammo: { item_type: arrow }
+  display:
+    summary: "Arrows of compressed air: longer reach, stronger against the rear line."

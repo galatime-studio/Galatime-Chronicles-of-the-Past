@@ -21,7 +21,36 @@ base_stats:
   speed: 38
 
 skills:
-  - soul_drain
+  - id: darkness
+    name: Darkness
+    description: "A black mist smothers the target: ACC −10% for 2 turns."
+    element_id: umbra
+    kind: control
+    targeting: any_one
+    range: medium
+    costs: { mana: 2, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: darkness_effect
+        status_effect: Darkness
+        apply_to: target
+        turns: 2
+        polarity: negative
+        debuff: { accuracy: 10 }
+
+  - id: dark_ball
+    name: Dark Ball
+    description: "A sphere of devouring shadow deals power 10 magical damage at 95% accuracy."
+    element_id: umbra
+    kind: attack
+    targeting: any_one
+    range: medium
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 10 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 4, stamina: 0, cooldown: 0 }
 
 loot:
   - item_id: gold_coin

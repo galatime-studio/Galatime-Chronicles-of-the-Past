@@ -20,8 +20,40 @@ base_stats:
   speed: 11
 
 skills:
-  - bite
-  - dig
+  - id: bite
+    name: Bite
+    description: "Rock-hard mandibles grind into the target for power 12 physical damage at 95% accuracy, ignoring 15% of its defence."
+    element_id: corporis
+    kind: attack
+    targeting: any_one
+    range: short
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 12 }
+    accuracy: 95
+    hit_count: 1
+    defense_pierce: 0.15
+    costs: { mana: 0, stamina: 6, cooldown: 0 }
+
+  - id: dig
+    name: Dig
+    description: "The ant burrows for 2 turns, gaining +12 Evasion and becoming untouchable by short-range or Corporis actions; it cannot switch lines or use physical attacks meanwhile."
+    element_id: lapis
+    kind: utility
+    targeting: self
+    costs: { mana: 5, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: dig
+        status_effect: Dug In
+        apply_to: self
+        turns: 2
+        polarity: positive
+        buff: { evasion: 12 }
+        prevent_actions: [switch_line]
+        prevent_damage_channels: [physical]
+        untargetable_ranges: [short]
+        untargetable_elements: [corporis]
 
 weapon: 
 
