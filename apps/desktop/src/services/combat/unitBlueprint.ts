@@ -30,7 +30,7 @@ import { createAbilityInstances, readAbilityEntityTarget } from './abilityFactor
 import { createCombatActionFromSkill, createUniversalActions } from './actionFactory';
 import { createCombatUnit } from './unitFactory';
 import type { CombatEntitySource } from './unitFactory';
-import { cloneCarriedWeapon, equipCarriedWeapon, isWeaponUsable, resolveCarriedWeapon } from './weaponLoadout';
+import { cloneCarriedWeapon, equipCarriedWeapon, isWeaponUsable, resolveCarriedWeapon, UNARMED_STRIKE } from './weaponLoadout';
 
 /** Everything needed to spin up a unit, resolved once per entity. */
 export interface UnitBlueprint {
@@ -44,7 +44,8 @@ export interface UnitBlueprint {
     abilities: CombatAbilityInstance[];
     /**
      * The weapons a unit of this entity carries by default: its own `weapon:`,
-     * as a template. Empty when the entity has none.
+     * as a template. Never empty — an entity with no authored (or an
+     * unresolvable) weapon carries {@link UNARMED_STRIKE}.
      */
     weapons: CarriedWeapon[];
 }
@@ -64,7 +65,8 @@ export interface UnitInstantiationParams {
     hpRatio?: number;
     /**
      * Weapons the unit carries instead of the blueprint's default. The first usable
-     * one is equipped. An empty list fights unarmed.
+     * one is equipped. An empty list falls back to the blueprint's own loadout, so a
+     * unit is never left without an attack.
      */
     weapons?: CarriedWeapon[];
     /** Replaces the blueprint's actions (used by generated training units). */
@@ -137,11 +139,22 @@ function warnUnresolvedSkill(reference: unknown): void {
     console.warn(`[unitBlueprint] Unresolved entity skill "${String(label ?? 'unknown')}" was skipped.`);
 }
 
+/** A weapon reference that does not resolve degrades to bare hands, not to silence. */
+function warnUnresolvedWeapon(reference: unknown): void {
+    if (!import.meta.env.DEV) return;
+    const label = typeof reference === 'string'
+        ? reference
+        : (reference as { id?: unknown })?.id;
+    console.warn(`[unitBlueprint] Unresolved weapon "${String(label ?? 'unknown')}" was replaced by bare hands.`);
+}
+
 /**
  * Loads (and caches) the blueprint for one entity, or `null` when it is absent.
  *
  * A natural mob weapon (garras, mandíbulas) stays inline and carries no durability;
  * an equippable weapon is a catalogue reference. Both go through the same projection.
+ * An entity that declares nothing usable carries {@link UNARMED_STRIKE}, so every
+ * unit enters a fight with at least one attack.
  */
 export async function loadUnitBlueprint(
     entityId: string,
@@ -157,7 +170,11 @@ export async function loadUnitBlueprint(
     if (!entity) return null;
 
     const source = entity as CombatEntitySource;
-    const weapon = source.weapon ? await resolveCarriedWeapon(source.weapon) : null;
+    const authored = source.weapon ? await resolveCarriedWeapon(source.weapon) : null;
+    if (source.weapon && !authored) warnUnresolvedWeapon(source.weapon);
+    // No weapon authored, an empty one, or a broken reference: bare hands. A unit
+    // that cannot attack would only defend and rest, which reads as a stall.
+    const weapon = authored ?? await resolveCarriedWeapon(UNARMED_STRIKE);
     const blueprint: UnitBlueprint = {
         entityId,
         entityType,
@@ -210,7 +227,10 @@ export function instantiateUnit(
         aiProfile: params.aiProfile,
     });
 
-    unit.carriedWeapons = (params.weapons ?? blueprint.weapons).map(cloneCarriedWeapon);
+    const declared = params.weapons && params.weapons.length > 0
+        ? params.weapons
+        : blueprint.weapons;
+    unit.carriedWeapons = declared.map(cloneCarriedWeapon);
     const inHand = unit.carriedWeapons.find(isWeaponUsable);
     if (inHand) equipCarriedWeapon(unit, inHand);
 

@@ -12,7 +12,7 @@
  */
 
 import type { CarriedWeapon, CombatUnit } from '../../types/CombatType';
-import type { WeaponReference, WeaponRuntimeState } from '../../types/WeaponType';
+import type { WeaponDefinition, WeaponReference, WeaponRuntimeState } from '../../types/WeaponType';
 import { resolveWeaponReference } from '../weaponCatalogService';
 import { createAbilityInstances } from './abilityFactory';
 import { createCombatActionFromWeapon, createWeaponRuntimeState } from './actionFactory';
@@ -20,6 +20,34 @@ import { createWeaponStatEffect } from './unitFactory';
 
 /** Prefix of every effect a weapon adds, so a swap can find and remove them. */
 const WEAPON_EFFECT_PREFIX = 'weapon:';
+
+/**
+ * The attack every entity keeps when it carries no weapon.
+ *
+ * Most mobs are authored with an empty `weapon:` — their natural attacks live in
+ * `skills:` — so a missing, empty or unresolvable weapon would leave the unit
+ * with nothing but defend and rest. Bare hands are a Corporis technique instead:
+ * physical, short reach, stamina-priced and deliberately feeble, so a unit that
+ * lost its weapon can still take a turn without becoming a threat.
+ *
+ * It carries no `durability`, so it never breaks and is always usable.
+ */
+export const UNARMED_STRIKE: WeaponDefinition = {
+    id: 'unarmed_strike',
+    name: 'Unarmed Strike',
+    element: 'corporis',
+    damage_type: 'physical',
+    target: 'any_one',
+    range: 'short',
+    power: 6,
+    accuracy: 100,
+    hits: 1,
+    stamina_cost: 2,
+    damage_variance: [0.8, 1.2],
+    display: {
+        summary: 'Bare hands. Weak, but always available.',
+    },
+};
 
 /**
  * Builds the template for one weapon reference (a catalogue id or an inline block).
