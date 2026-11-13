@@ -15,12 +15,23 @@ import {
     BASE_EVASION,
 } from '../../../../constants/CombatConstants';
 import {
-    AI_DEFAULT_MAX_TURNS,
+    AI_EXPECTED_DAMAGE_PER_ATTACK,
+    AI_FORMATION_BUDGET_CEILING,
+    AI_MAX_EXPECTED_ROUNDS,
+    AI_MIN_EXPECTED_ROUNDS,
+    AI_MIN_TURN_BUDGET,
     AI_MAX_TEAM_SIZE,
     AI_MIN_TEAM_SIZE,
     AI_TRAINING_PERSONALITIES,
+    AI_TURN_BUDGET_SLACK,
 } from '../../../../constants/AiTrainingConstants';
-import type { AiScenarioSplit, AiTrainingScenario, AiTrainingScenarioSuite } from '../../../../types/AiTrainingType';
+import type {
+    AiGeneratedUnitSpec,
+    AiScenarioFormation,
+    AiScenarioSplit,
+    AiTrainingScenario,
+    AiTrainingScenarioSuite,
+} from '../../../../types/AiTrainingType';
 import type {
     CombatEncounter,
     CombatEncounterMember,
@@ -127,6 +138,102 @@ const ARCHETYPES: readonly UnitArchetype[] = [
 
 const FRONT_ARCHETYPES = ARCHETYPES.filter((archetype) => archetype.line === 'front');
 
+type StatScale = Partial<Record<keyof StatBand, number>>;
+
+/**
+ * A formation biases the *enemy* roster so the fight demands something beyond
+ * trading damage. The protagonist side stays `mixed`, which keeps the policy
+ * under test on a neutral roster while a swapped evaluation still lets it play
+ * the demanding side.
+ */
+interface FormationSpec {
+    /** Preferred enemy archetype per slot, after the forced front-liner. */
+    enemyArchetypes: readonly string[];
+    enemyStatScale: StatScale;
+    /** Extra enemies (positive) or fewer (negative). */
+    enemySizeBonus: number;
+    /**
+     * Multiplier on the fight length derived from the generated stats. A wall
+     * grinds, a swarm collapses fast; the base length itself is never hand-tuned.
+     */
+    roundScale: number;
+    /** Chance a unit opens with one or two statuses. */
+    openingStatusChance: number;
+}
+
+const ALLY_ARCHETYPES = ['vanguard', 'duelist', 'mage', 'support'] as const;
+
+const FORMATIONS: Record<AiScenarioFormation, FormationSpec> = {
+    mixed: {
+        enemyArchetypes: [],
+        enemyStatScale: {},
+        enemySizeBonus: 0,
+        roundScale: 1,
+        openingStatusChance: 0.45,
+    },
+    // One large threat plus escorts: focus fire and burst matter more than
+    // spreading damage, and killing the boss early removes the escorts' anchor.
+    boss: {
+        enemyArchetypes: ['vanguard', 'support', 'mage', 'support'],
+        enemyStatScale: {
+            hp: 1.6, physicalAttack: 1.3, magicalAttack: 1.3,
+            physicalDefense: 1.25, magicalDefense: 1.25,
+        },
+        enemySizeBonus: -1,
+        roundScale: 1.1,
+        openingStatusChance: 0.45,
+    },
+    // High defence, low damage: a pure race has to grind through, so sustained
+    // damage-over-time and defence shredding are the efficient answers.
+    wall: {
+        enemyArchetypes: ['vanguard', 'vanguard', 'duelist', 'vanguard'],
+        enemyStatScale: {
+            physicalDefense: 1.4, magicalDefense: 1.4, hp: 1.2,
+            physicalAttack: 0.85, magicalAttack: 0.85, speed: 0.9,
+        },
+        enemySizeBonus: 0,
+        roundScale: 1.3,
+        openingStatusChance: 0.45,
+    },
+    // Two supports keep the roster alive: single-target burst leaks value, so
+    // killing or silencing the healers first is the only short fight.
+    sustain: {
+        enemyArchetypes: ['vanguard', 'support', 'support', 'mage'],
+        enemyStatScale: { mana: 1.3, hp: 1.1, magicalAttack: 0.9 },
+        enemySizeBonus: 0,
+        roundScale: 1.25,
+        openingStatusChance: 0.45,
+    },
+    // Status pressure from turn one: cleansing and immunity answers are worth
+    // more than raw damage until the opening debuffs are spent.
+    pressure: {
+        enemyArchetypes: ['duelist', 'mage', 'support', 'mage'],
+        enemyStatScale: { speed: 1.15 },
+        enemySizeBonus: 0,
+        roundScale: 0.95,
+        openingStatusChance: 0.9,
+    },
+    // Many fragile bodies: area damage and multi-hit actions pay off, while
+    // single-target policies spend the budget one kill at a time.
+    swarm: {
+        enemyArchetypes: ['skirmisher', 'skirmisher', 'skirmisher', 'skirmisher', 'skirmisher'],
+        enemyStatScale: { hp: 0.65, physicalDefense: 0.85, magicalDefense: 0.85 },
+        enemySizeBonus: 1,
+        roundScale: 0.8,
+        openingStatusChance: 0.45,
+    },
+};
+
+/** Suite order; every split cycles through it so each formation is covered. */
+export const AI_SCENARIO_FORMATIONS: readonly AiScenarioFormation[] = [
+    'mixed',
+    'boss',
+    'wall',
+    'sustain',
+    'pressure',
+    'swarm',
+];
+
 /**
  * Every generated unit carries a basic weapon. Sampled skills replace the
  * entity's authored loadout and are gated by cooldowns and resources; without a
@@ -171,6 +278,8 @@ export interface AiScenarioGenerationOptions {
     /** Inclusive team-size band; defaults to the training contract's 2–5. */
     teamSize?: readonly [number, number];
     maxTurns?: number;
+    /** Roster shape the enemy side is built to demand; defaults to `mixed`. */
+    formation?: AiScenarioFormation;
 }
 
 export interface AiScenarioSuiteOptions {
@@ -178,6 +287,8 @@ export interface AiScenarioSuiteOptions {
     splitCounts?: Partial<Record<AiScenarioSplit, number>>;
     teamSize?: readonly [number, number];
     maxTurns?: number;
+    /** Formations cycled across each split; defaults to `AI_SCENARIO_FORMATIONS`. */
+    formations?: readonly AiScenarioFormation[];
 }
 
 async function loadPools(): Promise<GenerationPools> {
@@ -220,17 +331,20 @@ function rollStat(random: SeededCombatRandom, band: readonly [number, number]): 
     return randomInt(random, band[0], band[1]);
 }
 
-function buildStats(random: SeededCombatRandom, archetype: UnitArchetype): CombatStats {
+function buildStats(random: SeededCombatRandom, archetype: UnitArchetype, scale: StatScale = {}): CombatStats {
     const band = archetype.stats;
+    const roll = (key: keyof StatBand): number => (
+        Math.max(1, Math.round(rollStat(random, band[key]) * (scale[key] ?? 1)))
+    );
     return {
-        maxHp: rollStat(random, band.hp),
-        maxMana: rollStat(random, band.mana),
-        maxStamina: rollStat(random, band.stamina),
-        physicalAttack: rollStat(random, band.physicalAttack),
-        magicalAttack: rollStat(random, band.magicalAttack),
-        physicalDefense: rollStat(random, band.physicalDefense),
-        magicalDefense: rollStat(random, band.magicalDefense),
-        speed: rollStat(random, band.speed),
+        maxHp: roll('hp'),
+        maxMana: roll('mana'),
+        maxStamina: roll('stamina'),
+        physicalAttack: roll('physicalAttack'),
+        magicalAttack: roll('magicalAttack'),
+        physicalDefense: roll('physicalDefense'),
+        magicalDefense: roll('magicalDefense'),
+        speed: roll('speed'),
         accuracy: BASE_ACCURACY_MODIFIER,
         evasion: BASE_EVASION,
         critChance: BASE_CRIT_CHANCE,
@@ -290,8 +404,9 @@ function sampleSkills(
 function sampleOpeningEffects(
     random: SeededCombatRandom,
     unitKey: string,
+    chance: number,
 ) {
-    if (random() < 0.45) return [];
+    if (random() >= chance) return [];
 
     const count = randomInt(random, 1, 2);
     return randomSample(random, OPENING_STATUSES, count).map((template, index) => (
@@ -322,11 +437,22 @@ function entityPoolFor(side: CombatSide, pools: GenerationPools): {
         : { ids: pools.characterIds, entityType: 'character' };
 }
 
+/** How one side is rostered; omitted fields fall back to the neutral mixing. */
+interface SideProfile {
+    /** Preferred archetype id per slot, honoured after the forced front-liner. */
+    archetypes?: readonly string[];
+    statScale?: StatScale;
+    openingStatusChance?: number;
+}
+
+const DEFAULT_OPENING_STATUS_CHANCE = 0.45;
+
 function buildSide(
     random: SeededCombatRandom,
     pools: GenerationPools,
     side: CombatSide,
     size: number,
+    profile: SideProfile = {},
 ): { units: AiTrainingScenario['units']; members: CombatEncounterMember[] } {
     const entityPool = entityPoolFor(side, pools);
     const lineCounts: Record<CombatLine, number> = { front: 0, rear: 0 };
@@ -337,9 +463,15 @@ function buildSide(
         // At least one front-liner per side: an all-rear team cannot trade melee
         // hits with an all-front team and the fight degenerates into 300 turns of
         // guarding and line swapping.
-        const archetype = index === 0
-            ? randomPick(random, FRONT_ARCHETYPES)
-            : randomPick(random, ARCHETYPES);
+        const preferredId = profile.archetypes?.[index];
+        const preferred = preferredId
+            ? ARCHETYPES.find((entry) => entry.id === preferredId)
+            : undefined;
+        const archetype = preferred && (index === 0 ? preferred.line === 'front' : true)
+            ? preferred
+            : index === 0
+                ? randomPick(random, FRONT_ARCHETYPES)
+                : randomPick(random, ARCHETYPES);
         const line = pickLine(random, archetype);
         const slot = lineCounts[line];
         lineCounts[line] += 1;
@@ -360,10 +492,14 @@ function buildSide(
             slot,
             isPlayerControlled: false,
             personality: randomPick(random, AI_TRAINING_PERSONALITIES),
-            stats: buildStats(random, archetype),
+            stats: buildStats(random, archetype, profile.statScale),
             elementIds: [element.id],
             skillIds,
-            startingEffects: sampleOpeningEffects(random, key),
+            startingEffects: sampleOpeningEffects(
+                random,
+                key,
+                profile.openingStatusChance ?? DEFAULT_OPENING_STATUS_CHANCE,
+            ),
         });
 
         members.push({
@@ -386,6 +522,62 @@ function markProtagonist(random: SeededCombatRandom, units: AiTrainingScenario['
 }
 
 /**
+ * Stat budget of a side: HP multiplied by its best attack stat. Used to keep a
+ * formation from turning into a stat advantage, and to derive fight length.
+ */
+function sideBudget(units: readonly AiGeneratedUnitSpec[]): number {
+    return units.reduce(
+        (total, unit) => total + unit.stats.maxHp * Math.max(unit.stats.physicalAttack, unit.stats.magicalAttack),
+        0,
+    );
+}
+
+/**
+ * Shrinks an over-budget enemy formation back onto the allied budget. A formation
+ * is a *shape* (tanky, supported, swarming), not free power: without this, `wall`
+ * and `boss` are near-guaranteed wins for the enemy side and the win rate stops
+ * carrying information. Only HP is scaled, so the shape and its counterplay stay.
+ */
+function balanceFormationBudget(
+    allies: readonly AiGeneratedUnitSpec[],
+    enemies: AiGeneratedUnitSpec[],
+): void {
+    const ceiling = sideBudget(allies) * AI_FORMATION_BUDGET_CEILING;
+    const budget = sideBudget(enemies);
+    if (budget <= ceiling || budget <= 0) return;
+    const scale = ceiling / budget;
+    for (const unit of enemies) {
+        // Floor, not round: rounding up a handful of units can push the total
+        // back over the ceiling the rescale exists to enforce.
+        unit.stats.maxHp = Math.max(1, Math.floor(unit.stats.maxHp * scale));
+    }
+}
+
+/**
+ * Expected fight length in rounds, derived from the generated roster instead of
+ * hand-tuned bands: total HP divided by the damage the roster can realistically
+ * push out per round. `AI_EXPECTED_DAMAGE_PER_ATTACK` converts an attack stat
+ * into per-round damage that matches the combat maths, so the estimate follows
+ * a balance change instead of silently going stale. Each unit's damage removes
+ * the other side's pool, so the summed ratio is the time for the board to empty.
+ */
+function estimateFightRounds(
+    allies: readonly AiGeneratedUnitSpec[],
+    enemies: readonly AiGeneratedUnitSpec[],
+    roundScale: number,
+): number {
+    const roster = [...allies, ...enemies];
+    const totalHp = roster.reduce((total, unit) => total + unit.stats.maxHp, 0);
+    const damagePerRound = roster.reduce(
+        (total, unit) => total + Math.max(unit.stats.physicalAttack, unit.stats.magicalAttack)
+            * AI_EXPECTED_DAMAGE_PER_ATTACK,
+        0,
+    );
+    const rounds = Math.round((totalHp / Math.max(1, damagePerRound)) * roundScale);
+    return Math.min(AI_MAX_EXPECTED_ROUNDS, Math.max(AI_MIN_EXPECTED_ROUNDS, rounds));
+}
+
+/**
  * Builds one reproducible N-vs-M scenario. The same seed and id always produce
  * the same units, loadouts and encounter.
  */
@@ -393,14 +585,21 @@ export async function generateTrainingScenario(
     options: AiScenarioGenerationOptions,
 ): Promise<AiTrainingScenario> {
     const pools = await getPools();
+    const formationId = options.formation ?? 'mixed';
+    const formation = FORMATIONS[formationId];
     const random = createSeededCombatRandom(`${options.seed}:${options.id}`);
     const [minSize, maxSize] = options.teamSize ?? [AI_MIN_TEAM_SIZE, AI_MAX_TEAM_SIZE];
     const alliesSize = randomInt(random, minSize, maxSize);
-    const enemiesSize = randomInt(random, minSize, maxSize);
+    const enemiesSize = Math.max(1, randomInt(random, minSize, maxSize) + formation.enemySizeBonus);
 
-    const allies = buildSide(random, pools, 'allies', alliesSize);
-    const enemies = buildSide(random, pools, 'enemies', enemiesSize);
+    const allies = buildSide(random, pools, 'allies', alliesSize, { archetypes: ALLY_ARCHETYPES });
+    const enemies = buildSide(random, pools, 'enemies', enemiesSize, {
+        archetypes: formation.enemyArchetypes,
+        statScale: formation.enemyStatScale,
+        openingStatusChance: formation.openingStatusChance,
+    });
     markProtagonist(random, allies.units);
+    balanceFormationBudget(allies.units, enemies.units);
 
     // Keep the encounter's member flags in sync with the marked protagonist.
     for (const [index, unit] of allies.units.entries()) {
@@ -414,13 +613,22 @@ export async function generateTrainingScenario(
         enemies: enemies.members,
     };
 
+    // A round is one turn per living unit, so the calibrated length converts to a
+    // turn budget directly. Deriving it keeps turtling from consuming a flat cap
+    // that has nothing to do with the fight at hand.
+    const expectedRounds = estimateFightRounds(allies.units, enemies.units, formation.roundScale);
+    const unitCount = Math.max(1, allies.units.length + enemies.units.length);
+    const derivedTurns = Math.ceil(expectedRounds * unitCount * AI_TURN_BUDGET_SLACK);
+
     return {
         id: options.id,
         seed: hashAiSeed(options.seed),
         split: options.split ?? 'train',
         encounter,
         units: [...allies.units, ...enemies.units],
-        maxTurns: options.maxTurns ?? AI_DEFAULT_MAX_TURNS,
+        formation: formationId,
+        expectedRounds,
+        maxTurns: options.maxTurns ?? Math.max(AI_MIN_TURN_BUDGET, derivedTurns),
     };
 }
 
@@ -436,6 +644,7 @@ export async function generateTrainingScenarioSuite(
     };
 
     const build = async (split: AiScenarioSplit): Promise<AiTrainingScenario[]> => {
+        const formations = options.formations ?? AI_SCENARIO_FORMATIONS;
         const scenarios: AiTrainingScenario[] = [];
         for (let index = 0; index < counts[split]; index += 1) {
             scenarios.push(await generateTrainingScenario({
@@ -444,6 +653,7 @@ export async function generateTrainingScenarioSuite(
                 split,
                 teamSize: options.teamSize,
                 maxTurns: options.maxTurns,
+                formation: formations[index % formations.length],
             }));
         }
         return scenarios;

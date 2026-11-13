@@ -1,10 +1,15 @@
 /**
- * `resource_guard` — not spending below the reserve.
+ * `resource_guard` — whether acting now still leaves a kit to act with later.
  *
- * A score where `1` means the action is safe and `0` means it breaks the floor:
- * the closer a candidate leaves a pool to (or under) the profile's `guard`
- * threshold, the lower it scores. It is what keeps a caster from burning its last
- * mana on a cheap spell when a better one is a turn away.
+ * The score reads the headroom each spent pool keeps above the profile's guard
+ * floor: a cheap cast at a healthy pool scores `1`, the same cast near empty
+ * decays to `0`, and a cast that would break the floor scores `0`.
+ *
+ * Free actions score `0` on purpose. They spend nothing, so they protect
+ * nothing, and returning `1` for them handed every `defend`, `rest` and
+ * `switch_line` a flat bonus across the board — the largest single reason the
+ * Utility AI turtled. The consideration is about spending well, not about
+ * standing still.
  */
 
 import type { AiConsideration } from '../../../../types/AiType';
@@ -12,27 +17,31 @@ import { clamp } from '../../../../utils/combatUtils';
 import { effectiveStats } from '../../effectResolver';
 import { effectiveActionCost } from '../../weaponEffects';
 
+/** Share of the usable pool (everything above the guard floor) left after paying. */
+function headroom(pool: number, cost: number, max: number, guard: number): number {
+    const floor = max * guard;
+    const usable = Math.max(1, max - floor);
+    return clamp((pool - cost - floor) / usable, 0, 1);
+}
+
 export const resourceGuard: AiConsideration = {
     id: 'resource_guard',
     evaluate(context, candidate) {
         const { actor, thresholds } = context;
         const costs = effectiveActionCost(actor, candidate.action);
-        if (costs.mana === 0 && costs.stamina === 0) return 1;
 
         const stats = effectiveStats(actor);
-        let penalty = 0;
+        const shares: number[] = [];
 
         if (costs.mana > 0 && stats.maxMana > 0) {
-            const floor = stats.maxMana * thresholds.guardMana;
-            const after = actor.currentMana - costs.mana;
-            if (after < floor) penalty += clamp((floor - after) / Math.max(1, floor), 0, 1);
+            shares.push(headroom(actor.currentMana, costs.mana, stats.maxMana, thresholds.guardMana));
         }
         if (costs.stamina > 0 && stats.maxStamina > 0) {
-            const floor = stats.maxStamina * thresholds.guardStamina;
-            const after = actor.currentStamina - costs.stamina;
-            if (after < floor) penalty += clamp((floor - after) / Math.max(1, floor), 0, 1);
+            shares.push(headroom(actor.currentStamina, costs.stamina, stats.maxStamina, thresholds.guardStamina));
         }
 
-        return clamp(1 - penalty, 0, 1);
+        if (shares.length === 0) return 0;
+
+        return shares.reduce((total, share) => total + share, 0) / shares.length;
     },
 };

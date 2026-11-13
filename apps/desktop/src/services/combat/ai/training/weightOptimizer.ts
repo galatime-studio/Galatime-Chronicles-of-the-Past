@@ -15,6 +15,7 @@
 import { DEFAULT_AI_WEIGHTS } from '../../../../constants/AiConstants';
 import {
     AI_CONSIDERATION_IDS,
+    AI_SETUP_FOLLOWUP_TURNS,
     AI_WEIGHT_FLOORS,
     AI_WEIGHT_MAX,
     AI_WEIGHT_MIN,
@@ -25,7 +26,9 @@ import type {
     AiBatchPolicy,
     AiHeadlessActionPolicy,
     AiOptimizerGeneration,
+    AiScenarioFormation,
     AiTrainingScenario,
+    AiTurnHistoryEntry,
     AiWeightEvaluation,
     AiWeightOptimizationReport,
     AiWeightOptimizerOptions,
@@ -39,13 +42,27 @@ import { decideWithAiWeights } from './weightAdapter';
 /** Dimensions that never influence a legal AI choice in the current harness. */
 const FROZEN_CONSIDERATIONS: readonly AiConsiderationId[] = ['flee'];
 
-/** Fitness weights. A win dominates; HP and kills break draws; stalls are fatal. */
+/**
+ * Fitness weights. A win dominates and HP/kills break draws. Draws, overtime and
+ * stalemates are three flavours of "failed to finish"; a stall is a harness
+ * failure and is penalised as such.
+ *
+ * The follow-up term exists because every other term pays for damage now. It
+ * pays for a setup the side actually cashed in, which is the only dense
+ * evidence that a turn spent on the future was spent well: the mechanical
+ * `exploits` channel needs explicit payoff fields and fires almost never on
+ * synthetic content, and mere status presence is set by the scenario, not by
+ * the policy.
+ */
 const HP_MARGIN_WEIGHT = 0.35;
 const KILL_MARGIN_WEIGHT = 0.15;
-const MAX_TURN_PENALTY = 0.35;
+const DRAW_PENALTY = 0.25;
+const PACE_PENALTY = 0.25;
+const STALEMATE_PENALTY = 0.35;
 const STALL_PENALTY = 1.5;
+const SETUP_FOLLOWUP_WEIGHT = 0.2;
 
-const DEFAULT_VALIDATION_PATIENCE = 2;
+const DEFAULT_VALIDATION_PATIENCE = 3;
 
 interface EvaluationOptions {
     scenarios: readonly AiTrainingScenario[];
@@ -165,6 +182,62 @@ function sideDefeated(units: readonly CombatUnit[], side: CombatSide): number {
 }
 
 /**
+ * Counts what one side set up and later cashed in.
+ *
+ * `setups` and `exploits` are diagnostics; the fitness-driving numbers are
+ * `followedSetups` (a setup on a target that the same side hits within
+ * `AI_SETUP_FOLLOWUP_TURNS` of its own turns) and the leverage pair
+ * (`attackTurns` vs `leverageTurns`), because the mechanical exploit records
+ * need explicit payoff fields that synthetic skills rarely carry.
+ */
+function planningCounts(
+    history: readonly AiTurnHistoryEntry[],
+    side: CombatSide,
+): {
+    setups: number;
+    exploits: number;
+    attackTurns: number;
+    leverageTurns: number;
+    followedSetups: number;
+} {
+    let setups = 0;
+    let exploits = 0;
+    let attackTurns = 0;
+    let leverageTurns = 0;
+    let followedSetups = 0;
+    let sideTurn = -1;
+    const pending: { targetId: string; turn: number }[] = [];
+    for (const entry of history) {
+        if (entry.actorSide === side) sideTurn += 1;
+        for (const setup of entry.setups) {
+            if (setup.sourceSide !== side) continue;
+            setups += 1;
+            pending.push({ targetId: setup.targetId, turn: sideTurn });
+        }
+        for (const exploit of entry.exploits) {
+            if (exploit.attackerSide === side) exploits += 1;
+        }
+        if (!entry.action?.dealsDamage) continue;
+        if (entry.actorSide === side) attackTurns += 1;
+        if (entry.statusLeverage) leverageTurns += 1;
+        if (entry.actorSide !== side) continue;
+        const targets = new Set(entry.targetIds);
+        for (let index = pending.length - 1; index >= 0; index -= 1) {
+            const item = pending[index];
+            const age = sideTurn - item.turn;
+            if (age > AI_SETUP_FOLLOWUP_TURNS) {
+                pending.splice(index, 1);
+                continue;
+            }
+            if (age < 1 || !targets.has(item.targetId)) continue;
+            followedSetups += 1;
+            pending.splice(index, 1);
+        }
+    }
+    return { setups, exploits, attackTurns, leverageTurns, followedSetups };
+}
+
+/**
  * Evaluates one weight vector against a fixed opponent on every scenario, on
  * both sides, with paired seeds. The same battle seed is used for every
  * candidate, so comparisons are paired rather than merely repeated.
@@ -179,13 +252,20 @@ async function evaluateWeights(
     let losses = 0;
     let draws = 0;
     let stalls = 0;
+    let stalemates = 0;
     let maxTurns = 0;
     let combatEnded = 0;
     let turnsSum = 0;
+    let paceSum = 0;
     let damageSum = 0;
     let killsSum = 0;
     let hpMarginSum = 0;
     let killMarginSum = 0;
+    let setupSum = 0;
+    let exploitSum = 0;
+    let attackTurnSum = 0;
+    let leverageTurnSum = 0;
+    let followedSetupSum = 0;
 
     resetHeadlessSessions();
     try {
@@ -218,6 +298,8 @@ async function evaluateWeights(
 
                         battles += 1;
                         turnsSum += result.metrics.turns;
+                        paceSum += result.metrics.turns
+                            / Math.max(1, scenario.expectedRounds * scenario.units.length);
                         damageSum += candidateDamage(units, result.metrics.damageByUnit, side);
                         killsSum += candidateKills(units, result.metrics.killsByUnit, side);
 
@@ -230,6 +312,7 @@ async function evaluateWeights(
                         }
 
                         if (result.stoppedReason === 'stall') stalls += 1;
+                        else if (result.stoppedReason === 'stalemate') stalemates += 1;
                         else if (result.stoppedReason === 'max_turns') maxTurns += 1;
                         else combatEnded += 1;
 
@@ -242,6 +325,13 @@ async function evaluateWeights(
                         const ownKills = sideDefeated(units, otherSide(side));
                         const otherKills = sideDefeated(units, side);
                         killMarginSum += ownKills / otherCount - otherKills / ownCount;
+
+                        const planning = planningCounts(result.history, side);
+                        setupSum += planning.setups;
+                        exploitSum += planning.exploits;
+                        attackTurnSum += planning.attackTurns;
+                        leverageTurnSum += planning.leverageTurns;
+                        followedSetupSum += planning.followedSetups;
                     } catch {
                         // A harness crash is a failed battle, not a reason to lose the
                         // whole search. It is penalised exactly like a stall.
@@ -259,13 +349,32 @@ async function evaluateWeights(
     const winRate = wins / safeBattles;
     const avgHpMargin = hpMarginSum / safeBattles;
     const avgKillMargin = killMarginSum / safeBattles;
-    const maxTurnRate = maxTurns / safeBattles;
+    const drawRate = draws / safeBattles;
+    const stalemateRate = stalemates / safeBattles;
     const stallRate = stalls / safeBattles;
+    const avgPace = paceSum / safeBattles;
+    // Only overrunning the calibrated length is penalised; finishing early is
+    // already rewarded by the win rate.
+    const overtime = clamp(avgPace - 1, 0, 1);
+    const avgSetups = setupSum / safeBattles;
+    const avgExploits = exploitSum / safeBattles;
+    // Conversion is only meaningful against work the side actually did: a
+    // status inherited from the opening loadout is not planning.
+    const setupConversion = avgSetups <= 0 ? 0 : clamp(avgExploits / avgSetups, 0, 1);
+    const statusLeverage = attackTurnSum <= 0
+        ? 0
+        : clamp(leverageTurnSum / attackTurnSum, 0, 1);
+    const setupFollowUp = setupSum <= 0
+        ? 0
+        : clamp(followedSetupSum / setupSum, 0, 1);
     const fitness = winRate
         + HP_MARGIN_WEIGHT * avgHpMargin
         + KILL_MARGIN_WEIGHT * avgKillMargin
-        - MAX_TURN_PENALTY * maxTurnRate
-        - STALL_PENALTY * stallRate;
+        - DRAW_PENALTY * drawRate
+        - PACE_PENALTY * overtime
+        - STALEMATE_PENALTY * stalemateRate
+        - STALL_PENALTY * stallRate
+        + SETUP_FOLLOWUP_WEIGHT * setupFollowUp;
 
     return {
         battles,
@@ -273,15 +382,22 @@ async function evaluateWeights(
         losses,
         draws,
         stalls,
+        stalemates,
         maxTurns,
         combatEnded,
         winRate,
         winRateCi: wilsonInterval(wins, battles),
         avgTurns: turnsSum / safeBattles,
+        avgPace,
         avgDamage: damageSum / safeBattles,
         avgKills: killsSum / safeBattles,
         avgHpMargin,
         avgKillMargin,
+        avgSetups,
+        avgExploits,
+        setupConversion,
+        statusLeverage,
+        setupFollowUp,
         fitness,
     };
 }
@@ -457,6 +573,11 @@ export async function optimizeAiWeights(
         ? await evaluateWeights(baseline, { ...evaluationOptions, scenarios: options.test })
         : null;
 
+    const formationCounts: Partial<Record<AiScenarioFormation, number>> = {};
+    for (const scenario of options.scenarios) {
+        formationCounts[scenario.formation] = (formationCounts[scenario.formation] ?? 0) + 1;
+    }
+
     return {
         generatedAt: new Date().toISOString(),
         seed,
@@ -468,6 +589,7 @@ export async function optimizeAiWeights(
         activeConsiderationIds: activeIds,
         weightBounds: [AI_WEIGHT_MIN, AI_WEIGHT_MAX],
         weightFloors: { ...AI_WEIGHT_FLOORS },
+        formationCounts,
         baselineWeights: baseline,
         optimizedWeights: optimized,
         bestTrainWeights: bestTrain.weights,
@@ -492,8 +614,9 @@ function formatEvaluation(label: string, evaluation: AiWeightEvaluation | null):
     const ci = `${(evaluation.winRateCi[0] * 100).toFixed(1)}%–${(evaluation.winRateCi[1] * 100).toFixed(1)}%`;
     return [
         `${label}: ${evaluation.battles} battles, ${evaluation.wins}W/${evaluation.losses}L/${evaluation.draws}D`,
-        `win ${(evaluation.winRate * 100).toFixed(1)}% (95% CI ${ci}), max-turns ${evaluation.maxTurns}, stalls ${evaluation.stalls}`,
-        `avg turns ${evaluation.avgTurns.toFixed(1)}, damage ${evaluation.avgDamage.toFixed(1)}, kills ${evaluation.avgKills.toFixed(2)}`,
+        `win ${(evaluation.winRate * 100).toFixed(1)}% (95% CI ${ci}), max-turns ${evaluation.maxTurns}, stalemates ${evaluation.stalemates}, stalls ${evaluation.stalls}`,
+        `avg turns ${evaluation.avgTurns.toFixed(1)}, pace ${evaluation.avgPace.toFixed(2)}, damage ${evaluation.avgDamage.toFixed(1)}, kills ${evaluation.avgKills.toFixed(2)}`,
+        `setups ${evaluation.avgSetups.toFixed(2)}, exploits ${evaluation.avgExploits.toFixed(2)}, conversion ${(evaluation.setupConversion * 100).toFixed(0)}%, leverage ${(evaluation.statusLeverage * 100).toFixed(0)}%, follow-up ${(evaluation.setupFollowUp * 100).toFixed(0)}%`,
         `HP margin ${(evaluation.avgHpMargin * 100).toFixed(1)}%, kill margin ${(evaluation.avgKillMargin * 100).toFixed(1)}%, fitness ${evaluation.fitness.toFixed(4)}`,
     ].join('; ');
 }
@@ -512,6 +635,9 @@ export function formatAiWeightOptimizationReport(report: AiWeightOptimizationRep
             .map(([id, value]) => `${id}=${value}`)
             .join(', ') || 'none'}`,
         `active: ${report.activeConsiderationIds.join(', ')}`,
+        `formations: ${Object.entries(report.formationCounts)
+            .map(([id, count]) => `${id}=${count}`)
+            .join(', ') || 'none'}`,
         '',
         'Weights (baseline -> optimized):',
     ];

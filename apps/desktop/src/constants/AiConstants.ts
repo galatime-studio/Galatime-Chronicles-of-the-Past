@@ -175,6 +175,16 @@ export const AI_TARGET_BIAS_FLOOR = 0.5;
 export const AI_MIN_THREAT = 1;
 
 /**
+ * How much more a wounded unit values protection.
+ *
+ * `survival` scores in fractions of the unit's own health bar, so this is the
+ * only place low health inflates the term — enough to prefer bracing over a
+ * scratch when the next hit could end the unit, not enough to outbid killing
+ * the attacker.
+ */
+export const AI_WOUNDED_SURVIVAL_URGENCY = 1.5;
+
+/**
  * Situational model.
  *
  * The decider snapshots the board and the recent log once per decision, then

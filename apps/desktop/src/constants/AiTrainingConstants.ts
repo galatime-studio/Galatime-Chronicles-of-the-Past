@@ -46,7 +46,43 @@ export const AI_MAX_TEAM_SIZE = 5;
 export const AI_MAX_UNITS_PER_SIDE = 8;
 /** Bumped when the observation encoding changes; version 2 adds the `resource_share` consideration. */
 export const AI_ENCODING_SCHEMA_VERSION = 2;
+/** Fallback cap when a caller does not derive a budget from the scenario. */
 export const AI_DEFAULT_MAX_TURNS = 300;
+/**
+ * Slack over the calibrated fight length when deriving a scenario's turn budget.
+ * A round takes one turn per living unit, so the budget is
+ * `expectedRounds * units * slack`.
+ */
+export const AI_TURN_BUDGET_SLACK = 1.6;
+/** Floor for the derived budget so small teams still have room to manoeuvre. */
+export const AI_MIN_TURN_BUDGET = 40;
+/**
+ * Consecutive rounds without any change to the combined HP pool before a run is
+ * declared a stalemate. Turtling then fails fast instead of burning the budget.
+ */
+export const AI_STALEMATE_ROUNDS = 3;
+/**
+ * Own-side turns a setup has to be cashed in before it stops counting as a
+ * plan. Two is enough for "apply the status, then hit the debuffed target"
+ * without letting a status from ten turns ago claim the credit.
+ */
+export const AI_SETUP_FOLLOWUP_TURNS = 2;
+/**
+ * Per-round damage a roster pushes out per point of its best attack stat. Used
+ * to derive a scenario's expected length from its own stats; measured against
+ * the combat maths (attack value, defences, ~60% attack rate).
+ */
+export const AI_EXPECTED_DAMAGE_PER_ATTACK = 0.28;
+/** Bounds for the derived fight length, in rounds. */
+export const AI_MIN_EXPECTED_ROUNDS = 6;
+export const AI_MAX_EXPECTED_ROUNDS = 40;
+/**
+ * Ceiling on an enemy formation's stat budget relative to the allied roster.
+ * A formation reshapes the enemy side (tanky, supported, swarming) but must not
+ * scale it into an unwinnable matchup, or the win-rate signal it exists to
+ * provide collapses into a guaranteed loss.
+ */
+export const AI_FORMATION_BUDGET_CEILING = 1.15;
 
 export const AI_TRAINING_DIFFICULTIES: readonly Difficulty[] = [
     'easy',

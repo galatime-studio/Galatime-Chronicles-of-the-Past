@@ -91,6 +91,13 @@ export interface AiTurnHistoryEntry {
     resourcesSpent: AiResourceSpend;
     setups: readonly AiSetupRecord[];
     exploits: readonly AiStatusExploitRecord[];
+    /**
+     * True when this damaging turn hit a target already carrying a negative
+     * status applied by the actor's own side. Dense capitalisation signal:
+     * unlike `exploits`, it does not need an explicit payoff field on the
+     * action.
+     */
+    statusLeverage: boolean;
 }
 
 /** Everything an encoder or policy may read for one decentralized decision. */
@@ -154,6 +161,16 @@ export interface AiGeneratedUnitSpec {
     startingEffects: CombatEffectInstance[];
 }
 
+/**
+ * Shape of the fight a scenario is built to demand.
+ *
+ * `mixed` is the neutral baseline. The others bias the enemy roster so a policy
+ * must solve something specific - one large threat, a wall, sustain, status
+ * pressure or a swarm - instead of trading evenly line for line. Without that
+ * spread the suite only ever rewards raw damage per turn.
+ */
+export type AiScenarioFormation = 'mixed' | 'boss' | 'wall' | 'sustain' | 'pressure' | 'swarm';
+
 /** Reproducible N-vs-M scenario; `encounter` is accepted by `encounterLoader`. */
 export interface AiTrainingScenario {
     id: string;
@@ -161,6 +178,13 @@ export interface AiTrainingScenario {
     split: AiScenarioSplit;
     encounter: CombatEncounter;
     units: AiGeneratedUnitSpec[];
+    /** Roster shape the scenario was built to demand. */
+    formation: AiScenarioFormation;
+    /**
+     * Fight length the scenario is calibrated to, in rounds. The turn budget and
+     * the pace term of the optimizer's fitness both derive from it.
+     */
+    expectedRounds: number;
     maxTurns: number;
 }
 
@@ -202,7 +226,7 @@ export interface AiHeadlessCombatResult {
     state: CombatState;
     history: AiTurnHistoryEntry[];
     metrics: AiCombatMetrics;
-    stoppedReason: 'combat_ended' | 'max_turns' | 'stall';
+    stoppedReason: 'combat_ended' | 'max_turns' | 'stalemate' | 'stall';
     /** Present only when `stoppedReason` is `stall`. */
     stall?: AiHeadlessStall;
 }
@@ -332,16 +356,37 @@ export interface AiWeightEvaluation {
     losses: number;
     draws: number;
     stalls: number;
+    /** Runs that froze the combined HP pool for `AI_STALEMATE_ROUNDS`. */
+    stalemates: number;
     maxTurns: number;
     combatEnded: number;
     winRate: number;
     /** Wilson 95% confidence interval for the win rate. */
     winRateCi: [number, number];
     avgTurns: number;
+    /** Mean `turns / expectedTurns`; 1 means the scenario resolved on schedule. */
+    avgPace: number;
     avgDamage: number;
     avgKills: number;
     avgHpMargin: number;
     avgKillMargin: number;
+    /** Statuses the candidate side landed, per battle. */
+    avgSetups: number;
+    /** Later actions the candidate side made stronger by a landed status. */
+    avgExploits: number;
+    /** `avgExploits / avgSetups`, clamped to `[0, 1]`; 0 without setups. */
+    setupConversion: number;
+    /**
+     * Share of the side's damaging turns that hit a target already carrying a
+     * negative status its own side applied. The fitness-driving planning term.
+     */
+    statusLeverage: number;
+    /**
+     * Share of the side's setups on a target that the same side hit again
+     * within `AI_SETUP_FOLLOWUP_TURNS` of its own turns. The fitness-driving
+     * planning term: it separates "applied a status" from "used it".
+     */
+    setupFollowUp: number;
     fitness: number;
 }
 
@@ -395,6 +440,8 @@ export interface AiWeightOptimizationReport {
     weightBounds: [number, number];
     /** Per-dimension search floors; ids absent here use `weightBounds[0]`. */
     weightFloors: Partial<Record<AiConsiderationId, number>>;
+    /** How many train scenarios each formation contributed. */
+    formationCounts: Partial<Record<AiScenarioFormation, number>>;
     baselineWeights: AiWeights;
     optimizedWeights: AiWeights;
     /** Best train candidate seen, even when validation selected the baseline. */

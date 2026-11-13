@@ -4,6 +4,7 @@ import type { AiSetupRecord, AiStatusExploitRecord, AiTurnHistoryEntry } from '.
 import type {
     CombatAction,
     CombatActionRequest,
+    CombatEffectInstance,
     CombatEvent,
     CombatSide,
     CombatState,
@@ -101,6 +102,69 @@ function isExploitingStatus(
     return false;
 }
 
+/**
+ * Whether an effect is a curse the enemy side would want to cash in.
+ *
+ * Polarity alone is not enough: `readPolarity` calls a pure control status
+ * `neutral` unless it also carries a stat debuff or a damage-over-time, so
+ * stuns, freezes, mud and roots would never count as setup.
+ */
+function isHostileStatus(effect: CombatEffectInstance): boolean {
+    if (effect.polarity === 'negative') return true;
+    return Boolean(
+        (effect.preventActions && effect.preventActions.length > 0)
+        || effect.preventSkills
+        || effect.move
+        || effect.locksTarget
+        || effect.confuse
+        || effect.damagePerTurn > 0,
+    );
+}
+
+/**
+ * True when a damaging action met a target carrying a hostile status the
+ * actor's own side applied.
+ *
+ * This is the dense measure of capitalisation: the mechanical exploit records
+ * only fire for the handful of skills with explicit payoff fields, while every
+ * debuff-then-hit sequence counts here. A side that never sets anything up
+ * scores nothing, and a side that only sets up but never cashes in scores
+ * nothing either.
+ *
+ * Attribution is a problem: `effect.sourceId` holds the *skill or status id*
+ * (`footwork`), not the caster's unit id, so the engine cannot say who applied
+ * what. The side is therefore read from the setup records this battle already
+ * produced, which do know their source side. A mirrored status on both sides
+ * can be attributed to the wrong side, which is acceptable for a training
+ * signal but not for anything the player sees.
+ */
+function buildsOnOwnSetup(
+    actor: CombatUnit,
+    action: CombatAction | null,
+    targetIds: readonly string[],
+    stateBefore: CombatState,
+    historySoFar: readonly AiTurnHistoryEntry[],
+): boolean {
+    if (!action || !action.dealsDamage) return false;
+    const byId = new Map(stateBefore.units.map((unit) => [unit.id, unit]));
+    const ownSetups = new Set<string>();
+    for (const entry of historySoFar) {
+        for (const setup of entry.setups) {
+            if (setup.sourceSide === actor.side) ownSetups.add(setup.statusEffect ?? setup.effectId);
+        }
+    }
+    return targetIds.some((targetId) => {
+        const target = byId.get(targetId);
+        if (!target) return false;
+        return target.effects.some((effect) => {
+            if (!isHostileStatus(effect)) return false;
+            const caster = byId.get(effect.sourceId);
+            if (caster) return caster.side === actor.side;
+            return ownSetups.has(effect.statusEffect ?? effect.effectId);
+        });
+    });
+}
+
 function buildExploits(
     actor: CombatUnit,
     actorIsProtagonist: boolean,
@@ -160,6 +224,7 @@ export function buildTurnHistoryEntry(
         resourcesSpent: resourceSpend(actor.id, events),
         setups: buildSetups(actor, events),
         exploits: buildExploits(actor, actorIsProtagonist, action, targetIds, stateBefore, historySoFar),
+        statusLeverage: buildsOnOwnSetup(actor, action, targetIds, stateBefore, historySoFar),
     };
 }
 

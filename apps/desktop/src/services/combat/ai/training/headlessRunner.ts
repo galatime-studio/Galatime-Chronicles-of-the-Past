@@ -18,6 +18,7 @@ import type {
 } from '../../../../types/AiTrainingType';
 import type { CombatAction, CombatState } from '../../../../types/CombatType';
 import type { Difficulty } from '../../../../constants/DifficultyConstants';
+import { AI_STALEMATE_ROUNDS } from '../../../../constants/AiTrainingConstants';
 import { buildAiCombatMetrics } from './metricsCollector';
 import { buildTurnHistoryEntry } from './historyTracker';
 import { createSeededCombatRandom } from './seededRandom';
@@ -44,6 +45,11 @@ function cloneState(state: CombatState): CombatState {
 
 function slotKey(unit: { side: string; line: string; slot: number }): string {
     return `${unit.side}:${unit.line}:${unit.slot}`;
+}
+
+/** Combined HP pool of both sides; the stalemate detector watches this. */
+function combinedHp(state: CombatState): number {
+    return Math.round(state.units.reduce((total, unit) => total + unit.currentHp, 0));
 }
 
 function findAction(
@@ -76,6 +82,9 @@ function defaultConditioning(): AiDecisionConditioning {
  *
  * The runner never calls the live React AI effect; it explicitly selects an
  * action for the active unit and submits it through `submitCombatAction`.
+ *
+ * A run also stops on `stalemate`: when neither side moves the combined HP pool
+ * for `AI_STALEMATE_ROUNDS`, more turns cannot change the outcome.
  */
 export async function runHeadlessCombat(
     options: AiHeadlessRunOptions,
@@ -136,6 +145,13 @@ export async function runHeadlessCombat(
     const history: ReturnType<typeof buildTurnHistoryEntry>[] = [];
     let stoppedReason: AiHeadlessCombatResult['stoppedReason'] = 'max_turns';
     let stall: AiHeadlessStall | undefined;
+
+    // A fight in which no HP moves for a few rounds is not going to resolve, so
+    // it is cut short instead of consuming the whole turn budget. The window
+    // scales with the roster because one round is one turn per living unit.
+    const stalemateWindow = Math.max(1, Math.round(AI_STALEMATE_ROUNDS * Math.max(1, state.units.length)));
+    let lastPoolHp = combinedHp(state);
+    let lastProgressStep = 0;
 
     try {
         for (let step = 0; step < scenario.maxTurns; step += 1) {
@@ -217,6 +233,15 @@ export async function runHeadlessCombat(
             }
 
             state = turnResult.data.state;
+
+            const poolHp = combinedHp(state);
+            if (poolHp !== lastPoolHp) {
+                lastPoolHp = poolHp;
+                lastProgressStep = step + 1;
+            } else if (step + 1 - lastProgressStep >= stalemateWindow) {
+                stoppedReason = 'stalemate';
+                break;
+            }
         }
 
         const finalState = getCombatState(sessionId);

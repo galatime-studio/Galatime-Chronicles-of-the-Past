@@ -81,7 +81,12 @@ export function reachableTargets(
     action: CombatAction,
 ): CombatUnit[] {
     const lockedId = liveTargetLockId(actor);
-    if (lockedId !== null && (action.targeting === 'any_one' || action.targeting === 'enemies_all')) {
+    // Must mirror `validateTargetRule`: every scope the resolver locks has to
+    // be filtered here too, or a preview offers an aim the submit will reject.
+    const lockable = action.targeting === 'any_one'
+        || action.targeting === 'enemies_lane'
+        || action.targeting === 'enemies_all';
+    if (lockedId !== null && lockable) {
         const lockedUnit = units.find(
             (unit) => unit.id === lockedId && unit.status === 'alive',
         );
