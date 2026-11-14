@@ -9,9 +9,9 @@ A cross-platform game powered by modern web tech and Rust.<br>
 Windows, macOS and Linux.</p>
 
 <p align="center">
-  <a href="https://github.com/GalaTime-Team/Galatime---Chronicles-of-the-Past/releases"><img src="https://img.shields.io/badge/Download-WIP-FFBB00?style=for-the-badge" alt="Download GalaTime"></a>
-  <a href="https://github.com/GalaTime-Team/Galatime---Chronicles-of-the-Past/stargazers"><img src="https://img.shields.io/github/stars/GalaTime-Team/Galatime---Chronicles-of-the-Past?style=for-the-badge&color=24292f" alt="GitHub stars"></a>
-  <a href="https://github.com/GalaTime-Team/Galatime---Chronicles-of-the-Past"><img src="https://img.shields.io/github/repo-size/GalaTime-Team/Galatime---Chronicles-of-the-Past?style=for-the-badge&color=24292f" alt="Repo size"></a>
+  <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/latest"><img src="https://img.shields.io/badge/Download-v0.1.0-6D72CA?style=for-the-badge" alt="Download GalaTime"></a>
+  <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/stargazers"><img src="https://img.shields.io/github/stars/galatime-studio/Galatime-Chronicles-of-the-Past?style=for-the-badge&color=24292f" alt="GitHub stars"></a>
+  <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past"><img src="https://img.shields.io/github/repo-size/galatime-studio/Galatime-Chronicles-of-the-Past?style=for-the-badge&color=24292f" alt="Repo size"></a>
 </p>
 
 <p align="center">
@@ -43,15 +43,34 @@ Windows, macOS and Linux.</p>
 
 ## Download
 
-> [!WARNING]  
-> **Work in progress.** Official downloads will be available here soon.
+> [!NOTE]
+> **v0.1.0 — early access.** The core loop is playable (story scenes, dialogue, turn-based combat, skill trees, inventory), but this is an early build: content is incomplete, balance is in flux and rough edges are expected.
+
+### Windows (10/11, x64)
+
+- **[Download the installer v0.1.0](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/latest)** — `Galatime - Chronicles of the Past_0.1.0_x64-setup.exe` (NSIS). No extra runtime required.
+- **[All releases](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases)** — every published build, with notes.
+
+> [!WARNING]
+> The build is not code-signed, so Windows SmartScreen may warn on first launch. Choose **More info → Run anyway** if you trust the source.
+
+> [!NOTE]
+> macOS and Linux builds are not published yet. You can run the game from source — see below.
 
 ## How to Install and Run
 
+### From the installer (Windows)
+
+1. Download the `.exe` from the [latest release](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/latest).
+2. Run it and follow the installer. It installs per user; no admin rights are required.
+3. Launch **Galatime - Chronicles of the Past** from the Start Menu or the desktop shortcut.
+
+### From source
+
 1. **Clone the repo**
     ```bash
-    git clone https://github.com/GalaTime-Team/Galatime---Chronicles-of-the-Past.git
-    cd galatime-chronicles-of-the-past
+    git clone https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past.git
+    cd Galatime-Chronicles-of-the-Past
     ```
 
 2. **Install dependencies**
@@ -67,20 +86,22 @@ Windows, macOS and Linux.</p>
     npm run build           # Build the desktop app for production
     ```
 
+
 ## Folder Structure
 
 ```
-apps/desktop/src/         Main app
+apps/desktop/src/         Main app (React + TypeScript)
 apps/desktop/src-tauri/   Tauri/Rust configuration and native code
-apps/desktop/public/      Static assets
-apps/desktop/src/
-packages/                 Shared code and utilities
+apps/desktop/public/      Static assets (sprites, audio, fonts)
+packages/                 Shared types and game configuration
+docs/                     Design and system documentation
+mockups/                  Forgers used to create engine files
 ```
 
 ## Documentation
 
-> [!NOTE]  
-> **Work in progress.** Documentation will be added soon.
+> [!NOTE]
+> **Work in progress.** Design and system notes live in [`docs/`](docs/) — skill trees, combat, AI, missions and scenes.
 
 ## Forgers & Customization
 
