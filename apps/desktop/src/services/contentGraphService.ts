@@ -66,6 +66,7 @@ const PUBLIC_SKILL_FIELDS = [
     'cooldown_reset',
     'damage_taken_scaling',
     'element_effectiveness',
+    'ignore_element_immunity',
     'consume_stacks',
     'aftershock',
     'shuffle_positions',

@@ -76,6 +76,9 @@ Em resumo:
   por ×1.75.
 - `ignore_accuracy`, `guaranteed_crit_vs_status`, `defense_pierce`,
   `bonus_vs_elements`, `bonus_vs_hp_below` e `flee_below_hp`.
+- `ignore_element_immunity` ignora a imunidade **elemental** do alvo: contra um
+  alvo imune ao elemento da skill, o golpe cai em ×1. A imunidade de canal
+  (físico/mágico) continua a anular o acerto.
 - Os efeitos `move`, `turn_postpone`, `on_miss_move`, `condition`,
   `lane_change_free`, `expires`, `weather`, `element_power`,
   `projectile_accuracy`, `projectile_mark`, `ranged_evasion`,
@@ -101,6 +104,7 @@ que a skill possa ser composta já no formato final:
 | **Spatium** (tempo, espaço) | `turn_offset`, `cooldown_tick`, `move`, `deferred_damage`, `echo`, `untargetable`, `ignore_accuracy`, `prevent_actions` |
 | **Vetus** (poder antigo) | `costs.hp`, `costs.hp_percent_max`, `deferred_cost`, `self_upkeep`, `prevent_skills`, `defense_pierce`, `cleanse`, `dispel`, `resurrect`, `rune_fate`, `ignore_rescue`, `rescue_rune`, `rune_store`, `rune_return`, `chant`, `fate_link`, `damage_reduction` |
 | **Lux** (dia, luz) | `solar`, `bonus_vs_elements`, `dispel`, `cleanse`, `regen_per_turn`, `status_immunities` |
+| **Corporis** (corpo, físico) | `damage_taken_scaling`, `element_effectiveness`, `ignore_element_immunity`, `defense_pierce` |
 
 ### Simulador
 
@@ -133,6 +137,7 @@ quando o motor ainda não as implementa:
 | `bonus_vs_elements` | Multiplicador extra sobre a tabela de elementos |
 | `bonus_vs_hp_below` | Multiplicador extra contra alvos enfraquecidos |
 | `defense_pierce` | Fração da defesa do alvo que o golpe ignora |
+| `ignore_element_immunity` | Contra um alvo imune ao elemento, o golpe cai em ×1 |
 | `power_scaling` | Soma `per_point × stat do atacante` (speed usa o campo novo do simulador) ao poder de cada golpe |
 
 ### Árvores
@@ -194,6 +199,7 @@ da skill.
 | `ignore_accuracy` | O golpe acerta sempre |
 | `guaranteed_crit_vs_status` | ID do status que garante o crítico |
 | `defense_pierce` | Fração da defesa do alvo que o golpe ignora |
+| `ignore_element_immunity` | Contra um alvo imune ao elemento, o golpe cai em ×1 (a imunidade de canal continua a anular o acerto) |
 | `bonus_vs_elements` | Multiplicador por elemento do defensor |
 | `bonus_vs_hp_below` | `{ threshold, multiplier }` para alvos enfraquecidos |
 | `flee_below_hp` | Fração de vida abaixo da qual o alvo foge em pânico |

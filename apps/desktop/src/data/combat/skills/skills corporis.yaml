@@ -223,6 +223,45 @@ skills:
     costs: { mana: 0, stamina: 14, cooldown: 1 }
     defense_pierce: 0.5
 
+  # Pure physicality capstones: the last node of the punch and of the kick line
+  - id: perfect_punch
+    name: Perfect Punch
+    description: "The caster lands a perfectly centred punch; one physical hit deals power 20 at 90% accuracy, ignores 25% of the target's PDEF, and lands at normal effectiveness even against a target immune to Corporis."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [punch, bone_crusher] }
+    learning_cost: { experience_points: 7 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 20 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 0, stamina: 14, cooldown: 1 }
+    defense_pierce: 0.25
+    ignore_element_immunity: true
+
+  - id: perfect_kick
+    name: Perfect Kick
+    description: "The caster drives a perfectly centred kick; one physical hit deals power 20 at 90% accuracy, ignores 50% of the target's PDEF, and lands at normal effectiveness even against a target immune to Corporis."
+    element_id: corporis
+    sfx: corporis
+    kind: attack
+    learning_requirements: { required_attack_ids: [kick, heavy_kick] }
+    learning_cost: { experience_points: 7 }
+    targeting: any_one
+    damage:
+      kind: physical
+      damage_type: physical
+      power: { kind: fixed, value: 20 }
+    accuracy: 90
+    hit_count: 1
+    costs: { mana: 0, stamina: 14, cooldown: 1 }
+    defense_pierce: 0.5
+    ignore_element_immunity: true
+
   # Guard lane
   - id: guard
     name: Guard

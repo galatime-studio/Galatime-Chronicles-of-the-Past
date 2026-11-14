@@ -976,6 +976,16 @@ export interface CombatAction {
     damageTakenScaling?: { perPoint: number; max?: number } | null;
     /** Weak/resist multiplier applied after normal element effectiveness. */
     elementEffectiveness?: { weak: number; resist: number } | null;
+    /**
+     * Lands at ×1 when the target is immune to the action's element.
+     *
+     * A target immune to the element reads as element effectiveness ×0, which
+     * voids the hit. This trait swaps that ×0 for a plain ×1, so the strike
+     * connects at normal effectiveness (`perfect_punch`). Weakness and
+     * resistance still apply, and a damage-channel immunity still voids the
+     * hit — only the element table is bypassed.
+     */
+    ignoreElementImmunity?: boolean;
     /** Named stacking statuses consumed for burst damage or healing. */
     consumeStacks?: Array<{
         status: string;

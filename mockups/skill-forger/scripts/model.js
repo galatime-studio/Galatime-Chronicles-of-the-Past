@@ -482,6 +482,7 @@
         }
         if (skill.ignore_accuracy) sentences.push('Acerta sempre, sem tirada de precisão.');
         if (skill.defense_pierce) sentences.push('Ignora ' + Math.round(skill.defense_pierce * 100) + '% da defesa do alvo.');
+        if (skill.ignore_element_immunity) sentences.push('Ignora a imunidade elemental: contra um alvo imune ao elemento, o golpe cai em ×1.');
         if (skill.guaranteed_crit_vs_status) sentences.push('Crítico garantido contra “' + skill.guaranteed_crit_vs_status + '”.');
         if (skill.bonus_vs_hp_below && typeof skill.bonus_vs_hp_below === 'object') {
             sentences.push('×' + skill.bonus_vs_hp_below.multiplier + ' contra alvos abaixo de '
@@ -1175,7 +1176,8 @@
             'distance_scaling', 'lane_cascade', 'echo_burst', 'resurrect'].forEach(function (key) {
             if (source[key] && typeof source[key] === 'object') skill[key] = clone(source[key]);
         });
-        ['ignore_evasion', 'cannot_crit', 'fail_if_target_moves', 'ignore_rescue', 'rune_fate'].forEach(function (key) {
+        ['ignore_evasion', 'cannot_crit', 'fail_if_target_moves', 'ignore_rescue', 'rune_fate',
+            'ignore_element_immunity'].forEach(function (key) {
             if (source[key] === true || source[key] === 'true') skill[key] = true;
         });
         ['fail_cost_fraction', 'front_lane_bonus', 'bonus_vs_immobile'].forEach(function (key) {
@@ -1305,6 +1307,9 @@
             }
             if (skill.ignore_accuracy !== undefined && typeof skill.ignore_accuracy !== 'boolean') {
                 errors.push({ path: path + '.ignore_accuracy', message: '“ignore_accuracy” tem de ser verdadeiro ou falso.' });
+            }
+            if (skill.ignore_element_immunity !== undefined && typeof skill.ignore_element_immunity !== 'boolean') {
+                errors.push({ path: path + '.ignore_element_immunity', message: '“ignore_element_immunity” tem de ser verdadeiro ou falso.' });
             }
             if (skill.crit_chance !== undefined && skill.crit_chance !== null) {
                 var crit = Number(skill.crit_chance);

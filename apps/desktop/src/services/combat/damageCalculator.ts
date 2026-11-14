@@ -640,7 +640,13 @@ export function resolveDamage(request: DamageRequest): DamageResult {
     // A projectile/ranged action may borrow another element (`kindled_ordnance`).
     const effectiveElement = damageElementFor(request.attacker, action);
     const statusModulation = elementModulationFor(request.defender, effectiveElement);
-    const rawEffect = elementMultiplier(elementIndex, effectiveElement, request.defenderElementIds) * statusModulation;
+    // An action that ignores elemental immunity (`perfect_punch`) swaps the ×0 an
+    // immune target reads as for a plain ×1, so the strike still connects at
+    // normal effectiveness. Only the element table is bypassed: a damage
+    // channel the target is immune to still voids the hit.
+    const tableEffect = elementMultiplier(elementIndex, effectiveElement, request.defenderElementIds);
+    const elementEffect = action.ignoreElementImmunity && tableEffect === 0 ? 1 : tableEffect;
+    const rawEffect = elementEffect * statusModulation;
     const effectiveness = action.elementEffectiveness
         ? (rawEffect > 1 ? action.elementEffectiveness.weak
             : rawEffect < 1 ? action.elementEffectiveness.resist : 1)

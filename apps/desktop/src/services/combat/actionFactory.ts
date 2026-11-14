@@ -393,6 +393,7 @@ function defaultTraits(): Pick<
     | 'cooldownReset'
     | 'damageTakenScaling'
     | 'elementEffectiveness'
+    | 'ignoreElementImmunity'
     | 'consumeStacks'
     | 'aftershock'
     | 'shufflePositions'
@@ -433,6 +434,7 @@ function defaultTraits(): Pick<
         cooldownReset: null,
         damageTakenScaling: null,
         elementEffectiveness: null,
+        ignoreElementImmunity: false,
         consumeStacks: null,
         aftershock: null,
         shufflePositions: null,
@@ -540,6 +542,7 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
         cooldownReset: readCooldownReset(raw),
         damageTakenScaling: readDamageTakenScaling(raw),
         elementEffectiveness: readElementEffectiveness(raw),
+        ignoreElementImmunity: readBoolean(raw.ignore_element_immunity, false),
         consumeStacks: readConsumeStacks(raw),
         aftershock: readAftershock(raw),
         shufflePositions: readShufflePositions(raw),

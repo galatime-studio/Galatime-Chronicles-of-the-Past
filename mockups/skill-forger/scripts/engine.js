@@ -416,6 +416,13 @@
             : numberOr(options.defenderMagicalDefense, 0);
 
         var element = elementMultiplier(skill.element_id, options.defenderElements || []);
+        // `ignore_element_immunity`: contra um alvo imune ao elemento, o golpe
+        // cai em ×1 — a imunidade elemental é ignorada. A imunidade de canal
+        // (físico/mágico) não é tocada por este traço.
+        var elementImmunityIgnored = skill.ignore_element_immunity === true && element.multiplier === 0;
+        if (elementImmunityIgnored) {
+            element = { score: element.score, multiplier: 1, relation: 'normal', immunityIgnored: true };
+        }
         var position = positionDamageModifier(
             options.attackerLine || 'front',
             options.defenderLine || 'front',
@@ -489,6 +496,7 @@
             effectiveDefense: defense,
             pierced: pierced,
             element: element,
+            elementImmunityIgnored: elementImmunityIgnored,
             position: position,
             phase: phase,
             bonus: bonus,

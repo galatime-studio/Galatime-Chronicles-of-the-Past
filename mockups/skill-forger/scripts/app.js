@@ -462,6 +462,7 @@
         form.elements.only_during_day.checked = Boolean(skill.only_during_day);
         form.elements.only_during_night.checked = Boolean(skill.only_during_night);
         form.elements.ignore_accuracy.checked = Boolean(skill.ignore_accuracy);
+        if (form.elements.ignore_element_immunity) form.elements.ignore_element_immunity.checked = Boolean(skill.ignore_element_immunity);
         form.elements.crit_chance.value = skill.crit_chance ?? '';
         if (form.elements.crit_multiplier) form.elements.crit_multiplier.value = skill.crit_multiplier ?? '';
         form.elements.guaranteed_crit_vs_status.value = skill.guaranteed_crit_vs_status || '';
@@ -587,6 +588,7 @@
         if (skill.crit_chance) chips.push({ label: 'Crítico', value: skill.crit_chance + '%' });
         if (skill.crit_multiplier) chips.push({ label: 'Crítico', value: '×' + skill.crit_multiplier });
         if (skill.ignore_accuracy) chips.push({ label: 'Traço', value: 'Não falha' });
+        if (skill.ignore_element_immunity) chips.push({ label: 'Traço', value: 'Ignora imunidade' });
         if (skill.defense_pierce) chips.push({ label: 'Traço', value: 'Ignora ' + Math.round(skill.defense_pierce * 100) + '% da defesa' });
         if (skill.ignore_evasion) chips.push({ label: 'Traço', value: 'Ignora Evasão' });
         if (skill.cannot_crit) chips.push({ label: 'Traço', value: 'Sem crítico' });
@@ -917,6 +919,9 @@
         var defenseLabel = sim.defenseValue + (sim.pierced.fraction ? ' − ' + Math.round(sim.pierced.fraction * 100) + '% ignorada' : '');
         rows.push(['Ataque ÷ Defesa', sim.attackValue + ' ÷ ' + defenseLabel + ' = ' + round(sim.attackValue / Math.max(1, sim.effectiveDefense), 2)]);
         rows.push(['Elemento (' + skill.element_id + ')', '×' + sim.element.multiplier + ' — ' + sim.element.relation]);
+        if (sim.elementImmunityIgnored) {
+            rows.push(['Imunidade elemental', 'ignorada — o alvo é imune a ' + skill.element_id + ', o golpe cai em ×1']);
+        }
         if (sim.phase !== 1) {
             rows.push([(skill.lunar ? 'Noturna' : 'Solar') + ' (' + (state.simulator.phase === 'night' ? 'noite' : 'dia') + ')', '×' + sim.phase]);
         }
@@ -1219,6 +1224,10 @@
         else delete skill.only_during_night;
         if (form.elements.ignore_accuracy.checked) skill.ignore_accuracy = true;
         else delete skill.ignore_accuracy;
+        if (form.elements.ignore_element_immunity) {
+            if (form.elements.ignore_element_immunity.checked) skill.ignore_element_immunity = true;
+            else delete skill.ignore_element_immunity;
+        }
         setOptionalNumber(skill, 'crit_chance', form.elements.crit_chance.value);
         if (form.elements.crit_multiplier) setOptionalNumber(skill, 'crit_multiplier', form.elements.crit_multiplier.value);
         setOptionalNumber(skill, 'defense_pierce', form.elements.defense_pierce.value);
@@ -3373,6 +3382,7 @@
         if (skill.only_during_day) result.only_during_day = true;
         if (skill.only_during_night) result.only_during_night = true;
         if (skill.ignore_accuracy) result.ignore_accuracy = true;
+        if (skill.ignore_element_immunity) result.ignore_element_immunity = true;
         if (skill.crit_chance !== undefined) result.crit_chance = skill.crit_chance;
         if (skill.defense_pierce !== undefined) result.defense_pierce = skill.defense_pierce;
         if (skill.flee_below_hp !== undefined) result.flee_below_hp = skill.flee_below_hp;

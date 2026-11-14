@@ -883,6 +883,8 @@ export interface AttackSkill {
     damage_taken_scaling?: { per_point: number; max?: number };
     /** Extra multiplier when the target is weak/resistant to the action's element. */
     element_effectiveness?: { weak: number; resist: number };
+    /** Lands at ×1 when the target is immune to the action's element. */
+    ignore_element_immunity?: boolean;
     /** Consumes named stacking statuses for burst damage or healing. */
     consume_stacks?: Array<{
         status: string;
@@ -977,6 +979,7 @@ export type PublicAttack = Pick<AttackSkill,
     | 'cooldown_reset'
     | 'damage_taken_scaling'
     | 'element_effectiveness'
+    | 'ignore_element_immunity'
     | 'consume_stacks'
     | 'aftershock'
     | 'shuffle_positions'
