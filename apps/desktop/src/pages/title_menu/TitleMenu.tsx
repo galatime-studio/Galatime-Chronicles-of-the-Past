@@ -13,7 +13,7 @@ import { playMusic } from '../../controllers/audioController';
 import CommonButton from '../../components/common/CommonButton';
 import CommonImage from '../../components/common/CommonImage';
 import { CommonPopup } from '../../components/common/CommonPopup';
-import { useControlListener } from '../../context/GameContext';
+import { useGame, useControlListener } from '../../context/GameContext';
 import { invoke } from '@tauri-apps/api/core';
 
 interface TitleMenuProps {
@@ -52,6 +52,20 @@ let titleRevealed = false;
 export function TitleMenu({ onNewGame, onSettings, onCredits, onPlayground }: TitleMenuProps) {
     const { t } = useTranslation(['titleMenu', 'common']);
     const [confirmExit, setConfirmExit] = useState(false);
+    const { gameState, setGameState, settingsHydrated } = useGame();
+
+    // The AI disclosure shows once, on the very first launch of the game. It waits for the
+    // saved settings, otherwise the first-run default would open the popup for players who
+    // already saw it.
+    const showAiDisclosure = settingsHydrated && !gameState.settings.aiDisclosureSeen;
+
+    /** Acknowledges the disclosure: it never shows again. */
+    const dismissAiDisclosure = useCallback(() => {
+        setGameState((previous) => ({
+            ...previous,
+            settings: { ...previous.settings, aiDisclosureSeen: true },
+        }));
+    }, [setGameState]);
 
     // `deny` (Escape / the east face button) mirrors the Exit button: it opens the very same
     // confirmation. `mutedByModal` keeps this listener quiet while that popup is up, so the
@@ -162,6 +176,15 @@ export function TitleMenu({ onNewGame, onSettings, onCredits, onPlayground }: Ti
                     </motion.div>
                 </div>
             </div>
+
+            {/* AI Disclosure — shown on the first launch of the game only */}
+            <CommonPopup
+                open={showAiDisclosure}
+                title={t('titleMenu.aiDisclosureTitle')}
+                message={t('titleMenu.aiDisclosureMessage')}
+                onDismiss={dismissAiDisclosure}
+                confirmAction={{ label: t('titleMenu.aiDisclosureAccept'), onPress: dismissAiDisclosure }}
+            />
 
             {/* Exit Confirmation */}
             <CommonPopup

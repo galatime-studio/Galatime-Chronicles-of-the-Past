@@ -23,6 +23,8 @@ function pickSettings(raw: GameSettings): GameSettings {
     controls: raw.controls,
     display: { ...raw.display },
     language: raw.language,
+    // Older settings files have no such field: the disclosure shows again until it is seen.
+    aiDisclosureSeen: raw.aiDisclosureSeen === true,
   };
 }
 

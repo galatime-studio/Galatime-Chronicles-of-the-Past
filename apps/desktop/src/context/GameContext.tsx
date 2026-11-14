@@ -79,6 +79,11 @@ export interface GameSettings {
     renderScale: number;
   };
   language: string;
+  /**
+   * Marks the AI disclosure as already shown. The disclosure appears once, on the very first
+   * launch of the game, and never again.
+   */
+  aiDisclosureSeen: boolean;
 }
 
 interface LegacyDisplaySettings {
@@ -149,6 +154,11 @@ export interface ActiveGamepad {
 interface GameContextType {
   gameState: GameState;
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
+  /**
+   * `true` once the persisted settings finished loading. Interfaces that depend on a
+   * saved setting wait for it, so a first-run default never flashes on screen.
+   */
+  settingsHydrated: boolean;
   /** Inputs currently bound to each control. */
   controls: ControlBindings;
   /** Resolves every control triggered by a keyboard event; the same key may be shared on purpose. */
@@ -193,6 +203,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
     renderScale: DEFAULT_RENDER_SCALE,
   },
   language: 'en-US',
+  aiDisclosureSeen: false,
 };
 
 export const DEFAULT_GAME_STATE: GameState = {
@@ -214,6 +225,7 @@ const GameContext = createContext<GameContextType | undefined>(undefined);
 export function GameProvider({ children }: { children: ReactNode }) {
   const [gameState, setGameState] = useState<GameState>(DEFAULT_GAME_STATE);
   const hydrated = useRef(false);
+  const [settingsHydrated, setSettingsHydrated] = useState(false);
 
   const { controls } = gameState.settings;
 
@@ -318,6 +330,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }));
       }
       hydrated.current = true;
+      setSettingsHydrated(true);
     });
   }, []);
 
@@ -372,6 +385,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       value={{
         gameState,
         setGameState,
+        settingsHydrated,
         controls,
         getControlIds,
         isControl,

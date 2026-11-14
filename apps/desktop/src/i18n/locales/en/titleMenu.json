@@ -7,6 +7,9 @@
 		"exit": "Exit",
 		"exitTitle": "Exit game?",
 		"exitMessage": "Are you sure you want to leave?",
+		"aiDisclosureTitle": "AI Disclosure",
+		"aiDisclosureMessage": "This project was developed with the assistance of Artificial Intelligence for code only — but not for any other aspect of the project (e.g. design, art, story, logic, documentation, etc.). We disclose this upfront for transparency, especially for those who object to the use of AI in software development. If you choose not to play due to AI assistance in code, we fully respect that decision.",
+		"aiDisclosureAccept": "I Understand",
 		"logoAlt": "Galatime: Chronicles of the Past"
 	}
 }
