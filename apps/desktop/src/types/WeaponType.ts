@@ -50,7 +50,7 @@ export type WeaponFlag =
     | 'royal'
     /** The damage of each swing is rolled in `[0.6, 1.4]` instead of a fixed power. */
     | 'randomize_power'
-    /** A flat chance to shatter at the end of a swing, ignoring durability. */
+    /** A flat chance to shatter at the end of a swing that landed, ignoring durability. */
     | 'fragile'
     /** Extra durability loss and a stamina tax while equipped. */
     | 'cursed'
@@ -65,7 +65,7 @@ export type WeaponStatDelta = Record<string, number>;
 /** Per-instance durability. `indestructible` never loses a point. */
 export interface WeaponDurability {
     max: number;
-    /** Lost per weapon action used (default `1`). */
+    /** Lost per weapon action that landed a hit (default `1`). A miss wears nothing. */
     wear?: number;
     indestructible?: boolean;
 }
@@ -245,7 +245,7 @@ export interface WeaponRuntimeState {
     lootChanceMultiplier: number;
     costModifiers: WeaponCostModifiers | null;
     damageModifiers: WeaponDamageModifiers | null;
-    /** Chance the weapon shatters at the end of a swing (`fragile`), `0` when not. */
+    /** Chance the weapon shatters at the end of a landed swing (`fragile`), `0` when not. */
     breakChance: number;
     /** Consecutive landed hits on {@link stackTargetId} (exponential weapons). */
     stacks: number;

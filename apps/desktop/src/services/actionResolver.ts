@@ -243,8 +243,9 @@ export function resolveCombatAction(context: ActionResolutionContext): ActionRes
             );
 
             // Weapon bookkeeping: bank the hit streak, spend ammo, wear durability
-            // (and destroy the weapon at 0). Runs before the actor's own
-            // after_attack abilities so a broken weapon is already gone.
+            // (and destroy the weapon at 0). A missed swing wears nothing.
+            // Runs before the actor's own after_attack abilities so a broken
+            // weapon is already gone.
             if (action.kind === 'weapon') {
                 const resolutions = attackEvents
                     .filter((event): event is Extract<CombatEvent, { type: 'attack_resolved' }> => event.type === 'attack_resolved')

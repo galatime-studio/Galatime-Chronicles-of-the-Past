@@ -3,9 +3,10 @@
  *
  * A weapon action that has already resolved still has bookkeeping to do: bank
  * the exponential hit streak, spend a round of ammunition, and wear the
- * durability (destroying the weapon at zero). Keeping every rule here means the
- * resolver only calls one function after the attack, and the weapon state stays
- * the single place these counters live.
+ * durability (destroying the weapon at zero). The wear only happens when the
+ * swing landed — a miss leaves the weapon untouched. Keeping every rule here
+ * means the resolver only calls one function after the attack, and the weapon
+ * state stays the single place these counters live.
  *
  * The functions are tolerant: a unit with no weapon, a weapon with no durability
  * or no ammo, and an indestructible weapon all fall through untouched.
@@ -40,7 +41,7 @@ export function applyWeaponActionHooks(
 
     return [
         ...spendAmmo(unit, action, random, unitInventory),
-        ...spendDurability(unit, action, random),
+        ...spendDurability(unit, action, random, landed),
     ];
 }
 
@@ -110,17 +111,26 @@ function spendAmmo(
     }];
 }
 
-/** Wears the weapon's durability, destroying it at zero (unless it returns). */
+/**
+ * Wears the weapon's durability, destroying it at zero (unless it returns).
+ *
+ * Only a swing that actually landed wears the weapon: a miss leaves the blade
+ * untouched, and a fragile weapon that missed cannot shatter either.
+ */
 function spendDurability(
     unit: CombatUnit,
     action: CombatAction,
     random: CombatRandom,
+    landed: boolean,
 ): CombatEvent[] {
     const weapon = unit.weapon;
     if (!weapon || weapon.durability === null) return [];
 
     // A thrown weapon that comes back was never at risk: no wear, no shatter.
     if (action.weapon?.throw && action.weapon.returns) return [];
+
+    // The swing missed: nothing touched the weapon, so it does not wear either.
+    if (!landed) return [];
 
     if (weapon.breakChance > 0 && random() < weapon.breakChance) {
         return breakWeapon(unit, weapon);
