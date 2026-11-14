@@ -48,7 +48,8 @@ Windows, macOS and Linux.</p>
 
 ### Windows (10/11, x64)
 
-- **[Download the installer v0.1.0](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/latest)** — `Galatime - Chronicles of the Past_0.1.0_x64-setup.exe` (NSIS). No extra runtime required.
+- **[Download the installer v0.1.0](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/download/v0.1.0/Galatime.-.Chronicles.of.the.Past_0.1.0_x64-setup.exe)** — NSIS `.exe`, 46 MB. No extra runtime required.
+- **[Download the MSI v0.1.0](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/download/v0.1.0/Galatime.-.Chronicles.of.the.Past_0.1.0_x64_en-US.msi)** — 47 MB, for those who prefer MSI packages.
 - **[All releases](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases)** — every published build, with notes.
 
 > [!WARNING]
