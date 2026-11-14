@@ -27,6 +27,9 @@ interface CombatArenaParticlesProps {
     boardRef: RefObject<HTMLElement | null>;
 }
 
+/** How many spark bursts one flurry may throw, however long it is. */
+const MAX_HIT_BURSTS = 3;
+
 /** A client point as canvas coordinates inside a particle layer. */
 function toCanvasPoint(
     container: Container,
@@ -101,9 +104,9 @@ export function CombatArenaParticles({ sequence, boardRef }: CombatArenaParticle
             // print their number on the unit.
             if (hit.ambient || hit.kind !== 'damage' || !hit.isHit) continue;
 
-            // A multi-hit flurry throws one burst per landed strike, capped so a
-            // long combo does not outlast the settle.
-            const bursts = hit.hits > 1 ? Math.min(3, hit.hits) : 1;
+            // A flurry throws one burst per blow, capped so a long combo does not
+            // outlast the settle.
+            const bursts = Math.min(MAX_HIT_BURSTS, Math.max(1, hit.blows.length));
             for (let index = 0; index < bursts; index += 1) {
                 burst(
                     sparkLayer,

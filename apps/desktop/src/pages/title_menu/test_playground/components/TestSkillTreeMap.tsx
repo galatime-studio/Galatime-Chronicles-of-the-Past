@@ -2,30 +2,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/react';
 import { useTranslation } from 'react-i18next';
-import { AddIcon, ElementIcon, FitIcon, RemoveIcon, UNKNOWN_ELEMENT_ICON } from '../../../assets/GalatimeIcon';
-import CommonImage from '../../../components/common/CommonImage';
-import CommonButton from '../../../components/common/CommonButton';
-import CommonTooltip from '../../../components/common/CommonTooltip';
-import { fetchAttacks } from '../../../controllers/attackController';
-import { getAllElementsDataService } from '../../../services/elementService';
-import type { ElementData } from '../../../types/ElementDataType';
-import type { PublicAttack } from '../../../types/AttackDataType';
+import { AddIcon, FitIcon, RemoveIcon, UNKNOWN_ELEMENT_ICON } from '../../../../assets/GalatimeIcon';
+import CommonImage from '../../../../components/common/CommonImage';
+import CommonButton from '../../../../components/common/CommonButton';
+import { SkillNodeTooltip } from '../../../../components/game/skills/SkillNodeTooltip';
+import type { PublicAttack } from '../../../../types/AttackDataType';
 import {
     FIT_ZOOM_FLOOR,
     FIT_ZOOM_RATIO,
-    INANUS_ID,
     MAX_ZOOM,
     MIN_ZOOM,
     SKILL_ICON_SIZE,
     SKILL_NODE_SIZE,
     ZOOM_BUTTON_STEP,
     ZOOM_WHEEL_SENSITIVITY,
-    buildSkillTreeLayout,
-    getLearnableAttacks,
     type SkillTreeLayout,
     type SkillTreeLayoutNode,
-} from '../../../utils/skillTreeLayout';
-import { SkillNodeTooltip } from '../../../components/game/skills/SkillNodeTooltip';
+} from '../../../../utils/skillTreeLayout';
 
 const SKILL_IMAGE_FALLBACK = UNKNOWN_ELEMENT_ICON;
 
@@ -51,192 +44,12 @@ function zoomAbout(view: SkillTreeView, zoom: number, pointX: number, pointY: nu
     };
 }
 
-export function TestSkillTreePanel() {
-    const { t } = useTranslation('playground');
-    const [attacks, setAttacks] = useState<PublicAttack[]>([]);
-    const [elements, setElements] = useState<ElementData[]>([]);
-    const [selectedElementIds, setSelectedElementIds] = useState<string[]>([INANUS_ID]);
-    const [activeTreeId, setActiveTreeId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [loadFailed, setLoadFailed] = useState(false);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        Promise.all([fetchAttacks(), getAllElementsDataService()])
-            .then(([attackList, elementList]) => {
-                if (cancelled) return;
-                setAttacks(attackList);
-                setElements(elementList);
-                setLoading(false);
-            })
-            .catch((error: unknown) => {
-                console.error('Failed to load the skill tree playground:', error);
-                if (cancelled) return;
-                setLoadFailed(true);
-                setLoading(false);
-            });
-
-        return () => {
-            cancelled = true;
-        };
-    }, []);
-
-    const selectableElements = useMemo(
-        () => elements
-            .filter((element) => element.selectable)
-            .sort((left, right) => {
-                if (left.id === INANUS_ID) return 1;
-                if (right.id === INANUS_ID) return -1;
-                return left.name.localeCompare(right.name);
-            }),
-        [elements],
-    );
-    const selectedKey = selectedElementIds.join('|');
-    const selectedElements = useMemo(
-        () => elements.filter((element) => selectedElementIds.includes(element.id)),
-        [elements, selectedKey],
-    );
-    /**
-     * Skill trees the selected elements open, in the order the elements were picked.
-     * Every tree the selection controls becomes a page of its own.
-     */
-    const controlledTrees = useMemo(() => {
-        const trees: string[] = [];
-        for (const elementId of selectedElementIds) {
-            const element = elements.find((item) => item.id === elementId);
-            if (!element) continue;
-            for (const treeId of element.skillTrees) {
-                if (!trees.includes(treeId)) trees.push(treeId);
-            }
-        }
-        return trees;
-    }, [elements, selectedKey]);
-
-    /** The page on screen: the one the user picked, or the first tree the selection opens. */
-    const activeTree = activeTreeId && controlledTrees.includes(activeTreeId)
-        ? activeTreeId
-        : controlledTrees[0] ?? null;
-
-    const visibleAttacks = useMemo(() => {
-        const learnable = getLearnableAttacks(attacks, selectedElements);
-        // One page, one skill tree: the page only holds the skills of the tree it shows.
-        return activeTree ? learnable.filter((attack) => attack.element_id === activeTree) : [];
-    }, [attacks, selectedElements, activeTree]);
-    const layout = useMemo(() => buildSkillTreeLayout(visibleAttacks), [visibleAttacks]);
-
-    function toggleElement(elementId: string) {
-        const currentSelection = selectedElementIds.length > 0 ? selectedElementIds : [INANUS_ID];
-        const wasSelected = currentSelection.includes(elementId);
-
-        let next: string[];
-        if (elementId === INANUS_ID) {
-            next = currentSelection.length === 1 && currentSelection[0] === INANUS_ID
-                ? currentSelection
-                : [INANUS_ID];
-        } else if (wasSelected) {
-            const remaining = currentSelection.filter((id) => id !== elementId);
-            next = remaining.length > 0 ? remaining : [INANUS_ID];
-        } else if (currentSelection.includes(INANUS_ID)) {
-            next = [elementId];
-        } else if (currentSelection.length >= 2) {
-            return;
-        } else {
-            next = [...currentSelection, elementId];
-        }
-
-        setSelectedElementIds(next);
-
-        // The page follows the element just picked: it opens on the tree that element
-        // heads. Dropping an element sends the page back to the first tree of what is left.
-        const element = elements.find((item) => item.id === elementId);
-        setActiveTreeId(wasSelected && elementId !== INANUS_ID ? null : element?.skillTrees[0] ?? null);
-    }
-
-    if (loading) {
-        return <div className="flex h-full items-center justify-center text-sm text-white/50">{t('playground.skillTree.loading')}</div>;
-    }
-
-    if (loadFailed) {
-        return <div role="alert" className="flex h-full items-center justify-center text-sm text-red-200/80">{t('playground.skillTree.loadError')}</div>;
-    }
-
-    return (
-        <div className="flex h-full min-h-0 flex-col gap-3">
-            <div className="flex max-h-24 shrink-0 flex-wrap gap-1.5 overflow-y-auto pr-1">
-                {selectableElements.map((element) => {
-                    const isSelected = selectedElementIds.includes(element.id);
-                    const isDisabled = !isSelected && selectedElementIds.length >= 2;
-                    return (
-                        <CommonButton
-                            key={element.id}
-                            variant="ghost"
-                            size="sm"
-                            aria-pressed={isSelected}
-                            disabled={isDisabled}
-                            onPress={() => toggleElement(element.id)}
-                            className={`disabled:opacity-100 normal-case tracking-normal gap-1.5 px-2 py-1 ${isSelected
-                                ? 'border-game border-white/70 bg-white text-galatime-dark'
-                                : isDisabled
-                                    ? 'cursor-not-allowed border-game border-white/5 bg-white/2 text-white/25'
-                                    : 'border-game border-white/10 opacity-60 hover:opacity-100'
-                                }`}
-                        >
-                            <ElementIcon id={element.id} className="h-5 w-5" />
-                            <span className="normal-case">{element.name}</span>
-                        </CommonButton>
-                    );
-                })}
-            </div>
-
-            <div className="relative min-h-0 flex-1 overflow-hidden border-game border-white/10 bg-galatime-background">
-                <div className="pointer-events-none absolute inset-0 opacity-30 bg-[linear-gradient(to_right,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-size-[32px_32px]" />
-                {visibleAttacks.length === 0 ? (
-                    <div className="relative flex h-full items-center justify-center px-4 text-center text-sm text-white/45">
-                        {t('playground.skillTree.empty')}
-                    </div>
-                ) : (
-                    <SkillTreeMap layout={layout} />
-                )}
-
-                {/* Pagination: one page per skill tree the selection opens. It is the
-                    same island the zoom controls use, standing on the other side of
-                    the map and wrapping its own pages. */}
-                {controlledTrees.length > 0 && (
-                    <nav
-                        aria-label={t('playground.skillTree.pages')}
-                        className="absolute left-3 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 border-game border-white/10 bg-black/50 p-1"
-                        onPointerDown={(event) => event.stopPropagation()}
-                    >
-                        {controlledTrees.map((treeId) => {
-                            const tree = elements.find((element) => element.id === treeId);
-                            const isActive = treeId === activeTree;
-
-                            return (
-                                <CommonTooltip key={treeId} content={tree?.name ?? treeId}>
-                                    <CommonButton
-                                        variant="ghost"
-                                        aria-pressed={isActive}
-                                        aria-label={tree?.name ?? treeId}
-                                        onPress={() => setActiveTreeId(treeId)}
-                                        className={`h-7 w-7 p-0 ${isActive
-                                            ? 'bg-white text-galatime-dark opacity-100'
-                                            : 'opacity-70 hover:opacity-100'
-                                            }`}
-                                    >
-                                        <ElementIcon id={treeId} className="h-5 w-5" />
-                                    </CommonButton>
-                                </CommonTooltip>
-                            );
-                        })}
-                    </nav>
-                )}
-            </div>
-        </div>
-    );
-}
-
-function SkillTreeMap({ layout }: { layout: SkillTreeLayout }) {
+/**
+ * The skill tree map: the laid-out skills, the connectors between them and the camera
+ * the user drives (drag, wheel, the zoom buttons). The tree on screen is chosen by the
+ * panel; this component only draws what it is handed.
+ */
+export function TestSkillTreeMap({ layout }: { layout: SkillTreeLayout }) {
     const { t } = useTranslation('playground');
     const viewportRef = useRef<HTMLDivElement | null>(null);
     const activeDrag = useRef<{ pointerId: number; startX: number; startY: number; viewX: number; viewY: number } | null>(null);
@@ -348,11 +161,11 @@ function SkillTreeMap({ layout }: { layout: SkillTreeLayout }) {
     }
 
     const nodeById = new Map(layout.nodes.map((node) => [node.skill.id, node]));
-    const edges = layout.edges.flatMap(({ parentId, childId }) => {
+    const edges = useMemo(() => layout.edges.flatMap(({ parentId, childId }) => {
         const parent = nodeById.get(parentId);
         const child = nodeById.get(childId);
         return parent && child ? [{ parentId, childId, parent, child }] : [];
-    });
+    }), [layout.edges, nodeById]);
     const nodeSize = SKILL_NODE_SIZE * view.zoom;
     const iconSize = SKILL_ICON_SIZE * view.zoom;
 
@@ -435,24 +248,24 @@ function SkillTreeMap({ layout }: { layout: SkillTreeLayout }) {
                     variant="ghost"
                     icon={<RemoveIcon className="h-4 w-4" />}
                     className="h-6 w-6 opacity-70 hover:opacity-100"
-                    aria-label={t('playground.skillTree.zoomOut')}
-                    title={t('playground.skillTree.zoomOut')}
+                    aria-label={t('playground.elements.skillTree.zoomOut')}
+                    title={t('playground.elements.skillTree.zoomOut')}
                     onPress={() => zoomByStep(1 / ZOOM_BUTTON_STEP)}
                 />
                 <CommonButton
                     variant="ghost"
                     icon={<FitIcon className="h-4 w-4" />}
                     className="h-6 w-6 opacity-70 hover:opacity-100"
-                    aria-label={t('playground.skillTree.fitView')}
-                    title={t('playground.skillTree.fitView')}
+                    aria-label={t('playground.elements.skillTree.fitView')}
+                    title={t('playground.elements.skillTree.fitView')}
                     onPress={fitToView}
                 />
                 <CommonButton
                     variant="ghost"
                     icon={<AddIcon className="h-4 w-4" />}
                     className="h-6 w-6 opacity-70 hover:opacity-100"
-                    aria-label={t('playground.skillTree.zoomIn')}
-                    title={t('playground.skillTree.zoomIn')}
+                    aria-label={t('playground.elements.skillTree.zoomIn')}
+                    title={t('playground.elements.skillTree.zoomIn')}
                     onPress={() => zoomByStep(ZOOM_BUTTON_STEP)}
                 />
             </div>

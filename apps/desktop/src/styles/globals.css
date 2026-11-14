@@ -80,42 +80,6 @@
   }
 }
 
-/* A multi-hit flurry: the same knock repeated per landed strike, within one
-   settle. The target is shoved further on the first blow and rattles harder. */
-@keyframes combat-hit-multi {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  8% {
-    translate: calc(var(--arena-dir, 1) * 0.42rem) 0;
-  }
-  18% {
-    translate: calc(var(--arena-dir, 1) * -0.3rem) 0;
-  }
-  26% {
-    translate: calc(var(--arena-dir, 1) * 0.26rem) 0;
-  }
-  34% {
-    translate: calc(var(--arena-dir, 1) * -0.2rem) 0;
-  }
-  43% {
-    translate: calc(var(--arena-dir, 1) * 0.18rem) 0;
-  }
-  52% {
-    translate: calc(var(--arena-dir, 1) * -0.13rem) 0;
-  }
-  62% {
-    translate: calc(var(--arena-dir, 1) * 0.1rem) 0;
-  }
-  72% {
-    translate: calc(var(--arena-dir, 1) * -0.07rem) 0;
-  }
-  82% {
-    translate: calc(var(--arena-dir, 1) * 0.04rem) 0;
-  }
-}
-
 /* A blow the target slipped: no number, no shake - the word drifts aside and
    fades, so a miss reads differently from a hit at a glance. */
 @keyframes combat-miss {
@@ -634,6 +598,9 @@ img {
 @layer base {
   ::-webkit-scrollbar {
     width: 10px;
+    /* Horizontal scrolls (the element strip) get the same slim bar, not the
+       browser's tall default. */
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {

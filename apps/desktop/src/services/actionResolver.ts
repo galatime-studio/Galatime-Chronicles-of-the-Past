@@ -456,6 +456,7 @@ function makeMissResolution(actor: CombatUnit, target: CombatUnit, action: Comba
         attackMultiplier: 1,
         immune: false,
         hits: 0,
+        hitDamages: [],
         attackValue: 0,
         defenseValue: 0,
         power: action.power,
@@ -474,6 +475,28 @@ function makeMissResolution(actor: CombatUnit, target: CombatUnit, action: Comba
         targetHpAfter: target.currentHp,
         appliedEffectIds: [],
     };
+}
+
+/**
+ * Spreads the damage a target actually took back over the blows that dealt it.
+ *
+ * The rolls are per blow, but a ward or a shield takes its share off the total
+ * afterwards. The numbers the arena shows have to add up to what the target lost,
+ * so the blows are scaled to the total and the last one carries the rounding
+ * remainder.
+ */
+function splitBlowDamage(blows: readonly number[], total: number): number[] {
+    if (blows.length === 0) return [];
+    // The blow was voided (suspension, rescue rune, immunity): one zero reads it.
+    if (total <= 0) return [0];
+
+    const rolled = blows.reduce((sum, value) => sum + value, 0);
+    if (rolled <= 0 || rolled === total) return [...blows];
+
+    const scaled = blows.map((value) => Math.round((value / rolled) * total));
+    const drift = total - scaled.reduce((sum, value) => sum + value, 0);
+    scaled[scaled.length - 1] += drift;
+    return scaled;
 }
 
 /**
@@ -585,6 +608,7 @@ function buildResolution(
         actionId: action.id,
         ...result,
         finalDamage: healthDamage,
+        hitDamages: splitBlowDamage(result.hitDamages, healthDamage),
         shielded: reduced - healthDamage,
         targetHpBefore,
         targetHpAfter: recipient.currentHp,
@@ -642,6 +666,7 @@ function mergeResolution(into: AttackResolution, ray: AttackResolution): AttackR
         ...into,
         isHit: into.isHit || ray.isHit,
         hits: into.hits + ray.hits,
+        hitDamages: [...into.hitDamages, ...ray.hitDamages],
         isCrit: into.isCrit || ray.isCrit,
         finalDamage: into.finalDamage + ray.finalDamage,
         shielded: into.shielded + ray.shielded,

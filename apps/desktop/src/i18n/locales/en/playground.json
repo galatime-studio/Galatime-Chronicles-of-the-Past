@@ -10,7 +10,7 @@
 			"objectives": "Objectives",
 			"movement": "Movement",
 			"entities": "Entities",
-			"skills": "Skill Tree",
+			"elements": "Elements",
 			"items": "Items"
 		},
 		"music": {
@@ -35,14 +35,55 @@
 			"start": "Start",
 			"idle": "Press Start to play it here."
 		},
-		"skillTree": {
-			"zoomIn": "Zoom in",
-			"zoomOut": "Zoom out",
-			"fitView": "Fit the whole tree",
-			"loading": "Loading skill catalogue…",
-			"loadError": "The skill catalogue could not be loaded.",
-			"pages": "Skill trees",
-			"empty": "No learnable skills were found for this selection."
+		"elements": {
+			"loading": "Loading the element catalogue…",
+			"loadError": "The element catalogue could not be loaded.",
+			"empty": "The element catalogue is empty.",
+			"search": "Search an element",
+			"searchEmpty": "No element matches that name.",
+			"groups": {
+				"natural": "Natural",
+				"corrupted": "Corrupted"
+			},
+			"sections": {
+				"info": "Information",
+				"weaknesses": "Weaknesses",
+				"skillTree": "Skill tree"
+			},
+			"info": {
+				"description": "Description",
+				"skillTrees": "Skill trees",
+				"noSkillTrees": "This element opens no skill tree.",
+				"relations": "Relations",
+				"noRelations": "This element relates to no other element.",
+				"relationImmune": "Immune to",
+				"relationSuperStrong": "Super strong against",
+				"relationStrong": "Strong against",
+				"relationWeak": "Weak to",
+				"relationSuperWeak": "Super weak to"
+			},
+			"weaknesses": {
+				"hint": "Rows are the attackers; columns are the selected element alone and the selected element combined with another one.",
+				"attacker": "Attacker",
+				"columnAlone": "{{element}} alone",
+				"columnCombined": "{{element}} + {{partner}}",
+				"cell": "{{defender}} against {{attacker}} — {{band}}, score {{score}}, ×{{value}}",
+				"bands": {
+					"immune": "Immune",
+					"super_strong": "Super strong",
+					"strong": "Strong",
+					"none": "Neutral",
+					"weak": "Weak",
+					"super_weak": "Super weak"
+				}
+			},
+			"skillTree": {
+				"zoomIn": "Zoom in",
+				"zoomOut": "Zoom out",
+				"fitView": "Fit the whole tree",
+				"pages": "Skill trees",
+				"empty": "No learnable skills were found for this element."
+			}
 		},
 		"combat": {
 			"start": "Start battle",

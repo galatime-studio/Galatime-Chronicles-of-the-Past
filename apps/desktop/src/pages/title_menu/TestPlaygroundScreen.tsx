@@ -11,7 +11,7 @@ import { TestObjectivesPanel, TestMovementPanel } from './test_playground/TestPl
 import { TestCombatPanel } from './test_playground/TestCombatPanel';
 import { TestEntitiesPanel } from './test_playground/TestEntitiesPanel';
 import { TestItemsPanel } from './test_playground/TestItemsPanel';
-import { TestSkillTreePanel } from './test_playground/TestSkillTreePanel';
+import { TestElementsPanel } from './test_playground/TestElementsPanel';
 
 interface TestPlaygroundScreenProps {
     onBack: () => void;
@@ -29,7 +29,7 @@ export function TestPlaygroundScreen({ onBack }: TestPlaygroundScreenProps) {
         objectives: t('playground.tabs.objectives'),
         movement: t('playground.tabs.movement'),
         entities: t('playground.tabs.entities'),
-        skills: t('playground.tabs.skills'),
+        elements: t('playground.tabs.elements'),
         items: t('playground.tabs.items'),
     };
 
@@ -42,7 +42,7 @@ export function TestPlaygroundScreen({ onBack }: TestPlaygroundScreenProps) {
         objectives: <TestObjectivesPanel />,
         movement: <TestMovementPanel />,
         entities: <TestEntitiesPanel />,
-        skills: <TestSkillTreePanel />,
+        elements: <TestElementsPanel />,
         items: <TestItemsPanel />,
     };
 

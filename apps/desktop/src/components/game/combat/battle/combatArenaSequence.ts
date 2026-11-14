@@ -16,6 +16,7 @@ import {
     ARENA_ENTER_STAGGER_MS,
     ARENA_HIT_STAGGER_MS,
     ARENA_IMPACT_MS,
+    ARENA_MULTI_HIT_STAGGER_MS,
     ARENA_QUIET_TOTAL_MS,
     ARENA_SETTLE_MS,
     ARENA_SHAKE_RATIO,
@@ -45,10 +46,17 @@ export interface ArenaHit {
     /**
      * How many individual blows this entry stands for.
      *
-     * A multi-hit action rolls once and reports its strike count; the arena then
-     * rattles the target per blow and prints `×N` beside the total.
+     * A multi-hit action rolls once and reports its strike count.
      */
     hits: number;
+    /**
+     * Damage of each blow, in blow order.
+     *
+     * A flurry is drawn blow by blow: the arena rattles the target once per blow
+     * and prints that blow's own number, so the player reads how many hits landed
+     * and what each one was worth.
+     */
+    blows: number[];
     /**
      * The reaction waits this long after the impact.
      *
@@ -204,8 +212,11 @@ export function buildArenaSequence(
         existing.amount += hit.amount;
         existing.isHit = existing.isHit || hit.isHit;
         existing.fatal = existing.fatal || hit.fatal;
-        // A missed hop still produces a resolution; it must not inflate `×N`.
+        // A missed hop still produces a resolution; it must not count as a blow.
         existing.hits += hit.isHit ? hit.hits : 0;
+        // The blows keep their own numbers: a hop that lands on an already-struck
+        // unit adds one more impact to the same flurry.
+        existing.blows = [...existing.blows, ...hit.blows];
     };
 
     for (const event of events) {
@@ -229,6 +240,9 @@ export function buildArenaSequence(
                     multiplier: resolution.elementMultiplier,
                     fatal,
                     hits: Math.max(1, resolution.hits),
+                    blows: resolution.hitDamages.length > 0
+                        ? resolution.hitDamages
+                        : [resolution.finalDamage],
                 });
                 break;
             }
@@ -243,6 +257,7 @@ export function buildArenaSequence(
                     multiplier: 1,
                     fatal: false,
                     hits: 1,
+                    blows: [resolution.amount],
                 });
                 break;
             }
@@ -272,6 +287,7 @@ export function buildArenaSequence(
                         multiplier: 1,
                         fatal,
                         hits: 1,
+                        blows: [amount],
                         delayMs: 0,
                         ambient: true,
                     });
@@ -374,7 +390,12 @@ export function buildArenaSequence(
     // staggered too: the last one's number must still finish before the next turn.
     const enterBursts = Math.max(summoned.length, transformed.length);
     const stepBursts = stepped.length;
-    const lastHitDelay = hits.reduce((latest, hit) => Math.max(latest, hit.delayMs), 0);
+    const lastHitDelay = hits.reduce((latest, hit) => Math.max(
+        latest,
+        // The last blow of a flurry lands after the stagger of the blows before it,
+        // so the settle has to wait for that one as well.
+        hit.delayMs + Math.max(0, hit.blows.length - 1) * ARENA_MULTI_HIT_STAGGER_MS,
+    ), 0);
     const lastStatusDelay = Math.max(0, Math.min(statuses.length - 1, 3)) * ARENA_STATUS_STAGGER_MS;
     const lastBirthDelay = births.reduce((latest, birth) => Math.max(latest, birth.delayMs), 0);
     const totalMs = Math.max(

@@ -87,6 +87,7 @@ export function dealFlatDamage(
         attackMultiplier: 1,
         immune: false,
         hits: 1,
+        hitDamages: [resolvedDamage],
         attackValue: 0,
         defenseValue: 0,
         power,

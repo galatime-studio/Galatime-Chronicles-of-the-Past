@@ -491,6 +491,13 @@ export interface DamageResult {
     isHit: boolean;
     /** Hits that landed (`1` for a non-rolling preview). */
     hits: number;
+    /**
+     * Damage of each landed blow, in blow order.
+     *
+     * Every blow is rolled on its own, so a flurry can carry a different number per
+     * strike. The arena draws them one after another instead of printing a total.
+     */
+    hitDamages: number[];
     /** Attack stat the action read from the attacker. */
     attackValue: number;
     /** Defence stat the action read from the defender. */
@@ -718,6 +725,8 @@ export function resolveDamage(request: DamageRequest): DamageResult {
     let finalDamage = 0;
     let hits = 0;
     let isCrit = false;
+    /** Damage of each landed blow, so the arena can show them one by one. */
+    const hitDamages: number[] = [];
 
     for (let hit = 0; hit < attempts; hit += 1) {
         if (rolling && !rollHit(random, accuracy)) continue;
@@ -754,12 +763,14 @@ export function resolveDamage(request: DamageRequest): DamageResult {
 
         baseDamage = breakdown.base;
         finalDamage += breakdown.final;
+        hitDamages.push(breakdown.final);
         hits += 1;
     }
 
     return {
         isHit: hits > 0,
         hits,
+        hitDamages,
         attackValue,
         defenseValue: rawDefense,
         power: hitPowerBase,

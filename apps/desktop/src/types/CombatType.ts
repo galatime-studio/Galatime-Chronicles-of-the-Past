@@ -1108,6 +1108,13 @@ export interface AttackResolution {
     /** `true` when an ability made the target immune to the hit. */
     immune: boolean;    /** How many hits landed. */
     hits: number;
+    /**
+     * Damage of each landed blow, in blow order.
+     *
+     * Every blow of a multi-hit action is rolled on its own, so each one can carry a
+     * different number. The arena prints them one after another instead of a total.
+     */
+    hitDamages: number[];
     /** Attack stat the action read from the attacker. */
     attackValue: number;
     /** Defence stat the action read from the defender. */

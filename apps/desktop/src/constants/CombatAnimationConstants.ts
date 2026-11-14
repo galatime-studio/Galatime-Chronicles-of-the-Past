@@ -86,12 +86,24 @@ export const ARENA_STEP_STAGGER_MS = 110;
 export const ARENA_HIT_STAGGER_MS = 110;
 
 /**
- * Extra delay between the rattles of a multi-hit blow.
+ * The rhythm of a multi-hit blow: the gap between two blows of the same strike.
  *
- * The target is knocked once per landed strike, capped so a five-hit flurry does not
- * outlast the settle.
+ * A flurry is one rhythm from beginning to end — the knocks, the numbers and the
+ * sparks all step on it. The gap is also how long one knock of the flurry lasts, so
+ * the knocks tile instead of overlapping: a knock that started while the previous
+ * one was still running would be overridden by it, and the unit would snap back to
+ * rest between blows.
  */
-export const ARENA_MULTI_HIT_STAGGER_MS = 70;
+export const ARENA_MULTI_HIT_STAGGER_MS = 130;
+
+/**
+ * How long the knock of a struck unit lasts.
+ *
+ * A single blow gets the full knock, the one a reader can follow. A blow of a flurry
+ * gets the rhythm instead (`ARENA_MULTI_HIT_STAGGER_MS`): the flurry is read through
+ * its numbers, and its knocks are a rattle.
+ */
+export const ARENA_HIT_MS = 420;
 
 /** How long a buff/debuff label lingers over the unit it just landed on. */
 export const ARENA_STATUS_MS = 760;

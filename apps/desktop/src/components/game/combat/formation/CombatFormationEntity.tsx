@@ -9,8 +9,10 @@ import {
     ARENA_DEATH_SINK_MS,
     ARENA_ENTER_MS,
     ARENA_ENTER_STAGGER_MS,
+    ARENA_HIT_MS,
     ARENA_IMPACT_MS,
     ARENA_LUNGE_MS,
+    ARENA_MULTI_HIT_STAGGER_MS,
     ARENA_STATUS_DELAY_MS,
     ARENA_STATUS_MS,
     ARENA_STATUS_STAGGER_MS,
@@ -107,10 +109,10 @@ function numberAnimation(hit: ArenaHit): string {
     return hit.isHit ? 'combat-rise' : 'combat-miss';
 }
 
-/** The message a number carries: a miss, or the signed amount. */
-function numberText(hit: ArenaHit, miss: string): string {
+/** The message a number carries: a miss, or the signed amount of one blow. */
+function numberText(hit: ArenaHit, amount: number, miss: string): string {
     if (!hit.isHit) return miss;
-    const rounded = Math.round(hit.amount);
+    const rounded = Math.round(amount);
     // An immunity still lands ("hit") for zero; print `0`, never `-0`.
     if (hit.kind === 'damage' && rounded <= 0) return '0';
     return `${hit.kind === 'heal' ? '+' : '-'}${rounded}`;
@@ -318,8 +320,20 @@ export function CombatFormationEntity({
     const hitStyle: ArenaLayerStyle = {
         '--arena-dir': arenaDir,
         // A miss is dodged, not struck: only a landed damaging blow knocks the unit.
+        // A flurry knocks once per blow: the knocks are chained on the rhythm of the
+        // flurry, and each one is exactly as long as the gap to the next, so they tile
+        // instead of overlapping. Two knocks running at once would fight over the same
+        // property and the unit would snap back to rest between blows.
         animation: hit && hit.kind === 'damage' && hit.isHit
-            ? `${hit.hits > 1 ? 'combat-hit-multi 520ms' : 'combat-hit 420ms'} ease-out ${ARENA_IMPACT_MS + hit.delayMs}ms both`
+            ? (() => {
+                const blows = Math.max(1, hit.blows.length);
+                const knockMs = blows > 1 ? ARENA_MULTI_HIT_STAGGER_MS : ARENA_HIT_MS;
+
+                return Array.from(
+                    { length: blows },
+                    (_, index) => `combat-hit ${knockMs}ms ease-out ${ARENA_IMPACT_MS + hit.delayMs + index * ARENA_MULTI_HIT_STAGGER_MS}ms`,
+                ).join(', ');
+            })()
             : undefined,
     };
 
@@ -650,6 +664,9 @@ export function CombatFormationEntity({
                                 drawn smaller to the unit's right and never shakes it. */}
                             {hitBeats.slice(0, 2).map((beat, index) => {
                                 const elementId = beat.kind === 'damage' && beat.isHit ? beat.elementId : null;
+                                // A flurry prints one number per blow: each carries its own
+                                // damage and its own moment on the screen.
+                                const blows = beat.blows.length > 0 ? beat.blows : [beat.amount];
 
                                 return (
                                     <span
@@ -660,38 +677,39 @@ export function CombatFormationEntity({
                                             : 'left-1/2 flex -translate-x-1/2 flex-row items-center gap-1'}`}
                                         style={beat.ambient ? undefined : { bottom: `calc(100% + ${4 + index * 24}px)` }}
                                     >
-                                        {/* One animated group: the element orb rides the same
-                                            rise-and-fade as the digits, so it never lingers
-                                            behind after the number has gone. */}
-                                        <span
-                                            className="flex flex-row items-center gap-1"
-                                            style={{
-                                                animation: `${numberAnimation(beat)} 760ms ease-out ${ARENA_IMPACT_MS + beat.delayMs}ms both`,
-                                            }}
-                                        >
-                                            {/* The attack's element, always readable: it is what
-                                                tells the player what just hit them. */}
-                                            {elementId && (
-                                                <ElementIcon id={elementId} className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                                            )}
+                                        {blows.map((amount, blowIndex) => (
+                                            /* One animated group per blow: the element orb rides the
+                                                same rise-and-fade as the digits, so it never lingers
+                                                behind after the number has gone. */
                                             <span
-                                                className={`block whitespace-nowrap font-pixel font-bold leading-none tabular-nums ${beat.ambient ? 'text-xs sm:text-sm' : 'text-sm sm:text-lg'} ${
-                                                    !beat.isHit
-                                                        ? 'text-white/85'
-                                                        : beat.kind === 'heal'
-                                                            ? 'text-galatime-stats-gain-health'
-                                                            : beat.ambient
-                                                                ? 'text-galatime-stats-damage'
-                                                                : damageNumberTone(beat.multiplier)
-                                                }`}
-                                                style={beat.ambient ? AMBIENT_NUMBER_STYLE : FLOATING_NUMBER_STYLE}
+                                                key={blowIndex}
+                                                className="flex flex-row items-center gap-1"
+                                                style={{
+                                                    animation: `${numberAnimation(beat)} 760ms ease-out ${ARENA_IMPACT_MS + beat.delayMs + blowIndex * ARENA_MULTI_HIT_STAGGER_MS}ms both`,
+                                                }}
                                             >
-                                                {numberText(beat, t('combat.miss'))}
-                                                {beat.kind === 'damage' && beat.isHit && beat.hits > 1 && (
-                                                    <span className="ml-0.5 align-top text-[0.65em] text-white/80">×{beat.hits}</span>
+                                                {/* The attack's element, always readable: it is what
+                                                    tells the player what just hit them. It rides the
+                                                    first blow, the others carry the number alone. */}
+                                                {elementId && blowIndex === 0 && (
+                                                    <ElementIcon id={elementId} className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
                                                 )}
+                                                <span
+                                                    className={`block whitespace-nowrap font-pixel font-bold leading-none tabular-nums ${beat.ambient ? 'text-xs sm:text-sm' : 'text-sm sm:text-lg'} ${
+                                                        !beat.isHit
+                                                            ? 'text-white/85'
+                                                            : beat.kind === 'heal'
+                                                                ? 'text-galatime-stats-gain-health'
+                                                                : beat.ambient
+                                                                    ? 'text-galatime-stats-damage'
+                                                                    : damageNumberTone(beat.multiplier)
+                                                    }`}
+                                                    style={beat.ambient ? AMBIENT_NUMBER_STYLE : FLOATING_NUMBER_STYLE}
+                                                >
+                                                    {numberText(beat, amount, t('combat.miss'))}
+                                                </span>
                                             </span>
-                                        </span>
+                                        ))}
                                     </span>
                                 );
                             })}
