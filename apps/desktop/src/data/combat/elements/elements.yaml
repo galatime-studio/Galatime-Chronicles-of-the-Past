@@ -201,7 +201,7 @@ elements:
       immune:       [ignis]
       super_strong: [florere, spatium, umbra]
       strong:       [corporis, lux]
-      weak:         [caeli, chaos, florere]
+      weak:         [caeli, chaos]
       super_weak:   [aqua]
 
   corrupted_day:
@@ -215,7 +215,7 @@ elements:
       immune:       [caeli, lux]
       super_strong: [chaos, corporis, ignis, lapis]
       strong:       [spatium]
-      weak:         [aqua, ignis, spatium]
+      weak:         [aqua, florere]
       super_weak:   [umbra]
 
   corrupted_forest:
@@ -229,7 +229,7 @@ elements:
       immune:       [florere, umbra]
       super_strong: [chaos, lapis]
       strong:       [corporis, spatium]
-      weak:         [aqua, caeli, spatium]
+      weak:         [aqua, caeli]
       super_weak:   [ignis]
 
   corrupted_ice:
@@ -241,9 +241,9 @@ elements:
     selectable: false
     relations:
       immune:       [aqua, corporis]
-      super_strong: [ignis, lux, umbra]
+      super_strong: [caeli, lux, umbra]
       strong:       [lapis]
-      weak:         [chaos, corporis, lux]
+      weak:         [chaos, florere]
       super_weak:   [ignis]
 
   corrupted_night:
@@ -257,7 +257,7 @@ elements:
       immune:       [lapis, umbra]
       super_strong: [aqua, caeli, florere, spatium]
       strong:       [chaos]
-      weak:         [corporis, ignis, spatium]
+      weak:         [corporis, ignis]
       super_weak:   [lux]
 
   corrupted_void:
