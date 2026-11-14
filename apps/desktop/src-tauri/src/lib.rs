@@ -4,18 +4,23 @@ mod game;
 mod paths;
 mod utils;
 
-use std::path::PathBuf;
-use tauri::{image::Image, Manager};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            let icon_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("icons/icon.png");
-            let icon = Image::from_path(icon_path)?;
-
-            if let Some(window) = app.get_webview_window("main") {
-                window.set_icon(icon)?;
+            // The window icon is the one embedded in the executable from `bundle.icon`. Loading it
+            // from the source tree (`env!("CARGO_MANIFEST_DIR")`) would bake the build machine's
+            // absolute path into the binary, so on any other machine the icon file would not
+            // exist, setup would fail and the app would close right after opening.
+            //
+            // The icon is cosmetic: a failure here must never abort startup.
+            if let (Some(icon), Some(window)) = (
+                app.default_window_icon().cloned(),
+                app.get_webview_window("main"),
+            ) {
+                let _ = window.set_icon(icon);
             }
 
             Ok(())

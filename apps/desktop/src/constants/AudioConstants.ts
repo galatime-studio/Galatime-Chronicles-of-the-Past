@@ -5,24 +5,43 @@ import musicYamlRaw from '../data/audio/music.yaml?raw';
 import sfxYamlRaw from '../data/audio/sfx.yaml?raw';
 import ambientYamlRaw from '../data/audio/ambient.yaml?raw';
 
-// Carrega dinamicamente os ficheiros de áudio por padrão (sem imports individuais)
+// Every audio file is discovered by path, so publishing a track is just dropping the file in
+// `src/assets/` and adding an entry to the YAML. `eager` is required: the resolver below is
+// synchronous, and without it each entry would be a lazy `() => import(...)` loader instead of
+// the hashed URL string the players are built from. Vite hashes these URLs at build time, so the
+// built app references the emitted assets rather than a source-tree path.
 const audioModules = import.meta.glob<string>('../assets/**/*.{ogg,mp3,wav}', {
+    eager: true,
     query: '?url',
     import: 'default',
 });
 
+/**
+ * URL of every audio file, keyed by its path inside `src/assets/` (`music/<track>.ogg`,
+ * `sounds/<sfx>.ogg`).
+ *
+ * The YAML files spell tracks as `../assets/music/<track>.ogg`, while the glob keys them as
+ * `../assets/music/<track>.ogg` too. Normalising both sides to the suffix after `assets/`
+ * keeps the lookup from depending on the prefix each file happens to use.
+ */
+const audioUrls = new Map<string, string>(
+    Object.entries(audioModules).map(([key, url]) => [toAssetKey(key), url]),
+);
+
+function toAssetKey(path: string): string {
+    return path.replace(/\\/g, '/').replace(/^.*\/assets\//, '');
+}
+
 function resolveAudioPath(yamlPath: string): string {
-    // Converte "../assets/music/Filename.ogg" para chave do glob
-    const normalizedPath = yamlPath.replace(/\.\.\//g, '').replace(/^\//, '');
-    const fullPath = `../assets/${normalizedPath}`;
-    
-    // Procura no módulo glob
-    if (fullPath in audioModules) {
-        return audioModules[fullPath as keyof typeof audioModules] as unknown as string;
+    const url = audioUrls.get(toAssetKey(yamlPath));
+
+    if (!url) {
+        // A missing file would otherwise surface as a silent `Audio` load error at runtime.
+        console.warn(`Audio file not found in src/assets: ${yamlPath}`);
+        return yamlPath;
     }
-    
-    // Fallback: tenta resolver directamente
-    return new URL(yamlPath, import.meta.url).href;
+
+    return url;
 }
 
 function loadAudioTracksFromYaml(yamlContent: string): AudioTrackDefinition[] {
