@@ -4,6 +4,9 @@ mod game;
 mod paths;
 mod utils;
 
+#[cfg(target_os = "windows")]
+mod audio_session;
+
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -22,6 +25,11 @@ pub fn run() {
             ) {
                 let _ = window.set_icon(icon);
             }
+
+            // Windows reports WebView2 audio under Microsoft's process name; label the
+            // sessions with the game's name so the volume mixer identifies the app.
+            #[cfg(target_os = "windows")]
+            audio_session::label_webview_audio(app.package_info().name.clone());
 
             Ok(())
         })
