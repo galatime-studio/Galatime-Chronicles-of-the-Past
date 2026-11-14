@@ -5,7 +5,6 @@ import CommonInput from '../../../../components/common/CommonInput';
 import CommonPopup from '../../../../components/common/CommonPopup';
 import CommonButton from '../../../../components/common/CommonButton';
 import { MAX_CARRIED_WEAPONS } from '../../../../constants/CombatConstants';
-import { playSfx } from '../../../../controllers/audioController';
 import { fetchItemCatalogue } from '../../../../controllers/inventoryController';
 import { listWeapons } from '../../../../services/weaponCatalogService';
 import type { EntityInventoryState } from '../../../../types/InventoryType';
@@ -68,6 +67,7 @@ function StockRow({
                     icon={<RemoveIcon className="h-3 w-3" />}
                     className="h-6 w-6 opacity-50 hover:opacity-100 disabled:opacity-30"
                     disabled={!canRemove}
+                    holdRepeat
                     aria-label={`${name}: ${removeLabel}`}
                     onPress={onRemove}
                 />
@@ -81,6 +81,7 @@ function StockRow({
                     icon={<AddIcon className="h-3 w-3" />}
                     className="h-6 w-6 opacity-50 hover:opacity-100 disabled:opacity-30"
                     disabled={!canAdd}
+                    holdRepeat
                     aria-label={`${name}: ${addLabel}`}
                     onPress={onAdd}
                 />
@@ -218,7 +219,6 @@ export function TestSlotInventoryPopup({
     };
 
     const confirm = () => {
-        playSfx('click');
         onConfirm(draft, weaponDraft);
     };
 

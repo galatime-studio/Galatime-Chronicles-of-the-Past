@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { AddIcon, ElementIcon, FitIcon, RemoveIcon, UNKNOWN_ELEMENT_ICON } from '../../../assets/GalatimeIcon';
 import CommonImage from '../../../components/common/CommonImage';
 import CommonButton from '../../../components/common/CommonButton';
+import CommonTooltip from '../../../components/common/CommonTooltip';
 import { fetchAttacks } from '../../../controllers/attackController';
 import { getAllElementsDataService } from '../../../services/elementService';
 import type { ElementData } from '../../../types/ElementDataType';
@@ -55,6 +56,7 @@ export function TestSkillTreePanel() {
     const [attacks, setAttacks] = useState<PublicAttack[]>([]);
     const [elements, setElements] = useState<ElementData[]>([]);
     const [selectedElementIds, setSelectedElementIds] = useState<string[]>([INANUS_ID]);
+    const [activeTreeId, setActiveTreeId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadFailed, setLoadFailed] = useState(false);
 
@@ -95,30 +97,60 @@ export function TestSkillTreePanel() {
         () => elements.filter((element) => selectedElementIds.includes(element.id)),
         [elements, selectedKey],
     );
-    const visibleAttacks = useMemo(
-        () => getLearnableAttacks(attacks, selectedElements),
-        [attacks, selectedElements],
-    );
+    /**
+     * Skill trees the selected elements open, in the order the elements were picked.
+     * Every tree the selection controls becomes a page of its own.
+     */
+    const controlledTrees = useMemo(() => {
+        const trees: string[] = [];
+        for (const elementId of selectedElementIds) {
+            const element = elements.find((item) => item.id === elementId);
+            if (!element) continue;
+            for (const treeId of element.skillTrees) {
+                if (!trees.includes(treeId)) trees.push(treeId);
+            }
+        }
+        return trees;
+    }, [elements, selectedKey]);
+
+    /** The page on screen: the one the user picked, or the first tree the selection opens. */
+    const activeTree = activeTreeId && controlledTrees.includes(activeTreeId)
+        ? activeTreeId
+        : controlledTrees[0] ?? null;
+
+    const visibleAttacks = useMemo(() => {
+        const learnable = getLearnableAttacks(attacks, selectedElements);
+        // One page, one skill tree: the page only holds the skills of the tree it shows.
+        return activeTree ? learnable.filter((attack) => attack.element_id === activeTree) : [];
+    }, [attacks, selectedElements, activeTree]);
     const layout = useMemo(() => buildSkillTreeLayout(visibleAttacks), [visibleAttacks]);
 
     function toggleElement(elementId: string) {
-        setSelectedElementIds((current) => {
-            const currentSelection = current.length > 0 ? current : [INANUS_ID];
-            if (elementId === INANUS_ID) {
-                return currentSelection.length === 1 && currentSelection[0] === INANUS_ID
-                    ? currentSelection
-                    : [INANUS_ID];
-            }
+        const currentSelection = selectedElementIds.length > 0 ? selectedElementIds : [INANUS_ID];
+        const wasSelected = currentSelection.includes(elementId);
 
-            if (currentSelection.includes(elementId)) {
-                const next = currentSelection.filter((id) => id !== elementId);
-                return next.length > 0 ? next : [INANUS_ID];
-            }
+        let next: string[];
+        if (elementId === INANUS_ID) {
+            next = currentSelection.length === 1 && currentSelection[0] === INANUS_ID
+                ? currentSelection
+                : [INANUS_ID];
+        } else if (wasSelected) {
+            const remaining = currentSelection.filter((id) => id !== elementId);
+            next = remaining.length > 0 ? remaining : [INANUS_ID];
+        } else if (currentSelection.includes(INANUS_ID)) {
+            next = [elementId];
+        } else if (currentSelection.length >= 2) {
+            return;
+        } else {
+            next = [...currentSelection, elementId];
+        }
 
-            if (currentSelection.includes(INANUS_ID)) return [elementId];
-            if (currentSelection.length >= 2) return currentSelection;
-            return [...currentSelection, elementId];
-        });
+        setSelectedElementIds(next);
+
+        // The page follows the element just picked: it opens on the tree that element
+        // heads. Dropping an element sends the page back to the first tree of what is left.
+        const element = elements.find((item) => item.id === elementId);
+        setActiveTreeId(wasSelected && elementId !== INANUS_ID ? null : element?.skillTrees[0] ?? null);
     }
 
     if (loading) {
@@ -157,15 +189,47 @@ export function TestSkillTreePanel() {
                 })}
             </div>
 
-            <div className="relative min-h-0 flex-1 overflow-hidden border-game border-white/10 bg-galatime-background">
-                <div className="pointer-events-none absolute inset-0 opacity-30 bg-[linear-gradient(to_right,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-size-[32px_32px]" />
-                {visibleAttacks.length === 0 ? (
-                    <div className="relative flex h-full items-center justify-center px-4 text-center text-sm text-white/45">
-                        {t('playground.skillTree.empty')}
-                    </div>
-                ) : (
-                    <SkillTreeMap layout={layout} />
+            <div className="flex min-h-0 flex-1 gap-2">
+                {/* Pagination: one page per skill tree the selection opens. */}
+                {controlledTrees.length > 0 && (
+                    <nav
+                        aria-label={t('playground.skillTree.pages')}
+                        className="flex shrink-0 flex-col items-center gap-1 border-game border-white/10 bg-galatime-background p-1"
+                    >
+                        {controlledTrees.map((treeId) => {
+                            const tree = elements.find((element) => element.id === treeId);
+                            const isActive = treeId === activeTree;
+
+                            return (
+                                <CommonTooltip key={treeId} content={tree?.name ?? treeId}>
+                                    <CommonButton
+                                        variant="ghost"
+                                        aria-pressed={isActive}
+                                        aria-label={tree?.name ?? treeId}
+                                        onPress={() => setActiveTreeId(treeId)}
+                                        className={`h-9 w-9 p-0 ${isActive
+                                            ? 'border-game border-white/70 bg-white text-galatime-dark'
+                                            : 'border-game border-white/10 opacity-60 hover:opacity-100'
+                                            }`}
+                                    >
+                                        <ElementIcon id={treeId} className="h-5 w-5" />
+                                    </CommonButton>
+                                </CommonTooltip>
+                            );
+                        })}
+                    </nav>
                 )}
+
+                <div className="relative min-h-0 flex-1 overflow-hidden border-game border-white/10 bg-galatime-background">
+                    <div className="pointer-events-none absolute inset-0 opacity-30 bg-[linear-gradient(to_right,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-size-[32px_32px]" />
+                    {visibleAttacks.length === 0 ? (
+                        <div className="relative flex h-full items-center justify-center px-4 text-center text-sm text-white/45">
+                            {t('playground.skillTree.empty')}
+                        </div>
+                    ) : (
+                        <SkillTreeMap layout={layout} />
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -18,10 +18,28 @@ interface CommonButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement
     particles?: boolean;
     /** Overrides the burst colour. Defaults to the per-variant tone from `PARTICLE_COLORS`. */
     particleColor?: string;
+    /**
+     * When true the button repeats while it is held: `onPress` fires on pointer down and keeps
+     * firing until the pointer is released, which turns the button into a stepper.
+     * The release does not fire `onPress` a second time.
+     */
+    holdRepeat?: boolean;
+    /** How long the button must be held before it starts repeating. Default: {@link HOLD_REPEAT_DELAY}. */
+    holdRepeatDelay?: number;
+    /** Gap between two repeats once the hold starts. Default: {@link HOLD_REPEAT_INTERVAL}. */
+    holdRepeatInterval?: number;
+    /** Ref of the underlying button element, so the button can be a tooltip anchor. */
+    ref?: React.Ref<HTMLButtonElement>;
 }
 
 /** How many square particles each click spawns. */
 const PARTICLE_COUNT = 24;
+
+/** How long a held button waits before it starts repeating. */
+const HOLD_REPEAT_DELAY = 400;
+
+/** Gap between two repeats of a held button. */
+const HOLD_REPEAT_INTERVAL = 80;
 
 const CommonButton: React.FC<CommonButtonProps> = ({
     variant = 'primary',
@@ -35,7 +53,11 @@ const CommonButton: React.FC<CommonButtonProps> = ({
     disabled,
     particles = false,
     particleColor,
+    holdRepeat = false,
+    holdRepeatDelay = HOLD_REPEAT_DELAY,
+    holdRepeatInterval = HOLD_REPEAT_INTERVAL,
     onClick,
+    onMouseEnter,
     ...props
 }) => {
     // tsParticles container created for this button, used to spawn the click burst.
@@ -44,6 +66,18 @@ const CommonButton: React.FC<CommonButtonProps> = ({
     const particleLayer = useRef<HTMLDivElement | null>(null);
     // Serialises load/destroy so a StrictMode remount cannot race the previous container.
     const particleLifecycle = useRef<Promise<void>>(Promise.resolve());
+    // Timers of the hold-to-repeat: the delay before the first repeat, and the repeat itself.
+    const holdTimeout = useRef<number | null>(null);
+    const holdInterval = useRef<number | null>(null);
+    // The handler and the disabled flag the repeat timer reads, so a re-render mid-hold never
+    // leaves it calling a stale closure.
+    const onPressRef = useRef(onPress);
+    const disabledRef = useRef(disabled);
+
+    useEffect(() => {
+        onPressRef.current = onPress;
+        disabledRef.current = disabled;
+    }, [onPress, disabled]);
 
     // useId() may contain ':' which is awkward inside an element id, so it is stripped.
     const particlesId = `galatime-button-particles-${useId().replace(/:/g, '')}`;
@@ -135,7 +169,7 @@ const CommonButton: React.FC<CommonButtonProps> = ({
         };
     }, [particles, particlesOptions]);
 
-    const spawnBurst = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const spawnBurst = (point: { clientX: number; clientY: number; isKeyboard: boolean }) => {
         const container = burstContainer.current;
         if (!container) return;
 
@@ -145,12 +179,12 @@ const CommonButton: React.FC<CommonButtonProps> = ({
         let y = canvasSize.height / 2;
 
         const canvas = container.canvas.domElement;
-        if (event.detail > 0 && canvas) {
+        if (!point.isKeyboard && canvas) {
             const rect = canvas.getBoundingClientRect();
             if (rect.width > 0 && rect.height > 0) {
                 // Ratios keep the origin correct under zoom / retina scaling.
-                const ratioX = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
-                const ratioY = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1);
+                const ratioX = Math.min(Math.max((point.clientX - rect.left) / rect.width, 0), 1);
+                const ratioY = Math.min(Math.max((point.clientY - rect.top) / rect.height, 0), 1);
                 x = ratioX * canvasSize.width;
                 y = ratioY * canvasSize.height;
             }
@@ -159,17 +193,66 @@ const CommonButton: React.FC<CommonButtonProps> = ({
         container.particles.push(PARTICLE_COUNT, { x, y });
     };
 
-    const handlePointerDown = () => {
-        if (disabled) {
-            playSfx('denied');
-        } else {
-            playSfx('click');
+    /** Stops the hold-to-repeat timers, if any are running. */
+    const clearHoldTimers = () => {
+        if (holdTimeout.current !== null) {
+            window.clearTimeout(holdTimeout.current);
+            holdTimeout.current = null;
+        }
+        if (holdInterval.current !== null) {
+            window.clearInterval(holdInterval.current);
+            holdInterval.current = null;
         }
     };
 
-    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    /** Starts the repeat: the first one lands after the delay, the rest follow the interval. */
+    const startHoldRepeat = () => {
+        clearHoldTimers();
+
+        holdTimeout.current = window.setTimeout(() => {
+            holdTimeout.current = null;
+            holdInterval.current = window.setInterval(() => {
+                // A button that went disabled mid-hold stops repeating: a disabled button
+                // never receives the release event, so the timers have to end on their own.
+                if (disabledRef.current) {
+                    clearHoldTimers();
+                    return;
+                }
+                onPressRef.current?.();
+            }, holdRepeatInterval);
+        }, holdRepeatDelay);
+    };
+
+    const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+        if (disabled) {
+            playSfx('denied');
+            return;
+        }
+
+        playSfx('click');
+
+        if (!holdRepeat) return;
+
+        // The press happens on the way down, so a held button counts up right away.
         if (particles) {
-            spawnBurst(event);
+            spawnBurst({ clientX: event.clientX, clientY: event.clientY, isKeyboard: false });
+        }
+        onPressRef.current?.();
+        startHoldRepeat();
+    };
+
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+        clearHoldTimers();
+
+        // A held button already fired its press on pointer down, so the release must not fire
+        // it again. A keyboard activation reports no pointer at all, and still needs its press.
+        if (holdRepeat && event.detail > 0) {
+            onClick?.(event);
+            return;
+        }
+
+        if (particles) {
+            spawnBurst({ clientX: event.clientX, clientY: event.clientY, isKeyboard: event.detail === 0 });
         }
         onPress?.();
         onClick?.(event);
@@ -179,12 +262,21 @@ const CommonButton: React.FC<CommonButtonProps> = ({
         playSfx('hover');
     };
 
+    // A button that unmounts mid-hold must not keep repeating in the background.
+    useEffect(() => clearHoldTimers, []);
+
     return (
         <button
             type={type}
             onClick={handleClick}
             onPointerDown={handlePointerDown}
-            onMouseEnter={handleMouseEnter}
+            onPointerUp={clearHoldTimers}
+            onPointerCancel={clearHoldTimers}
+            onPointerLeave={clearHoldTimers}
+            onMouseEnter={(event: React.MouseEvent<HTMLButtonElement>) => {
+                handleMouseEnter();
+                onMouseEnter?.(event);
+            }}
             disabled={disabled}
             className={resolveButtonClasses({ variant, size, className, icon, children })}
             {...props}

@@ -17,7 +17,6 @@ import CommonHoverElement from '../../../../components/common/CommonHoverElement
 import CommonButton from '../../../../components/common/CommonButton';
 import CommonImage from '../../../../components/common/CommonImage';
 import StatBar from '../../../../components/common/StatBar';
-import { playSfx } from '../../../../controllers/audioController';
 import { useGame } from '../../../../context/GameContext';
 import { getEntityImages } from '../../../../services/entityImageService';
 import type { EntityItem } from '../types';
@@ -317,7 +316,6 @@ function EntityImageGallery({ images }: { images: EntityImage[] }) {
             return;
         }
         setIndex(next);
-        playSfx('click');
     };
 
     return (

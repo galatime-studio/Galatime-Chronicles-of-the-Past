@@ -4,7 +4,6 @@ import CommonImage from '../../../../components/common/CommonImage';
 import CommonButton from '../../../../components/common/CommonButton';
 import CommonInput from '../../../../components/common/CommonInput';
 import CommonPopup from '../../../../components/common/CommonPopup';
-import { playSfx } from '../../../../controllers/audioController';
 import { filterCatalogue, type CatalogueEntity } from '../combatSetupModel';
 
 const UNKNOWN_SPRITE = '/images/ui/misc/unknown.png';
@@ -37,7 +36,6 @@ export function TestCombatPickerPopup({ open, catalogue, onDismiss, onPick }: Te
     const topSuggestion = suggestions[0];
 
     const pick = (entity: CatalogueEntity) => {
-        playSfx('click');
         onPick(entity);
     };
 

@@ -41,6 +41,7 @@
 			"fitView": "Fit the whole tree",
 			"loading": "Loading skill catalogue…",
 			"loadError": "The skill catalogue could not be loaded.",
+			"pages": "Skill trees",
 			"empty": "No learnable skills were found for this selection."
 		},
 		"combat": {

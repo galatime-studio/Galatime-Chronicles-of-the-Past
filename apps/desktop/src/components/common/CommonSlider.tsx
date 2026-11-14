@@ -22,9 +22,19 @@ interface CommonSliderProps {
     /** Distance in px between each bar. */
     barGap?: number;
     step?: number;
+    /**
+     * Shape of the beads. `ramp` grows them from `baseHeight` up to `maxBarHeight`;
+     * `uniform` keeps every bead at the same height, so the track reads as one segmented bar.
+     */
+    variant?: CommonSliderVariant;
+    /** Extra classes for the title label. */
+    titleClassName?: string;
     /** Optional formatter for the current value; when provided, the value is shown next to the slider. */
     formatValue?: (value: number) => string;
 }
+
+/** Bead shapes the slider can draw. */
+export type CommonSliderVariant = 'ramp' | 'uniform';
 
 const CommonSlider: React.FC<CommonSliderProps> = ({
     title,
@@ -42,6 +52,9 @@ const CommonSlider: React.FC<CommonSliderProps> = ({
     barWidth = 6,
     barGap = 10,
     step = 1,
+    variant = 'ramp',
+    titleClassName = '',
+    formatValue,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -52,6 +65,10 @@ const CommonSlider: React.FC<CommonSliderProps> = ({
     const trackWidth = numBars * barWidth + (numBars - 1) * barGap;
 
     const bars = Array.from({ length: numBars }, (_, i) => {
+        if (variant === 'uniform') {
+            // Todos os beads mantêm a mesma altura.
+            return maxBarHeight;
+        }
         const height = baseHeight + (maxBarHeight - baseHeight) * (i / (numBars - 1));
         return Math.round(height / step) * step;
     });
@@ -105,11 +122,17 @@ const CommonSlider: React.FC<CommonSliderProps> = ({
 
     return (
         <div className={`flex flex-row items-center w-full gap-4 select-none ${className}`}>
-            <span className="text-white text-lg font-medium whitespace-nowrap">
+            <span className={`text-white text-lg font-medium whitespace-nowrap ${titleClassName}`}>
                 {title}
             </span>
 
             <div className="flex-1" />
+
+            {formatValue ? (
+                <span className="font-custom text-sm text-white/80 tabular-nums whitespace-nowrap">
+                    {formatValue(displayValue)}
+                </span>
+            ) : null}
 
             <div
                 ref={containerRef}

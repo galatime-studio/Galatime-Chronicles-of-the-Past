@@ -201,8 +201,8 @@ elements:
       immune:       [ignis]
       super_strong: [florere, spatium, umbra]
       strong:       [corporis, lux]
-      weak:         [chaos]
-      super_weak:   [aqua, caeli]
+      weak:         [caeli, chaos, florere]
+      super_weak:   [aqua]
 
   corrupted_day:
     name: Corrupted Day
@@ -215,8 +215,8 @@ elements:
       immune:       [caeli, lux]
       super_strong: [chaos, corporis, ignis, lapis]
       strong:       [spatium]
-      weak:         []
-      super_weak:   [aqua, florere, umbra]
+      weak:         [aqua, ignis, spatium]
+      super_weak:   [umbra]
 
   corrupted_forest:
     name: Corrupted Forest
@@ -229,7 +229,7 @@ elements:
       immune:       [florere, umbra]
       super_strong: [chaos, lapis]
       strong:       [corporis, spatium]
-      weak:         [aqua, caeli]
+      weak:         [aqua, caeli, spatium]
       super_weak:   [ignis]
 
   corrupted_ice:
@@ -243,8 +243,8 @@ elements:
       immune:       [aqua, corporis]
       super_strong: [ignis, lux, umbra]
       strong:       [lapis]
-      weak:         [caeli]
-      super_weak:   [chaos, florere]
+      weak:         [chaos, corporis, lux]
+      super_weak:   [ignis]
 
   corrupted_night:
     name: Corrupted Night
@@ -257,8 +257,8 @@ elements:
       immune:       [lapis, umbra]
       super_strong: [aqua, caeli, florere, spatium]
       strong:       [chaos]
-      weak:         []
-      super_weak:   [corporis, ignis, lux]
+      weak:         [corporis, ignis, spatium]
+      super_weak:   [lux]
 
   corrupted_void:
     name: Corrupted Void

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CommonButton from '../../../components/common/CommonButton';
-import { playSfx } from '../../../controllers/audioController';
+import CommonSlider from '../../../components/common/CommonSlider';
 import { AI_DIFFICULTY_LEVELS } from '../../../constants/AiConstants';
 import type { Difficulty } from '../../../constants/DifficultyConstants';
 import {
@@ -166,24 +166,28 @@ export function TestCombatSetup({
                     {/* The hour of the day: a solar skill bites harder by day and a
                         lunar one at night, so the fight is worth setting up in
                         the light the author had in mind. */}
-                    <label className="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-white/50">
-                        <span>{t('playground.combat.hour')}</span>
-                        <input
-                            type="range"
+                    <div className="flex flex-wrap items-center gap-3">
+                        <CommonSlider
+                            title={t('playground.combat.hour')}
+                            titleClassName="text-xs uppercase tracking-[0.15em] text-white/50"
+                            variant="uniform"
                             min={0}
                             max={23}
                             step={1}
+                            numBars={12}
+                            barWidth={4}
+                            barGap={5}
+                            maxBarHeight={14}
+                            snapToGrid={false}
                             value={hour}
-                            onChange={(event) => onHourChange(Number(event.target.value))}
-                            className="w-32 accent-white"
+                            onChange={onHourChange}
+                            formatValue={(next) => `${String(next).padStart(2, '0')}:00`}
+                            className="max-w-80 gap-2"
                         />
-                        <span className="font-pixel tabular-nums text-white/80">
-                            {String(hour).padStart(2, '0')}:00
-                        </span>
-                        <span className="text-white/40">
+                        <span className="text-xs uppercase tracking-[0.15em] text-white/40">
                             {hour >= 6 && hour < 18 ? t('playground.combat.day') : t('playground.combat.night')}
                         </span>
-                    </label>
+                    </div>
 
                     {/* How well the opponents play. The level is handed to the fight
                         and never written to the save, so the same roster can be tried
@@ -222,7 +226,6 @@ export function TestCombatSetup({
                     size="md"
                     disabled={!valid}
                     onPress={() => {
-                        playSfx('click');
                         onStart();
                     }}
                 >

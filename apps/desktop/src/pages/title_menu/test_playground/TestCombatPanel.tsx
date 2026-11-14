@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CommonButton from '../../../components/common/CommonButton';
 import { CombatEncounter } from '../../../components/game/combat/CombatEncounter';
-import { playSfx } from '../../../controllers/audioController';
 import { useGame } from '../../../context/GameContext';
 import { AI_DIFFICULTY_LEVELS } from '../../../constants/AiConstants';
 import type { Difficulty } from '../../../constants/DifficultyConstants';
@@ -121,7 +120,6 @@ export function TestCombatPanel() {
                         variant="ghost"
                         size="sm"
                         onPress={() => {
-                            playSfx('click');
                             setEncounter(null);
                         }}
                     >
@@ -162,7 +160,6 @@ export function TestCombatPanel() {
             }}
             difficulty={difficulty}
             onDifficultyChange={(next) => {
-                playSfx('click');
                 setDifficulty(next);
             }}
             onFill={(side, line, index, entity) => setSetup((current) => fillSlot(current, side, line, index, entity))}
