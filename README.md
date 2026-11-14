@@ -9,7 +9,7 @@ A cross-platform game powered by modern web tech and Rust.<br>
 Windows, macOS and Linux.</p>
 
 <p align="center">
-  <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/latest"><img src="https://img.shields.io/badge/Download-v0.1.0-6D72CA?style=for-the-badge" alt="Download GalaTime"></a>
+  <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/latest"><img src="https://img.shields.io/badge/Download-v0.1.1-6D72CA?style=for-the-badge" alt="Download GalaTime"></a>
   <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/stargazers"><img src="https://img.shields.io/github/stars/galatime-studio/Galatime-Chronicles-of-the-Past?style=for-the-badge&color=24292f" alt="GitHub stars"></a>
   <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past"><img src="https://img.shields.io/github/repo-size/galatime-studio/Galatime-Chronicles-of-the-Past?style=for-the-badge&color=24292f" alt="Repo size"></a>
 </p>
