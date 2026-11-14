@@ -227,6 +227,33 @@
   }
 }
 
+/* A unit born out of a corpse: it bursts from the spot the body left, drawn small,
+   and travels onto its own post. The start offsets arrive as inline vars measured by
+   the row against its ground plane; the delay holds it invisible until the corpse has
+   finished sinking, so the split reads as a consequence of the death. */
+@keyframes combat-birth {
+  0% {
+    opacity: 0;
+    translate: var(--arena-birth-dx, 0) var(--arena-birth-dy, 0);
+    scale: 0.35;
+  }
+  25% {
+    opacity: 1;
+  }
+  55% {
+    translate: 0 0;
+    scale: 1.08;
+  }
+  75% {
+    scale: 0.97;
+  }
+  100% {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
 /* The ground shadow of a unit entering the field: it needs not exist until the
    unit has almost landed. Filled with `backwards` (not `both`) on purpose, so an
    entered unit can still be dimmed or faded by its own classes afterwards. */

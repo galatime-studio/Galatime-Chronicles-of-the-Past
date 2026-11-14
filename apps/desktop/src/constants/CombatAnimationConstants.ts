@@ -9,6 +9,10 @@
  *                    the state is swapped in (health drains, corpses start to sink)
  *   t = TOTAL        the reactions are over and the next turn may begin
  *
+ * A death-triggered summon is the exception: it waits for the corpse to finish sinking
+ * and is then born out of the spot the body left, so the split reads as a consequence
+ * of the death instead of arriving with the blow.
+ *
  * The beats are driven from `CombatEncounter` (which swaps the state at IMPACT) and read
  * by the presentation layer, so a single set of numbers keeps the visuals and the turn
  * loop in step.
@@ -41,6 +45,30 @@ export const ARENA_ENTER_MS = 480;
 
 /** Extra delay between consecutive entering units of the same event. */
 export const ARENA_ENTER_STAGGER_MS = 130;
+
+/**
+ * How long a defeated unit takes to sink out of the board.
+ *
+ * Matches the corpse's `delay-1000` + `duration-700` in `CombatFormationEntity`. The
+ * choreography reads it to know when a death-spawned unit may be born.
+ */
+export const ARENA_DEATH_SINK_MS = 1700;
+
+/**
+ * How long a unit born out of a corpse takes to travel from the body's spot to its post.
+ */
+export const ARENA_BIRTH_MS = 520;
+
+/** Extra delay between two consecutive units born out of the same corpse. */
+export const ARENA_BIRTH_STAGGER_MS = 120;
+
+/**
+ * When the first birth starts, measured from the impact.
+ *
+ * A short gap past the sink so the corpse has already been taken off its line: the
+ * spot it leaves is where the brood emerges from.
+ */
+export const ARENA_BIRTH_DELAY_MS = ARENA_DEATH_SINK_MS + 120;
 
 /** How long a unit takes to re-place itself after its battle line changed. */
 export const ARENA_STEP_MS = 460;

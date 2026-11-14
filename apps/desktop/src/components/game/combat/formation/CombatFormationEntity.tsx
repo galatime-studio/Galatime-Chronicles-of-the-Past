@@ -5,6 +5,8 @@ import { autoUpdate, flip, offset, shift, size, useFloating } from '@floating-ui
 import CommonImage from '../../../common/CommonImage';
 import { ElementIcon, SelectorIcon } from '../../../../assets/GalatimeIcon';
 import {
+    ARENA_BIRTH_MS,
+    ARENA_DEATH_SINK_MS,
     ARENA_ENTER_MS,
     ARENA_ENTER_STAGGER_MS,
     ARENA_IMPACT_MS,
@@ -30,6 +32,8 @@ type ArenaLayerStyle = CSSProperties & {
     '--arena-dir'?: number;
     '--arena-step-dx'?: string;
     '--arena-step-dy'?: string;
+    '--arena-birth-dx'?: string;
+    '--arena-birth-dy'?: string;
 };
 
 /** Status chips drawn on a sprite before the rest are dropped; the tooltip lists them all. */
@@ -49,7 +53,7 @@ const STATUS_TONE_COLORS: Record<'buff' | 'debuff' | 'neutral', string> = {
  * Kept as a number rather than read off the element because the animation can be skipped
  * (`prefers-reduced-motion`) and the lane must still learn that the unit is gone.
  */
-const DEATH_SINK_MS = 1700;
+const DEATH_SINK_MS = ARENA_DEATH_SINK_MS;
 
 /**
  * Chip colour for an action's efficacy against a target.
@@ -148,6 +152,14 @@ interface CombatFormationEntityProps {
      * re-place, which needs no numbers.
      */
     stepFrom?: { dx: number; dy: number };
+    /**
+     * The unit is born out of a corpse this step.
+     *
+     * It waits for the body to sink and then travels from the spot the corpse left to
+     * its own post, so a death-split reads as the body bursting into its brood. The
+     * offsets are measured by the side, which knows both slots on its ground plane.
+     */
+    birth?: { dx: number; dy: number; delayMs: number };
     /** The resolved sprite faces away from this unit's side; draw it flipped. */
     spriteMirrored?: boolean;
     isFocused: boolean;
@@ -207,6 +219,7 @@ export function CombatFormationEntity({
     wallOut,
     wallUp,
     stepFrom,
+    birth,
     spriteMirrored = false,
     isFocused,
     hasFocus,
@@ -260,7 +273,9 @@ export function CombatFormationEntity({
     const enterIndex = sequence
         ? Math.max(sequence.summoned.indexOf(entity.id), sequence.transformed.indexOf(entity.id))
         : -1;
-    const entering = enterIndex >= 0;
+    // A birth is its own entrance: it must not also play the drop-in used by summons
+    // that arrive with the blow.
+    const entering = enterIndex >= 0 && birth === undefined;
     // A line change re-places the unit: its node remounts into the new row when the
     // state swaps, and the row's keyframe carries it from the old spot to the new one.
     const steppedIndex = sequence?.stepped.indexOf(entity.id) ?? -1;
@@ -282,10 +297,19 @@ export function CombatFormationEntity({
 
     const lungeStyle: ArenaLayerStyle = {
         ...journey,
+        ...(birth
+            ? {
+                '--arena-birth-dx': `${Math.round(birth.dx)}px`,
+                '--arena-birth-dy': `${Math.round(birth.dy)}px`,
+            }
+            : {}),
         '--arena-dir': arenaDir,
         animation: [
             isActor ? `combat-lunge ${ARENA_LUNGE_MS}ms ease-in-out both` : null,
             entering ? `combat-enter ${ARENA_ENTER_MS}ms ease-out both ${enterDelay}ms` : null,
+            birth
+                ? `combat-birth ${ARENA_BIRTH_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1) both ${birth.delayMs}ms`
+                : null,
             stepped
                 ? `combat-step-${lane === 'front' ? 'forward' : 'back'} ${ARENA_STEP_MS}ms ease-out both ${stepDelay}ms`
                 : null,
@@ -482,7 +506,11 @@ export function CombatFormationEntity({
                             <span
                                 aria-hidden="true"
                                 className={`pointer-events-none absolute bottom-0 inset-x-0 mx-auto h-1.5 w-4/5 rounded-full bg-black/55 blur-[2px] transition-opacity duration-700 motion-reduce:transition-none ${isDying ? 'delay-1000 opacity-0' : ''}`}
-                                style={entering ? { animation: `combat-enter-shadow ${ARENA_ENTER_MS}ms ease-out backwards ${enterDelay}ms` } : undefined}
+                                style={birth
+                                    ? { animation: `combat-enter-shadow ${ARENA_BIRTH_MS}ms ease-out backwards ${birth.delayMs}ms` }
+                                    : entering
+                                        ? { animation: `combat-enter-shadow ${ARENA_ENTER_MS}ms ease-out backwards ${enterDelay}ms` }
+                                        : undefined}
                             />
                             {/* Whose turn it is, pinned over the acting unit's head. The
                                 icon is sized by font-size: `MiscIcon` draws at `1em`. */}
@@ -513,6 +541,7 @@ export function CombatFormationEntity({
                                         translate and the row's scale untouched. */}
                                     <span
                                         className="block"
+                                        data-unit-sprite=""
                                         style={{ transform: spriteMirrored ? 'scaleX(-1)' : undefined }}
                                     >
                                         <CommonImage

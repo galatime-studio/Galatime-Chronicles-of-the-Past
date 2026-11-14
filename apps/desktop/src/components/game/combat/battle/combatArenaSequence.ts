@@ -9,6 +9,9 @@
  */
 
 import {
+    ARENA_BIRTH_DELAY_MS,
+    ARENA_BIRTH_MS,
+    ARENA_BIRTH_STAGGER_MS,
     ARENA_ENTER_MS,
     ARENA_ENTER_STAGGER_MS,
     ARENA_HIT_STAGGER_MS,
@@ -78,6 +81,21 @@ export interface ArenaReflectBeat {
     amount: number;
 }
 
+/**
+ * A unit born out of a corpse.
+ *
+ * A death-triggered summon (a slime splitting, a tree bursting into flowerlings) does
+ * not pop in with the blow: it is born after the body has sunk, emerging from the spot
+ * the corpse left and travelling to its own post.
+ */
+export interface ArenaBirth {
+    unitId: string;
+    /** The unit that died and left the spot this birth starts from. */
+    sourceId: string;
+    /** Delay after the impact: long enough for the corpse's sink to finish. */
+    delayMs: number;
+}
+
 /** Everything one resolved step should show on the board. */
 export interface ArenaSequence {
     /** Monotonic id, so a component can tell one sequence from the next. */
@@ -95,6 +113,8 @@ export interface ArenaSequence {
     reflected: ArenaReflectBeat[];
     summoned: string[];
     transformed: string[];
+    /** Summons born out of a corpse this step, in event order. */
+    births: ArenaBirth[];
     /**
      * Units whose battle line changed this step.
      *
@@ -167,6 +187,8 @@ export function buildArenaSequence(
     const summoned: string[] = [];
     const transformed: string[] = [];
     const stepped: string[] = [];
+    /** Summon events kept whole: the source is what decides whether it is a birth. */
+    const summonEvents: Array<{ unitId: string; sourceId: string }> = [];
     let shake = false;
 
     const pushDirectHit = (
@@ -284,6 +306,7 @@ export function buildArenaSequence(
                 break;
             case 'unit_summoned':
                 if (!summoned.includes(event.unitId)) summoned.push(event.unitId);
+                summonEvents.push({ unitId: event.unitId, sourceId: event.sourceId });
                 break;
             case 'unit_transformed':
                 if (!transformed.includes(event.unitId)) transformed.push(event.unitId);
@@ -294,6 +317,19 @@ export function buildArenaSequence(
             default:
                 break;
         }
+    }
+
+    // A death-triggered summon waits for its summoner's sink: the corpses are known
+    // only once the whole event list has been read, and the brood is staggered as a
+    // second burst after them.
+    const births: ArenaBirth[] = [];
+    for (const event of summonEvents) {
+        if (!defeated.includes(event.sourceId)) continue;
+        births.push({
+            unitId: event.unitId,
+            sourceId: event.sourceId,
+            delayMs: ARENA_BIRTH_DELAY_MS + births.length * ARENA_BIRTH_STAGGER_MS,
+        });
     }
 
     // One stagger step per target, in the order the action reached them.
@@ -340,6 +376,7 @@ export function buildArenaSequence(
     const stepBursts = stepped.length;
     const lastHitDelay = hits.reduce((latest, hit) => Math.max(latest, hit.delayMs), 0);
     const lastStatusDelay = Math.max(0, Math.min(statuses.length - 1, 3)) * ARENA_STATUS_STAGGER_MS;
+    const lastBirthDelay = births.reduce((latest, birth) => Math.max(latest, birth.delayMs), 0);
     const totalMs = Math.max(
         quiet ? ARENA_QUIET_TOTAL_MS : ARENA_TOTAL_MS,
         hits.length > 0 ? ARENA_IMPACT_MS + lastHitDelay + ARENA_SETTLE_MS : 0,
@@ -350,6 +387,9 @@ export function buildArenaSequence(
         stepBursts > 0
             ? ARENA_IMPACT_MS + ARENA_STEP_MS + Math.max(0, stepBursts - 1) * ARENA_STEP_STAGGER_MS
             : 0,
+        // The brood is the last beat of a death-split: the turn may only resume once
+        // the last born unit has reached its post.
+        births.length > 0 ? ARENA_IMPACT_MS + lastBirthDelay + ARENA_BIRTH_MS : 0,
     );
 
     return {
@@ -365,6 +405,7 @@ export function buildArenaSequence(
         reflected,
         summoned,
         transformed,
+        births,
         stepped,
         shake,
     };

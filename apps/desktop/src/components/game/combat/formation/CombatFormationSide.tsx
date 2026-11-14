@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ARENA_IMPACT_MS } from '../../../../constants/CombatAnimationConstants';
 import { CombatFormationEntity } from './CombatFormationEntity';
 import type { ArenaSequence } from '../battle/combatArenaSequence';
 import type {
@@ -111,6 +112,51 @@ export function CombatFormationSide({
     };
 
     /**
+     * Where each unit was last drawn, in board pixels (distance from the side's bottom).
+     *
+     * A corpse leaves the roster once it is buried, but a death-split's brood is born
+     * from the spot it left — a spot only knowable while the body is still standing, or
+     * right after it is gone.
+     */
+    const lastSlots = useRef(new Map<string, { out: number; up: number }>());
+
+    /**
+     * Brood that has reached its birth beat.
+     *
+     * A death-split's units stay off the wall until the corpse has finished sinking:
+     * joining at the state swap would re-space the line under the body and drag it out
+     * of its own death. They are released together, on the group's first beat.
+     */
+    const [born, setBorn] = useState<ReadonlySet<string>>(() => new Set<string>());
+
+    /** Each death-split unit and the beat its group emerges on. */
+    const birthGroups = useMemo(() => {
+        const groups = new Map<string, { start: number; unitIds: string[] }>();
+        for (const birth of sequence?.births ?? []) {
+            const group = groups.get(birth.sourceId);
+            if (group) {
+                group.start = Math.min(group.start, birth.delayMs);
+                group.unitIds.push(birth.unitId);
+            } else {
+                groups.set(birth.sourceId, { start: birth.delayMs, unitIds: [birth.unitId] });
+            }
+        }
+        return groups;
+    }, [sequence]);
+
+    const birthsByUnit = useMemo(
+        () => new Map((sequence?.births ?? []).map((birth) => [birth.unitId, birth] as const)),
+        [sequence],
+    );
+
+    /** Corpses still holding their slot for a brood that has not been born yet. */
+    const pendingSources = new Set(
+        (sequence?.births ?? [])
+            .filter((birth) => !born.has(birth.unitId))
+            .map((birth) => birth.sourceId),
+    );
+
+    /**
      * Measured ground of the side.
      *
      * None of these numbers is in the markup: the side's box comes from the screen
@@ -157,6 +203,34 @@ export function CombatFormationSide({
         });
     }, [lanes]);
 
+    // The spot table only serves the step being narrated: once the choreography ends
+    // nothing can be born from it, so no stale position survives into the next fight.
+    useEffect(() => {
+        if (!sequence) lastSlots.current.clear();
+    }, [sequence]);
+
+    // The brood joins the wall on its birth beat, not at the state swap. The clock here
+    // starts when the sequence is handed over, so the impact offset is added back. A
+    // group is released whole even when its units are staggered by the keyframe.
+    useEffect(() => {
+        setBorn((current) => (current.size === 0 ? current : new Set<string>()));
+        if (birthGroups.size === 0) return undefined;
+
+        const timers = [...birthGroups.values()].map((group) => setTimeout(() => {
+            setBorn((current) => {
+                const missing = group.unitIds.filter((id) => !current.has(id));
+                if (missing.length === 0) return current;
+                const next = new Set(current);
+                for (const id of missing) next.add(id);
+                return next;
+            });
+        }, ARENA_IMPACT_MS + group.start));
+
+        return () => {
+            for (const timer of timers) clearTimeout(timer);
+        };
+    }, [birthGroups]);
+
     useLayoutEffect(() => {
         const board = boardRef.current;
         if (!board) return undefined;
@@ -174,8 +248,12 @@ export function CombatFormationSide({
             // entrance, the rear wall's scale) would otherwise be measured mid-transform.
             const entitySize = board.querySelector('button')?.offsetWidth ?? 0;
             // The *drawn* sprite rides the button's bottom, so the wall's build-up and
-            // centring are measured on the sprite itself, not the button box.
-            const spriteSize = (board.querySelector('button img') as HTMLElement | null)?.offsetHeight ?? 0;
+            // centring are measured on the sprite itself, not the button box. The sprite is
+            // tagged rather than matched as `button img`: a raster sprite is a canvas, and
+            // the damage number's element orb is an `<img>` inside the same button — measuring
+            // that would re-centre the whole wall the moment a blow lands.
+            const sprite = board.querySelector('[data-unit-sprite]') as HTMLElement | null;
+            const spriteSize = sprite?.offsetHeight ?? 0;
             const laneWidth = frontLaneRef.current?.clientWidth ?? board.clientWidth;
 
             setMetrics((current) => (
@@ -219,9 +297,17 @@ export function CombatFormationSide({
                 // who is no longer there. Only a *defeated* unit can be filtered out: were
                 // the mark ever to outlive its fight, the same id coming back alive must
                 // still be drawn.
-                const roster = (lanes[lane] ?? []).filter(
-                    (entity) => !(entity.status === 'defeated' && buried.has(entity.id)),
-                );
+                const roster = (lanes[lane] ?? []).filter((entity) => {
+                    // The brood waits off the wall until its beat: joining at the state
+                    // swap would re-space the line under the corpse that is still sinking.
+                    if (birthsByUnit.has(entity.id) && !born.has(entity.id)) return false;
+                    // The body keeps its slot until its brood is born, so the line changes
+                    // once — the corpse leaves and the brood enters in the same render.
+                    if (entity.status === 'defeated' && buried.has(entity.id) && !pendingSources.has(entity.id)) {
+                        return false;
+                    }
+                    return true;
+                });
                 const isRearWall = lane === 'rear';
                 const laneBottom = isRearWall
                     ? metrics.frontBottom + metrics.lift
@@ -255,6 +341,28 @@ export function CombatFormationSide({
                         ? { dx: -metrics.lift, dy: -metrics.lift }
                         : { dx: metrics.lift, dy: -metrics.lift })
                     : undefined;
+                // The wall runs out from its low end: the last slot stands on
+                // the wall's own ground, every earlier slot a step higher
+                // and — along the flattened diagonal — the same distance
+                // further inboard. Slot 0 rides the crest, the one nearest
+                // the central gap's top.
+                const placed = roster.map((entity, index) => ({
+                    entity,
+                    up: Math.max(0, feetBase - laneBottom)
+                        + (roster.length - 1 - index) * step * climb,
+                    out: Math.max(
+                        WALL_EDGE_PX,
+                        WALL_EDGE_PX + lowOut - (isRearWall ? metrics.lift : 0),
+                    ) + (roster.length - 1 - index) * step,
+                }));
+                // Remember every drawn spot, corpses included: the born units read the
+                // body's last place from here once it has left the roster.
+                for (const unit of placed) {
+                    lastSlots.current.set(`${side}:${unit.entity.id}`, {
+                        out: unit.out,
+                        up: unit.up + laneBottom,
+                    });
+                }
 
                 return (
                     <div
@@ -264,20 +372,27 @@ export function CombatFormationSide({
                         aria-label={`${sideLabel} ${lane} line`}
                         className={`combat-arena-row ${lane === 'front' ? 'combat-arena-row--front' : 'combat-arena-row--rear'}`}
                     >
-                        {roster.map((entity, index) => {
+                        {placed.map(({ entity, up, out }, index) => {
                             const key = entityKey(side, lane, entity);
-                            // The wall runs out from its low end: the last slot stands on
-                            // the wall's own ground, every earlier slot a step higher
-                            // and — along the flattened diagonal — the same distance
-                            // further inboard. Slot 0 rides the crest, the one nearest
-                            // the central gap's top.
-                            const up = Math.max(0, feetBase - laneBottom)
-                                + (roster.length - 1 - index) * step * climb;
-                            const outBase = Math.max(
-                                WALL_EDGE_PX,
-                                WALL_EDGE_PX + lowOut - (isRearWall ? metrics.lift : 0),
-                            );
-                            const out = outBase + (roster.length - 1 - index) * step;
+                            // A birth emerges from the corpse's last spot: the side knows
+                            // both slots on its own ground plane, so it hands the entity
+                            // the travel it must play. The group's first beat is the mount;
+                            // later siblings stagger only the keyframe.
+                            const birthBeat = birthsByUnit.get(entity.id);
+                            const groupStart = birthBeat
+                                ? birthGroups.get(birthBeat.sourceId)?.start ?? birthBeat.delayMs
+                                : 0;
+                            const source = birthBeat
+                                ? lastSlots.current.get(`${side}:${birthBeat.sourceId}`)
+                                : undefined;
+                            const birth = birthBeat
+                                ? {
+                                    dx: source ? (side === 'allies' ? source.out - out : out - source.out) : 0,
+                                    dy: source ? up + laneBottom - source.up : 0,
+                                    delayMs: birthBeat.delayMs - groupStart,
+                                }
+                                : undefined;
+
                             return (
                                 <CombatFormationEntity
                                     key={key}
@@ -288,6 +403,7 @@ export function CombatFormationSide({
                                     wallOut={out}
                                     wallUp={up}
                                     stepFrom={stepFrom}
+                                    birth={birth}
                                     // A corpse cannot be inspected: it is on its way off the board.
                                     isFocused={focusedKey === key && entity.status !== 'defeated'}
                                     hasFocus={focusedKey !== null}
