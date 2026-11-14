@@ -192,6 +192,17 @@ export const AI_EFFECT_REFERENCE = 40;
 /** How far a disliked-but-legal target's score is scaled down (never to zero). */
 export const AI_TARGET_BIAS_FLOOR = 0.5;
 
+/**
+ * How far a preference has to separate two aims before it counts as a choice.
+ *
+ * The preference is read as a rank inside the pool of aims the action could
+ * have picked, so the spread of that pool decides how much the floor bites.
+ * A pool that barely separates its aims (two enemies in the same shape) is not
+ * a choice, and every aim in it keeps its full value; a pool that clearly
+ * separates them (one enemy at a third of its bar, another untouched) is.
+ */
+export const AI_PREFERENCE_DISCRIMINATION = 0.25;
+
 /** Guards the threat normalisation against a divide by zero. */
 export const AI_MIN_THREAT = 1;
 
