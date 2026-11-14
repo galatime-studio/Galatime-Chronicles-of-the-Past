@@ -580,6 +580,29 @@ img {
     @apply px-5 py-1 text-base;
   }
 
+  /* CommonSlider layered defaults.
+   *
+   * The row, its title, the value readout and the track live in the `components`
+   * cascade layer, which Tailwind emits BEFORE the `utilities` layer. Any utility a
+   * call site passes in `className` (width, gap, title size, …) therefore wins
+   * deterministically - a call site can turn the spread row into a compact group with
+   * `w-fit gap-2` without needing the `!` important suffix. */
+  .common-slider {
+    @apply flex flex-row items-center w-full gap-4 select-none;
+  }
+
+  .common-slider-title {
+    @apply text-white text-lg font-medium whitespace-nowrap;
+  }
+
+  .common-slider-value {
+    @apply font-custom text-sm text-white/80 tabular-nums whitespace-nowrap;
+  }
+
+  .common-slider-track {
+    @apply relative flex items-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-galatime-accent;
+  }
+
   /* CommonInput underline.
    *
    * The rule is a separate layer under the field, so growing the line never

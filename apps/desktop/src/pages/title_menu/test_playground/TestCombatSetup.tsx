@@ -162,11 +162,11 @@ export function TestCombatSetup({
             </div>
 
             <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t-game border-white/10 pt-3">
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center gap-8">
                     {/* The hour of the day: a solar skill bites harder by day and a
                         lunar one at night, so the fight is worth setting up in
                         the light the author had in mind. */}
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <CommonSlider
                             title={t('playground.combat.hour')}
                             titleClassName="text-xs uppercase tracking-[0.15em] text-white/50"
@@ -182,7 +182,7 @@ export function TestCombatSetup({
                             value={hour}
                             onChange={onHourChange}
                             formatValue={(next) => `${String(next).padStart(2, '0')}:00`}
-                            className="max-w-80 gap-2"
+                            className="w-fit gap-2"
                         />
                         <span className="text-xs uppercase tracking-[0.15em] text-white/40">
                             {hour >= 6 && hour < 18 ? t('playground.combat.day') : t('playground.combat.night')}

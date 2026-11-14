@@ -189,12 +189,24 @@ export function TestSkillTreePanel() {
                 })}
             </div>
 
-            <div className="flex min-h-0 flex-1 gap-2">
-                {/* Pagination: one page per skill tree the selection opens. */}
+            <div className="relative min-h-0 flex-1 overflow-hidden border-game border-white/10 bg-galatime-background">
+                <div className="pointer-events-none absolute inset-0 opacity-30 bg-[linear-gradient(to_right,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-size-[32px_32px]" />
+                {visibleAttacks.length === 0 ? (
+                    <div className="relative flex h-full items-center justify-center px-4 text-center text-sm text-white/45">
+                        {t('playground.skillTree.empty')}
+                    </div>
+                ) : (
+                    <SkillTreeMap layout={layout} />
+                )}
+
+                {/* Pagination: one page per skill tree the selection opens. It is the
+                    same island the zoom controls use, standing on the other side of
+                    the map and wrapping its own pages. */}
                 {controlledTrees.length > 0 && (
                     <nav
                         aria-label={t('playground.skillTree.pages')}
-                        className="flex shrink-0 flex-col items-center gap-1 border-game border-white/10 bg-galatime-background p-1"
+                        className="absolute left-3 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 border-game border-white/10 bg-black/50 p-1"
+                        onPointerDown={(event) => event.stopPropagation()}
                     >
                         {controlledTrees.map((treeId) => {
                             const tree = elements.find((element) => element.id === treeId);
@@ -207,9 +219,9 @@ export function TestSkillTreePanel() {
                                         aria-pressed={isActive}
                                         aria-label={tree?.name ?? treeId}
                                         onPress={() => setActiveTreeId(treeId)}
-                                        className={`h-9 w-9 p-0 ${isActive
-                                            ? 'border-game border-white/70 bg-white text-galatime-dark'
-                                            : 'border-game border-white/10 opacity-60 hover:opacity-100'
+                                        className={`h-7 w-7 p-0 ${isActive
+                                            ? 'bg-white text-galatime-dark opacity-100'
+                                            : 'opacity-70 hover:opacity-100'
                                             }`}
                                     >
                                         <ElementIcon id={treeId} className="h-5 w-5" />
@@ -219,17 +231,6 @@ export function TestSkillTreePanel() {
                         })}
                     </nav>
                 )}
-
-                <div className="relative min-h-0 flex-1 overflow-hidden border-game border-white/10 bg-galatime-background">
-                    <div className="pointer-events-none absolute inset-0 opacity-30 bg-[linear-gradient(to_right,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-size-[32px_32px]" />
-                    {visibleAttacks.length === 0 ? (
-                        <div className="relative flex h-full items-center justify-center px-4 text-center text-sm text-white/45">
-                            {t('playground.skillTree.empty')}
-                        </div>
-                    ) : (
-                        <SkillTreeMap layout={layout} />
-                    )}
-                </div>
             </div>
         </div>
     );

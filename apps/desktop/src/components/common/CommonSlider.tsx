@@ -121,22 +121,22 @@ const CommonSlider: React.FC<CommonSliderProps> = ({
         : Math.min(numBars, Math.ceil((percentage / 100) * numBars));
 
     return (
-        <div className={`flex flex-row items-center w-full gap-4 select-none ${className}`}>
-            <span className={`text-white text-lg font-medium whitespace-nowrap ${titleClassName}`}>
+        <div className={`common-slider ${className}`}>
+            <span className={`common-slider-title ${titleClassName}`}>
                 {title}
             </span>
 
             <div className="flex-1" />
 
             {formatValue ? (
-                <span className="font-custom text-sm text-white/80 tabular-nums whitespace-nowrap">
+                <span className="common-slider-value">
                     {formatValue(displayValue)}
                 </span>
             ) : null}
 
             <div
                 ref={containerRef}
-                className={`relative flex items-center shrink-0 cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-galatime-accent ${sliderContainerClassName}`}
+                className={`common-slider-track group ${sliderContainerClassName}`}
                 style={{ width: `${trackWidth}px`, height: `${maxBarHeight}px` }}
                 role="slider"
                 tabIndex={0}
