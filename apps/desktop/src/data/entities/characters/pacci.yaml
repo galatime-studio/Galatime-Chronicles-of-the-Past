@@ -24,7 +24,7 @@ base_stats:
   magical_defense: 117
   speed: 58
 
-skills:
+skills: #todo
   - garden_of_renewal
   - verdant_rite
   - pollen_ward

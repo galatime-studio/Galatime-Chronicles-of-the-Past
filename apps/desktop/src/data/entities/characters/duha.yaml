@@ -22,7 +22,7 @@ base_stats:
   magical_defense: 43
   speed: 71
 
-skills:
+skills: #todo
   - gale_resonance
   - eye_of_the_storm
   - cloudpiercer

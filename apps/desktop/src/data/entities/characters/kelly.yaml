@@ -22,10 +22,24 @@ base_stats:
   magical_defense: 41
   speed: 71
 
-skills:
-  - focus
-  - stone_body
-  - mega_punch
-  - earthen_roar
+skills: #todo
+  - veil_walk
+  - umbral_ambush
+  - thunderclap
+  - lightning_bolt
 
 weapon:
+  id: nightfang_daggers
+  name: Nightfang Daggers
+  description: "A pair of matte-black knives balanced for close work. They bite deepest when the wielder is already hidden in shadow."
+  type: dagger
+  element: umbra
+  damage_type: physical
+  target: any_one
+  range: short
+  power: 26
+  accuracy: 95
+  hits: 3
+  stamina_cost: 1
+  damage_variance: [0.8, 1.2]
+  durability: { max: 150, wear: 1 }

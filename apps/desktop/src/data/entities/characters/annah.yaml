@@ -25,7 +25,7 @@ base_stats:
   magical_defense: 83
   speed: 59
 
-skills:
+skills: #todo
   - frostbite
   - glacial_blades
   - blizzard

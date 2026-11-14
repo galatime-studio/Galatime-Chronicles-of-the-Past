@@ -22,11 +22,11 @@ base_stats:
   magical_defense: 71
   speed: 60
 
-skills:
-  - chaos_mark
-  - chaotic_barrage
-  - floral_barrage
-  - nature_surge
+skills: #todo
+  - tidal_pull
+  - condensation
+  - dread
+  - crimson_siphon
 
 
 weapon: military_sword

@@ -23,7 +23,7 @@ base_stats:
   magical_defense: 101
   speed: 41
 
-skills:
+skills: #todo
   - night_veil
   - mass_terror
   - total_darkness

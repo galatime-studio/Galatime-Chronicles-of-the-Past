@@ -19,11 +19,14 @@ base_stats:
   stamina: 15
   physical_attack: 15
   magical_attack: 132
-  physical_defense: 15  
+  physical_defense: 15
   magical_defense: 26
   speed: 104
 
-skills:
-  - focus
+skills: #todo
+  - punch
+  - punch
+  - punch
+  - punch
 
 weapon:

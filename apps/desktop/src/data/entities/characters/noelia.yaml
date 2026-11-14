@@ -9,7 +9,6 @@ origin: Atlaria
 description: >
   Noelia has long, dark brown hair parted down the middle, and she wears gold earrings. She wears a scarf and a silver necklace layered over a white turtleneck shirt. She wears a grey knit jacket with short sleeves over the shirt. She is wearing a simple black skirt, cinched with a grey belt featuring a gold buckle. This is paired with tights and black knee-high boots. A large gold ring sits on her left index finger.
 
-
 elements:
   - corrupted_day
 
@@ -23,11 +22,25 @@ base_stats:
   magical_defense: 64
   speed: 70
 
-skills:
-  - recognition
-  - celestial_strike
-  - mana50
-  - recover
+skills: #todo
+  - smite
+  - radiance
+  - greater_life_drain
+  - mending_bloom
 
 
 weapon:
+  id: sunpetal_rapier
+  name: Sunpetal Rapier
+  description: "A slender duelling rapier whose gilt guard unfolds like a flower. It carries Lux along the blade, so its edge answers to wit rather than strength."
+  type: longsword
+  element: lux
+  damage_type: magical
+  target: any_one
+  range: medium
+  power: 34
+  accuracy: 100
+  hits: 1
+  stamina_cost: 2
+  damage_variance: [0.9, 1.1]
+  durability: { max: 140, wear: 1 }

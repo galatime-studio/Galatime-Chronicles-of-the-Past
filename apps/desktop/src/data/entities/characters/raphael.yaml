@@ -24,7 +24,7 @@ base_stats:
   magical_defense: 100
   speed: 32
 
-skills:
+skills: #todo
   - challenger_stance
   - stone_fortress
   - granite_hide

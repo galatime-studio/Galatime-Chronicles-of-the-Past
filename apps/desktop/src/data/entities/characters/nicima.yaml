@@ -22,7 +22,7 @@ base_stats:
   magical_defense: 69
   speed: 75
 
-skills:
+skills: #todo
   - radiant_mend
   - morning_blessing
   - ward_of_light

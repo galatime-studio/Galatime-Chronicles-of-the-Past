@@ -22,10 +22,10 @@ base_stats:
   magical_defense: 55
   speed: 88
 
-skills:
-  - focus
-  - stone_body
-  - mega_punch
-  - earthen_roar
+skills: #todo
+  - punch
+  - punch
+  - punch
+  - punch
 
 weapon:

@@ -23,9 +23,9 @@ base_stats:
   magical_defense: 46
   speed: 48
 
-skills:
-  - bone_crusher
-  - perfect_ripple_punch
+skills: #todo
+  - perfect_punch
+  - ripple_punch_II
   - battle_fury
   - granite_hide
 

@@ -191,7 +191,7 @@ elements:
   # ------------------------------------------------------------
 
   corrupted_blaze:
-    name: Corrupted Blaze
+    name: Corrupted Blaze # Ignis + Lapis = magma
     description: "???"
     type: corrupted
     skill_trees: [ignis, corporis, vis, vetus]
@@ -205,7 +205,7 @@ elements:
       super_weak:   [aqua]
 
   corrupted_day:
-    name: Corrupted Day
+    name: Corrupted Day # Lux + Florere = rays
     description: "???"
     type: corrupted
     skill_trees: [lux, corporis, vis, vetus]
@@ -219,7 +219,7 @@ elements:
       super_weak:   [umbra]
 
   corrupted_forest:
-    name: Corrupted Forest
+    name: Corrupted Forest # Florere + Lapis = fertilizer
     description: "???"
     type: corrupted
     skill_trees: [florere, corporis, vis, vetus]
@@ -233,7 +233,7 @@ elements:
       super_weak:   [ignis]
 
   corrupted_ice:
-    name: Corrupted Ice
+    name: Corrupted Ice # Aqua + Umbra = blue ice
     description: "???"
     type: corrupted
     skill_trees: [aqua, corporis, vis, vetus]
@@ -247,7 +247,7 @@ elements:
       super_weak:   [ignis]
 
   corrupted_night:
-    name: Corrupted Night
+    name: Corrupted Night # Umbra + Chaos = dark light
     description: "???"
     type: corrupted
     skill_trees: [umbra, corporis, vis, vetus]
