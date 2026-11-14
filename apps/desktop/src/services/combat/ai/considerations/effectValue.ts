@@ -372,11 +372,6 @@ const STAT_BASE: Record<string, keyof ReturnType<typeof effectiveStats>> = {
  * value is the share of its own stat a buff adds, times the turns it lasts: a
  * +10% attack buff for three turns is three tenths of an extra hit's worth of
  * damage, not a third of a health bar.
- *
- * A debuff only counts when it lands on the other side. On the caster's own
- * side it is the price of the buff, and paying it as if it were a gain is what
- * made a bruiser's `granite_hide` (a `speed: -6` tax on himself) look like a
- * third buff.
  */
 function statValue(
     context: AiDecisionContext,
@@ -388,14 +383,7 @@ function statValue(
     const stats = effectiveStats(bearer);
 
     let share = statShare(readStatDelta(record.buff), stats);
-    // A debuff that lands on the caster's own side is a cost, not a gain. The
-    // `granite_hide` a bruiser casts on himself pays a `speed: -6` as if it
-    // were a benefit, which made the weakest buff in the kit score three times
-    // its worth and kept the AI decorating itself instead of fighting. A
-    // debuff on an enemy is still worth its share.
-    if (bearer.side !== context.actor.side) {
-        share += statShare(readStatDelta(record.debuff), stats);
-    }
+    share += statShare(readStatDelta(record.debuff), stats);
     share += multiplierMagnitude(record.stat_multipliers);
 
     return clamp(share * turns * AI_STAT_TURN_VALUE, 0, AI_STAT_EFFECT_CAP);

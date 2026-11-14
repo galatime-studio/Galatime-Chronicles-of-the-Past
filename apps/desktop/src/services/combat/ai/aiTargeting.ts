@@ -12,25 +12,16 @@
  * aimed at the actor's own side — or a mend aimed at the enemy — is heavily
  * disfavoured. Without it, a tie between a full-health ally and a full-health
  * enemy would be broken by candidate key, and a unit would happily punch itself.
- *
- * The `prefer` list is read as a **rank inside the pool of aims the action
- * could have picked**, not as an absolute reading of the target. It used to
- * score the target on its own (`weakest` = how much of the bar is missing), so
- * a healthy enemy scored zero and *every* attack was halved by the floor while
- * a `self` buff kept its full value: a bruiser with a hundred attack points
- * spent the fight casting its own buffs because its hits were worth half a
- * hit. The rank makes the floor mean what it says — an aim that is worse than
- * the alternative the action had available pays for it, and nothing else does.
  */
 
-import { AI_PREFERENCE_DISCRIMINATION, AI_TARGET_BIAS_FLOOR } from '../../../constants/AiConstants';
+import { AI_TARGET_BIAS_FLOOR } from '../../../constants/AiConstants';
 import type { AiCandidate, AiDecisionContext, AiTargetPreference } from '../../../types/AiType';
 import type { AbilityCondition } from '../../../types/AbilityType';
 import type { CombatAction, CombatUnit } from '../../../types/CombatType';
 import { asRecord, clamp } from '../../../utils/combatUtils';
 import { attackStat, defenseStat } from '../damageCalculator';
 import { effectiveStats } from '../effectResolver';
-import { actionRequiresExplicitTarget, candidateTargetUnits } from './aiCandidates';
+import { candidateTargetUnits } from './aiCandidates';
 import { impactFor } from './aiImpacts';
 import { threatFrom } from './aiThreat';
 
@@ -53,18 +44,16 @@ const SUPPORTIVE_STATUS_NAMES = new Set([
 /**
  * The multiplier a candidate's score is scaled by.
  *
- * `0` when every target is avoided, `1` when the profile has no preference or
- * when the preference cannot tell this aim from the alternatives it had, and
- * a value in `[AI_TARGET_BIAS_FLOOR, 1]` when a preference ranks this aim
- * below the best one available.
+ * `0` when every target is avoided, `1` when the profile has no preference, and
+ * a value in `[AI_TARGET_BIAS_FLOOR, 1]` when a preference applies. Multi-target
+ * actions use the mean bias of the units they land on.
  */
 export function targetBias(context: AiDecisionContext, candidate: AiCandidate): number {
     const targets = candidateTargetUnits(context, candidate);
     if (targets.length === 0) return 1;
 
-    const pool = preferencePool(context, candidate);
     let total = 0;
-    for (const target of targets) total += biasForTarget(context, candidate.action, target, pool);
+    for (const target of targets) total += biasForTarget(context, candidate.action, target);
     return total / targets.length;
 }
 
@@ -72,7 +61,6 @@ function biasForTarget(
     context: AiDecisionContext,
     action: CombatAction,
     target: CombatUnit,
-    pool: readonly CombatUnit[],
 ): number {
     if (isAvoided(context, action, target)) return 0;
 
@@ -86,53 +74,13 @@ function biasForTarget(
     if (prefer.length > 0) {
         let best = 0;
         for (const preference of prefer) {
-            best = Math.max(best, preferenceRank(context, action, target, preference, pool));
+            best = Math.max(best, preferenceScore(context, action, target, preference));
         }
         bias = AI_TARGET_BIAS_FLOOR + (1 - AI_TARGET_BIAS_FLOOR) * clamp(best, 0, 1);
     }
 
     if (isWrongSide(context.actor, action, target)) bias *= WRONG_SIDE_BIAS;
     return bias;
-}
-
-/**
- * The units this aim is ranked against.
- *
- * An action that names one aim (`any_one`, `enemies_lane`) could have picked
- * any other legal aim, so the pool is that whole list. An action that hits a
- * fixed set had no alternative to pick, so its own targets are the pool and
- * the preference cannot discount it.
- *
- * The pool is the side the action's intent points at — the enemies for a blow,
- * the allies for a mend — so the preference is always read among comparable
- * aims. Avoided aims are left out: an immune enemy is never a real
- * alternative, and keeping it in the pool would make the only usable aim look
- * like the worst one available.
- */
-function preferencePool(context: AiDecisionContext, candidate: AiCandidate): CombatUnit[] {
-    const chosen = candidateTargetUnits(context, candidate);
-    if (!actionRequiresExplicitTarget(candidate.action)) return chosen;
-
-    const intent = actionIntent(candidate.action);
-    const preview = context.previews.find((entry) => entry.action.id === candidate.action.id);
-    const byId = new Map(context.state.units.map((unit) => [unit.id, unit]));
-    const pool = (preview?.targetIds ?? [])
-        .map((id) => byId.get(id))
-        .filter((unit): unit is CombatUnit => (
-            unit !== undefined
-            && unit.status === 'alive'
-            && matchesIntentSide(intent, context.actor, unit)
-            && !isAvoided(context, candidate.action, unit)
-        ));
-
-    return pool.length > 0 ? pool : chosen;
-}
-
-/** Whether a unit is on the side the action's intent points at. */
-function matchesIntentSide(intent: ActionIntent, actor: CombatUnit, unit: CombatUnit): boolean {
-    if (intent === 'offensive') return unit.side !== actor.side;
-    if (intent === 'supportive') return unit.side === actor.side;
-    return true;
 }
 
 /** Whether the action's intent points the other way (a blow at an ally, a mend at an enemy). */
@@ -267,45 +215,6 @@ function isAvoided(
     if (avoid.includes('immune') && impactFor(context, action, target).finalDamage <= 0) return true;
     if (avoid.includes('reflect') && reflectsAction(target, action)) return true;
     return false;
-}
-
-/**
- * How well an aim matches a preference, relative to the pool it was picked from.
- *
- * The raw reading of the preference is normalised inside the pool, so the best
- * aim available scores `1` and the worst `0`. A pool that cannot tell its aims
- * apart (one legal target, or two enemies in the same shape) leaves every aim
- * at `1` and the preference costs nothing — that is the whole point of reading
- * a rank instead of an absolute score.
- *
- * A small spread is not a difference: the normalisation is scaled by how far
- * the pool actually spreads, so two aims a hair apart stay both cheap.
- */
-function preferenceRank(
-    context: AiDecisionContext,
-    action: CombatAction,
-    target: CombatUnit,
-    preference: AiTargetPreference,
-    pool: readonly CombatUnit[],
-): number {
-    if (pool.length <= 1) return 1;
-
-    let lowest = Number.POSITIVE_INFINITY;
-    let highest = Number.NEGATIVE_INFINITY;
-    let own = 0;
-    for (const unit of pool) {
-        const score = preferenceScore(context, action, unit, preference);
-        if (score < lowest) lowest = score;
-        if (score > highest) highest = score;
-        if (unit.id === target.id) own = score;
-    }
-
-    const spread = highest - lowest;
-    if (spread <= 0) return 1;
-
-    const rank = (own - lowest) / spread;
-    const significance = clamp(spread / AI_PREFERENCE_DISCRIMINATION, 0, 1);
-    return 1 - significance * (1 - rank);
 }
 
 /** How well a target matches one preference, in `[0, 1]`. */
