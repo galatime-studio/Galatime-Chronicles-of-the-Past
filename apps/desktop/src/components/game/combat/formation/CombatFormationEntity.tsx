@@ -631,41 +631,38 @@ export function CombatFormationEntity({
                                             : 'left-1/2 flex -translate-x-1/2 flex-row items-center gap-1'}`}
                                         style={beat.ambient ? undefined : { bottom: `calc(100% + ${4 + index * 24}px)` }}
                                     >
-                                        {/* The attack's element, always readable: it is what
-                                            tells the player what just hit them. */}
-                                        {elementId && (
-                                            <ElementIcon id={elementId} className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                                        )}
+                                        {/* One animated group: the element orb rides the same
+                                            rise-and-fade as the digits, so it never lingers
+                                            behind after the number has gone. */}
                                         <span
-                                            className={`block whitespace-nowrap font-pixel font-bold leading-none tabular-nums ${beat.ambient ? 'text-xs sm:text-sm' : 'text-sm sm:text-lg'} ${
-                                                !beat.isHit
-                                                    ? 'text-white/85'
-                                                    : beat.kind === 'heal'
-                                                        ? 'text-galatime-stats-gain-health'
-                                                        : beat.ambient
-                                                            ? 'text-galatime-stats-damage'
-                                                            : damageNumberTone(beat.multiplier)
-                                            }`}
+                                            className="flex flex-row items-center gap-1"
                                             style={{
-                                                ...(beat.ambient ? AMBIENT_NUMBER_STYLE : FLOATING_NUMBER_STYLE),
                                                 animation: `${numberAnimation(beat)} 760ms ease-out ${ARENA_IMPACT_MS + beat.delayMs}ms both`,
                                             }}
                                         >
-                                            {numberText(beat, t('combat.miss'))}
-                                            {beat.kind === 'damage' && beat.isHit && beat.hits > 1 && (
-                                                <span className="ml-0.5 align-top text-[0.65em] text-white/80">×{beat.hits}</span>
+                                            {/* The attack's element, always readable: it is what
+                                                tells the player what just hit them. */}
+                                            {elementId && (
+                                                <ElementIcon id={elementId} className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
                                             )}
-                                        </span>
-                                        {/* The exact efficacy is tooltip-grade detail: it only
-                                            shows for players who asked for combat tooltips. */}
-                                        {elementId && showDetails && (
                                             <span
-                                                className={`font-pixel text-[9px] font-bold tabular-nums sm:text-xs ${damageNumberTone(beat.multiplier)}`}
-                                                style={AMBIENT_NUMBER_STYLE}
+                                                className={`block whitespace-nowrap font-pixel font-bold leading-none tabular-nums ${beat.ambient ? 'text-xs sm:text-sm' : 'text-sm sm:text-lg'} ${
+                                                    !beat.isHit
+                                                        ? 'text-white/85'
+                                                        : beat.kind === 'heal'
+                                                            ? 'text-galatime-stats-gain-health'
+                                                            : beat.ambient
+                                                                ? 'text-galatime-stats-damage'
+                                                                : damageNumberTone(beat.multiplier)
+                                                }`}
+                                                style={beat.ambient ? AMBIENT_NUMBER_STYLE : FLOATING_NUMBER_STYLE}
                                             >
-                                                {multiplierLabel(beat.multiplier)}
+                                                {numberText(beat, t('combat.miss'))}
+                                                {beat.kind === 'damage' && beat.isHit && beat.hits > 1 && (
+                                                    <span className="ml-0.5 align-top text-[0.65em] text-white/80">×{beat.hits}</span>
+                                                )}
                                             </span>
-                                        )}
+                                        </span>
                                     </span>
                                 );
                             })}
