@@ -54,6 +54,18 @@ Uma entrada declara onde o personagem aparece; uma alteração muda quem já est
 - Uma **ação** (`character_action`) só declara o que mudou: o que deixas em branco fica como estaba. Levantar-se, sentar-se, dar um passo para o lado ou ficar atrás de alguém são todos o mesmo nó. A pose escolhida leva o movimento consigo — «sentado» implica «sentar-se» — até escolheres outro.
 - O que a entrada e a alteração dizem usa as mesmas palavras na lista de nós, no mapa e na pré-visualização, para os três nunca discordarem.
 
+**Espera (`hold_ms`):**
+Uma entrada, ação ou saída é um nó automático: a conversa atravessa-o e desenha o que ele deixou. Numa sequência de entradas isso é rápido demais para se ver — quem entra aparece já na posição final, e quem sai nunca chega a estar em cena. `hold_ms` é a espera, em milissegundos, que pára a conversa nesse nó o tempo suficiente para a mudança ser vista; a conversa retoma sozinha a seguir.
+
+```yaml
+- type: character_enter
+  character_id: noelia
+  animation_id: run_in_from_right
+  hold_ms: 700        # deixa-a entrar e ficar; sem isto a entrada era instantânea
+```
+
+O campo é opcional e fica vazio por omissão: sem ele, o nó atravessa-se como sempre. Só vale a pena declará-lo onde a mudança precisa de tempo — não em todos os nós de uma cena, senão uma abertura com cinco entradas obriga a esperar por todas. O `animation_id` também diz de que lado a personagem vem (`from_left` / `from_right`), e esse lado ganha ao lado que a posição no palco sugeriria.
+
 **Animações:**
 Uma animação não é um nome para decorar: escolhes três coisas e o editor compõe o `animation_id` que o ficheiro leva.
 | O que escolhes | Valores | Onde aparece |

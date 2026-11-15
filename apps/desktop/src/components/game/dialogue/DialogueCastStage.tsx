@@ -25,6 +25,7 @@ import {
     DIALOGUE_CHARACTER_EXPRESSION_DURATION,
     DIALOGUE_CHARACTER_VARIANTS,
     DIALOGUE_POSE_CHANGE_DURATION,
+    DIALOGUE_RUN_OUT_TRAVEL_MULTIPLIER,
     DIALOGUE_SLOT_MOVE_TRANSITION,
     DIALOGUE_STAND_UP_LIFT_PERCENT,
     DIALOGUE_STEP_ACROSS_DURATION,
@@ -35,6 +36,7 @@ import {
     DIALOGUE_DEFAULT_FLAVOUR,
     resolveAnimationFlavour,
     resolveAnimationKind,
+    resolveAnimationSide,
     type DialogueMotionFlavour,
 } from '../../../constants/DialogueVocabulary';
 
@@ -235,9 +237,14 @@ export function DialogueCastStage({
     const motionFor = (kind: string | null) =>
         actionMotions.get(kind ?? '') ?? actionMotions.get('') as { animate: TargetAndTransition; transition: Transition };
 
-    if (cast.length === 0) {
-        return null;
-    }
+    /**
+     * The stage stays mounted even with nobody on it.
+     *
+     * A beat can empty the cast — the last character leaving is exactly the
+     * movement an exit beat exists to show — and returning `null` here would
+     * unmount the `AnimatePresence` that is mid-exit, cutting the departure to
+     * nothing. An empty stage draws nothing and costs nothing.
+     */
 
     // Laid out for the cast the stage actually has, not for the positions the
     // dialogue asked for.
@@ -260,19 +267,35 @@ export function DialogueCastStage({
                     const kind = resolveAnimationKind(event?.animation_id);
 
                     /**
+                     * The side the movement crosses, when the author named one.
+                     *
+                     * An exit's own `direction` is the node's word for where the
+                     * character goes; anything else is read from the animation
+                     * id, so `run_in_from_right` really comes from the right even
+                     * when the slot the layout gave the character sits on the
+                     * left.
+                     */
+                    const side = resolveAnimationSide(event?.animation_id);
+                    const exitSide = resolveAnimationSide(event?.direction) ?? side;
+
+                    /**
                      * Where the character travels, when they are leaving.
                      *
-                     * An exit has its own side: the node says which way they
-                     * go, and that is the side they walk off towards. While they
-                     * are still on stage the entrance offset is what would
-                     * apply, and the two never apply at the same time.
+                     * A run leaves the stage rather than nudging away from it, so
+                     * its travel is scaled: somebody fleeing has to cross the
+                     * stage to read as fleeing. While a character is still on
+                     * stage the entrance offset is what applies, and the two
+                     * never apply at the same time.
                      */
-                    const exitOffset = event?.kind === 'exit'
-                        && (event.direction === 'left' || event.direction === 'right')
-                        ? (event.direction === 'left' ? -1 : 1) * 0.12 * flavour.travel
+                    const exitOffset = event?.kind === 'exit' && exitSide !== null
+                        ? (exitSide === 'left' ? -1 : 1)
+                            * 0.12
+                            * flavour.travel
+                            * (kind === 'run_out' ? DIALOGUE_RUN_OUT_TRAVEL_MULTIPLIER : 1)
                         : null;
 
-                    const travelOffset = exitOffset ?? resolveEntranceOffset(centre, flavour);
+                    const travelOffset = exitOffset
+                        ?? resolveEntranceOffset(centre, flavour, side);
 
                     // The slot is a full-width box whose centre is moved onto the slot's
                     // position, so the sprite can be sized as a fraction of the stage

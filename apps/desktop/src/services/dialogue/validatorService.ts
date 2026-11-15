@@ -429,6 +429,20 @@ function validateCharacterNode(
             `nodes.${nodeId}.character_id`,
         );
     }
+
+    // The hold turns an automatic node into a beat, so a value the surface
+    // cannot honour as a wait is reported instead of being read as "no hold"
+    // and quietly turning the beat back into an instant crossing.
+    const holdMs: unknown = node.hold_ms;
+
+    if (holdMs !== undefined && (typeof holdMs !== 'number' || !Number.isFinite(holdMs) || holdMs < 0)) {
+        addError(
+            collector,
+            'invalid_hold_ms',
+            `Node "${nodeId}" has a "hold_ms" that is not a number of milliseconds (0 or more).`,
+            `nodes.${nodeId}.hold_ms`,
+        );
+    }
 }
 
 /**

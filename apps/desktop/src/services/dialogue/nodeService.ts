@@ -11,6 +11,7 @@ import type {
     DialogueCastEvent,
     DialogueDelivery,
     DialogueNode,
+    DialogueNodeType,
     DialogueNodeView,
     DialogueSegment,
     EffectOutcome,
@@ -37,6 +38,12 @@ import { resolveVariableSegments } from './variableService';
  * end) stop the walk so the presentation layer can show something. *Automatic*
  * nodes (a `conditional`, a `character_enter`) have no visual of their own, so
  * they apply their side effects and hand over to the next node immediately.
+ *
+ * A staging node may ask the walk to stop anyway, with `hold_ms`: the change it
+ * made is the thing worth watching, so the step ends there and the surface
+ * resumes the walk by itself once the hold is over. Nothing else about the node
+ * changes — `effects_after` are applied on the way out, exactly as they are for
+ * a line.
  *
  * Walking is capped so a dialogue that loops without ever reaching an end is
  * reported as an authoring error instead of hanging the game.
@@ -202,6 +209,12 @@ export function advanceToNode(context: NodeContext, startNodeId: string): Advanc
                     emotion: node.emotion,
                 }));
 
+                const holdMs = resolveHoldMs(node.hold_ms);
+
+                if (holdMs > 0) {
+                    return stageResult(nodeId, 'character_enter', node, holdMs, outcome, castEvents);
+                }
+
                 mergeOutcome(outcome, applyEffects(node.effects_after, {
                     state: context.state,
                     isKnownCharacter: context.isKnownCharacter,
@@ -220,6 +233,12 @@ export function advanceToNode(context: NodeContext, startNodeId: string): Advanc
 
                 if (event) {
                     castEvents.push(event);
+                }
+
+                const holdMs = resolveHoldMs(node.hold_ms);
+
+                if (holdMs > 0) {
+                    return stageResult(nodeId, 'character_exit', node, holdMs, outcome, castEvents);
                 }
 
                 mergeOutcome(outcome, applyEffects(node.effects_after, {
@@ -247,6 +266,12 @@ export function advanceToNode(context: NodeContext, startNodeId: string): Advanc
 
                 if (event) {
                     castEvents.push(event);
+                }
+
+                const holdMs = resolveHoldMs(node.hold_ms);
+
+                if (holdMs > 0) {
+                    return stageResult(nodeId, 'character_action', node, holdMs, outcome, castEvents);
                 }
 
                 mergeOutcome(outcome, applyEffects(node.effects_after, {
@@ -652,6 +677,7 @@ function buildLineView(nodeId: string, node: LineNode, state: WorldState): Dialo
         prompt: null,
         next_action: 'continue',
         auto_advance: node.auto_advance === true,
+        hold_ms: 0,
         delivery,
         input_request: null,
     };
@@ -679,6 +705,7 @@ function buildChoiceView(nodeId: string, node: ChoiceNode, state: WorldState): D
         next_action: 'choose',
         // A question is answered by a decision, so it can never skip itself.
         auto_advance: false,
+        hold_ms: 0,
         delivery: 'spoken',
         input_request: null,
     };
@@ -702,6 +729,7 @@ function buildPlayerInputView(nodeId: string, node: PlayerInputNode): DialogueNo
         next_action: 'input',
         // The player has to answer, so the box can never move on by itself.
         auto_advance: false,
+        hold_ms: 0,
         delivery: 'spoken',
         input_request: {
             question: node.question ?? '',
@@ -710,6 +738,63 @@ function buildPlayerInputView(nodeId: string, node: PlayerInputNode): DialogueNo
             placeholder: node.placeholder ?? '',
             options: [...(node.options ?? [])],
         },
+    };
+}
+
+/**
+ * How long the walk stops on a staging node, in milliseconds.
+ *
+ * A missing, negative or unreadable value is no hold at all: the node keeps the
+ * instant crossing it has always had.
+ */
+function resolveHoldMs(holdMs: number | undefined): number {
+    if (typeof holdMs !== 'number' || !Number.isFinite(holdMs) || holdMs <= 0) {
+        return 0;
+    }
+
+    return holdMs;
+}
+
+/**
+ * Builds the view of a staging node the walk is holding on.
+ *
+ * There is nothing to read here: the view exists so the surface can see how long
+ * the hold lasts and move on by itself, and so the animation the node asked for
+ * reaches the stage the same way a line's does. `next_action` is `continue`
+ * because that is exactly what the surface will do — with no player involved.
+ */
+function stageResult(
+    nodeId: string,
+    type: DialogueNodeType,
+    node: { animation_id?: string; emotion?: string },
+    holdMs: number,
+    outcome: EffectOutcome,
+    castEvents: DialogueCastEvent[],
+): AdvanceResult {
+    return {
+        nodeId,
+        nodeType: type,
+        view: {
+            id: nodeId,
+            type,
+            speaker_id: null,
+            emotion: node.emotion ?? null,
+            animation_id: node.animation_id ?? null,
+            text: [],
+            prompt: null,
+            next_action: 'continue',
+            auto_advance: false,
+            hold_ms: holdMs,
+            delivery: 'spoken',
+            input_request: null,
+        },
+        choices: [],
+        interactions: new Map(),
+        completed: false,
+        result: null,
+        outcome,
+        castEvents,
+        error: null,
     };
 }
 

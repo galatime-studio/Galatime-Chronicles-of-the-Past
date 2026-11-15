@@ -491,6 +491,31 @@
      * and `emotion` is the sprite they arrive with, which a line's own
      * `emotion` may override.
      */
+    /**
+     * How long the conversation stops on this node, in milliseconds.
+     *
+     * A staging node is automatic: the conversation crosses it and draws
+     * whatever it left behind, so an entrance nobody waits for is a character
+     * that was always there. The hold is the writer's one lever on that — empty
+     * keeps the crossing instant, anything above it is time for the movement to
+     * be seen.
+     */
+    function holdField(node, onChange) {
+        return ui.field(
+            'Esperar (ms)',
+            ui.text({
+                value: node.hold_ms ? String(node.hold_ms) : '',
+                placeholder: '0',
+                onInput: function (value) {
+                    var parsed = parseInt(value, 10);
+
+                    onChange(isFinite(parsed) && parsed > 0 ? parsed : 0);
+                },
+            }),
+            'Quanto tempo a conversa pára aqui para a entrada, a ação ou a saída ser vista. Vazio segue logo para o nó seguinte.',
+        );
+    }
+
     function renderCharacterEnter(options) {
         var node = options.node;
         var lists = options.lists;
@@ -536,6 +561,9 @@
             ]),
             ui.section('Como se move', [
                 movement.el,
+                holdField(node, function (value) {
+                    options.patch({ hold_ms: value });
+                }),
             ]),
             ui.section('Percurso', [
                 destinationField(options),
@@ -611,6 +639,9 @@
             ]),
             ui.section('Como se move', [
                 movement.el,
+                holdField(node, function (value) {
+                    options.patch({ hold_ms: value });
+                }),
             ]),
             ui.section('Percurso', [
                 destinationField(options),
@@ -647,6 +678,9 @@
             ]),
             ui.section('Como se move', [
                 movement.el,
+                holdField(node, function (value) {
+                    options.patch({ hold_ms: value });
+                }),
             ]),
             ui.section('Percurso', [
                 destinationField(options),

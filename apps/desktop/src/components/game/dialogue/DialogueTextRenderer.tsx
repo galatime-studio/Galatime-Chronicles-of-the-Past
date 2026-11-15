@@ -46,12 +46,12 @@ import {
 /**
  * How each way of speaking is drawn.
  *
- * A thought is dimmer and slanted, a whisper is slanted but not dim, and a
+ * A thought is dimmer and slanted, a whisper is smaller and slanted, and a
  * shout is bold and bright. The wording never changes — only how it reads.
  */
 const DELIVERY_CLASSES: Record<'thought' | 'whisper' | 'shout', string> = {
     thought: 'italic text-white/55',
-    whisper: 'italic text-white/80',
+    whisper: 'italic text-[0.75em] text-white',
     shout: 'font-bold text-white',
 };
 

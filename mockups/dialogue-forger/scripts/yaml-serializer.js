@@ -143,6 +143,7 @@
                 addIf(output, 'depth_of', node.depth_of);
                 addIf(output, 'animation_id', node.animation_id);
                 addIf(output, 'emotion', node.emotion);
+                addHold(output, node);
                 addIf(output, 'next', node.next);
                 break;
 
@@ -156,6 +157,7 @@
                 addIf(output, 'depth_of', node.depth_of);
                 addIf(output, 'emotion', node.emotion);
                 addIf(output, 'animation_id', node.animation_id);
+                addHold(output, node);
                 addIf(output, 'next', node.next);
                 break;
 
@@ -163,6 +165,7 @@
                 output.character_id = node.character_id || '';
                 addIf(output, 'animation_id', node.animation_id);
                 addIf(output, 'direction', node.direction);
+                addHold(output, node);
                 addIf(output, 'next', node.next);
                 break;
 
@@ -381,6 +384,19 @@
         }
 
         return output;
+    }
+
+    /**
+     * The staging hold, written only when the node declares one.
+     *
+     * Every other field is written when it has a value; this one is written when
+     * it has an **effect**, because zero is the same as leaving it out and a
+     * file that mentioned it everywhere would be noise in every node.
+     */
+    function addHold(output, node) {
+        if (typeof node.hold_ms === 'number' && isFinite(node.hold_ms) && node.hold_ms > 0) {
+            output.hold_ms = node.hold_ms;
+        }
     }
 
     /** Copies a non-empty value onto the target. */

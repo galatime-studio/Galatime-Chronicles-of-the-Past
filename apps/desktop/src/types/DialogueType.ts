@@ -420,6 +420,25 @@ export interface ChoiceNode {
 }
 
 /**
+ * How long the automatic walk stops on a staging node, in milliseconds.
+ *
+ * Enter, action and exit nodes are *automatic*: the walk crosses them in the
+ * same step and the stage only ever draws the cast that is left. That is right
+ * for a line that merely settles who is in the conversation, but it leaves
+ * nothing to look at when the movement itself is the point — a chase, somebody
+ * arriving after the first character, somebody fleeing.
+ *
+ * `hold_ms` is the opt-in answer: the walk stops on this node for that long, so
+ * the cast change it made is drawn, and then carries on by itself. Absent (or
+ * `0`) is the ordinary instant crossing, which is what keeps a dialogue from
+ * waiting on every entrance — only the one the author marked.
+ *
+ * The presentation layer skips the wait when the player asked for reduced
+ * motion, and the node's `effects_after` are applied when the wait ends, exactly
+ * as they are for a line the player has finished reading.
+ */
+
+/**
  * Bring a character into the conversation.
  *
  * Everything here is a hint for the presentation layer: `emotion` decides the
@@ -438,6 +457,8 @@ export interface CharacterEnterNode {
     depth_of?: string;
     animation_id?: string;
     emotion?: string;
+    /** How long the walk stops here so the entrance can be seen. */
+    hold_ms?: number;
     next?: string;
     effects_after?: DialogueEffect[];
 }
@@ -458,6 +479,8 @@ export interface CharacterActionNode {
     depth_of?: string;
     emotion?: string;
     animation_id?: string;
+    /** How long the walk stops here so the movement can be seen. */
+    hold_ms?: number;
     next?: string;
     effects_after?: DialogueEffect[];
 }
@@ -469,6 +492,8 @@ export interface CharacterExitNode {
     animation_id?: string;
     /** Direction the character walks off in. */
     direction?: string;
+    /** How long the walk stops here so the departure can be seen. */
+    hold_ms?: number;
     next?: string;
     effects_after?: DialogueEffect[];
 }
@@ -659,6 +684,15 @@ export interface DialogueNodeView {
      * presentation layer can treat it as "this node does not need input".
      */
     auto_advance: boolean;
+    /**
+     * How long the surface holds this node before moving on by itself.
+     *
+     * Non-zero only on a staging node the author marked with `hold_ms`: the node
+     * has nothing to read, so the surface shows no box and waits that long for
+     * the cast change to play. `0` is the ordinary case — the node is either
+     * player-facing, or was crossed in the same step that produced this view.
+     */
+    hold_ms: number;
     /** How the line is delivered. Absent means spoken out loud. */
     delivery: DialogueDelivery;
     /**

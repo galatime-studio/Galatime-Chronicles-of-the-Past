@@ -111,7 +111,18 @@ const NO_SEGMENTS: DialogueSegment[] = [];
 const NO_CAST: DialogueCastMemberView[] = [];
 const NO_CHOICES: DialogueChoiceView[] = [];
 
-export function useDialogueSession(): DialogueSessionState {
+/** Presentation preferences the session has to know about to drive itself. */
+export interface DialogueSessionOptions {
+    /**
+     * Whether the player asked for reduced motion.
+     *
+     * A staging hold exists to let a movement be seen; with the movement gone
+     * there is nothing to wait for, so the walk resumes immediately.
+     */
+    reduceMotion?: boolean;
+}
+
+export function useDialogueSession({ reduceMotion = false }: DialogueSessionOptions = {}): DialogueSessionState {
     const [status, setStatus] = useState<DialogueStatus>('idle');
     const [response, setResponse] = useState<DialogueResponse | null>(null);
     const [error, setError] = useState<DialogueError | null>(null);
@@ -147,6 +158,9 @@ export function useDialogueSession(): DialogueSessionState {
      *
      * A question the game asks has no line to type: the surface shows the
      * question and waits for the answer, which is a state of its own.
+     *
+     * A staging node the walk stopped on has no line either: it is a beat, and
+     * the session is the thing that resumes it once its hold is over.
      */
     const applyResponse = useCallback((next: DialogueResponse) => {
         setResponse(next);
@@ -159,6 +173,11 @@ export function useDialogueSession(): DialogueSessionState {
 
         if (next.current_node?.next_action === 'input') {
             setStatus('awaiting_answer');
+            return;
+        }
+
+        if ((next.current_node?.hold_ms ?? 0) > 0) {
+            setStatus('processing_action');
             return;
         }
 
@@ -204,6 +223,45 @@ export function useDialogueSession(): DialogueSessionState {
 
         applyResponse(outcome.data);
     }, [response, sessionId, applyResponse]);
+
+    /**
+     * The authored hold the walk stopped on, or `null`.
+     *
+     * A hold is a staging node with nothing to read and a stated amount of time
+     * to wait: the box has no page to type, so the session waits that long and
+     * then carries the walk on by itself.
+     */
+    const heldNode = status === 'processing_action'
+        && response !== null
+        && (response.current_node?.hold_ms ?? 0) > 0
+        ? response.current_node
+        : null;
+
+    // The timer must not restart because an unrelated render gave `advance` a new
+    // identity: the hold is a clock, and a clock that resets is a clock that
+    // never reaches zero. It does have to be armed again for every beat, though —
+    // including two beats that ask for the same number of milliseconds — so the
+    // beat itself is what the timer is keyed on, not just its duration.
+    const advanceRef = useRef(advance);
+
+    useEffect(() => {
+        advanceRef.current = advance;
+    }, [advance]);
+
+    useEffect(() => {
+        if (!heldNode) {
+            return undefined;
+        }
+
+        // Reduced motion drops the wait rather than shortening it: the movement
+        // the hold exists for is not drawn, so there is nothing to watch.
+        const timer = window.setTimeout(
+            () => advanceRef.current(),
+            reduceMotion ? 0 : heldNode.hold_ms,
+        );
+
+        return () => window.clearTimeout(timer);
+    }, [heldNode, reduceMotion]);
 
     const choose = useCallback((choiceId: string) => {
         if (!sessionId) {

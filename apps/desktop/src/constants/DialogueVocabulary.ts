@@ -72,6 +72,9 @@ export interface DialogueMotionFlavour {
     travel: number;
 }
 
+/** Which edge of the stage a movement crosses. */
+export type DialogueAnimationSide = 'left' | 'right';
+
 /** Used by any animation the table below does not name. */
 export const DIALOGUE_DEFAULT_FLAVOUR: DialogueMotionFlavour = { intensity: 1, travel: 1 };
 
@@ -371,6 +374,34 @@ export function resolveAnimationKind(
 
     if (/idle/.test(normalized)) {
         return 'idle';
+    }
+
+    return null;
+}
+
+/**
+ * The side an authored animation names, or `null` when it says nothing.
+ *
+ * The Forger composes the side into the id (`run_in_from_right`,
+ * `step_in_from_left_fast`), so what counts is the word, not the spelling: the
+ * id is read in tokens and `left`/`right` is looked up among them. An id that
+ * names no side keeps `null`, and the stage decides the side from the slot.
+ */
+export function resolveAnimationSide(
+    animationId: string | null | undefined,
+): DialogueAnimationSide | null {
+    if (!animationId) {
+        return null;
+    }
+
+    const tokens = animationId.toLowerCase().split(/[^a-z]+/);
+
+    if (tokens.includes('left')) {
+        return 'left';
+    }
+
+    if (tokens.includes('right')) {
+        return 'right';
     }
 
     return null;

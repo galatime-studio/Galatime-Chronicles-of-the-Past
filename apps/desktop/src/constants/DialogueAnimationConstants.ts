@@ -11,7 +11,7 @@
  */
 
 import type { Transition, Variants } from 'framer-motion';
-import type { DialogueMotionFlavour } from './DialogueVocabulary';
+import type { DialogueAnimationSide, DialogueMotionFlavour } from './DialogueVocabulary';
 
 /** How long a character takes to arrive on screen. */
 export const DIALOGUE_CHARACTER_ENTER_DURATION = 0.45;
@@ -115,19 +115,38 @@ export const DIALOGUE_EXIT_TRANSITION: Transition = {
 /**
  * Where a character enters from and exits towards, as a stage-width fraction.
  *
- * Read from the slot the stage gave the character rather than from the authored
- * position: the layout decides where everyone stands, so it is also what decides
- * which side they walk in from. A character in the middle has no side to come
- * from, so it rises instead.
+ * The authored animation wins when it names a side (`run_in_from_right`): the
+ * author is describing where the character comes from, and the layout has no
+ * business overruling that. Without a side, the slot decides — a character on
+ * the left walks in from the left — and a character in the middle has no side to
+ * come from, so it rises instead.
  */
 export function resolveEntranceOffset(
     slotCentrePercent: number,
     flavour: DialogueMotionFlavour,
+    side: DialogueAnimationSide | null = null,
 ): number {
-    const direction = slotCentrePercent < 45 ? -1 : slotCentrePercent > 55 ? 1 : 0;
+    const direction = side === 'left'
+        ? -1
+        : side === 'right'
+            ? 1
+            : slotCentrePercent < 45
+                ? -1
+                : slotCentrePercent > 55
+                    ? 1
+                    : 0;
 
     return direction * 0.12 * flavour.travel;
 }
+
+/**
+ * How much further a run out of the stage travels.
+ *
+ * A run is a departure, not a shuffle: somebody fleeing has to cross the stage
+ * to read as fleeing rather than as stepping aside. Applied on top of the
+ * animation's own travel, so a `run_out_slow` still moves like a run.
+ */
+export const DIALOGUE_RUN_OUT_TRAVEL_MULTIPLIER = 2.5;
 
 /**
  * CSS transition for a slot sliding to its new place.

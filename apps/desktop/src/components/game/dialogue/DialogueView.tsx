@@ -86,7 +86,7 @@ export function DialogueView({
      */
     const baseTextSpeed = textSpeed ?? gameState.settings.dialogueTextSpeed;
 
-    const session = useDialogueSession();
+    const session = useDialogueSession({ reduceMotion });
     const dialogueRef = useRef<GameDialogueHandle>(null);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -130,7 +130,16 @@ export function DialogueView({
      * the box rather than sitting under it.
      */
     const inputRequest = node?.type === 'player_input' ? node.input_request : null;
-    const showBox = node !== null && inputRequest === null;
+
+    /**
+     * Whether the box has anything to show.
+     *
+     * A held staging node has no line and no speaker: it is the beat that lets an
+     * entrance or an exit be watched. Drawing the box for it would flash an empty
+     * name plate over the very movement the beat exists for, so it stays closed
+     * until the walk reaches something to read.
+     */
+    const showBox = node !== null && inputRequest === null && node.hold_ms <= 0;
 
     const worldStateRef = useRef(worldState);
     worldStateRef.current = worldState;

@@ -227,6 +227,7 @@
                 result.depth_of = node.depth_of || '';
                 result.animation_id = node.animation_id || '';
                 result.emotion = node.emotion || '';
+                result.hold_ms = normalizeHoldMs(node.hold_ms);
                 result.next = node.next || '';
                 break;
 
@@ -241,6 +242,7 @@
                 result.depth_of = node.depth_of || '';
                 result.emotion = node.emotion || '';
                 result.animation_id = node.animation_id || '';
+                result.hold_ms = normalizeHoldMs(node.hold_ms);
                 result.next = node.next || '';
                 break;
 
@@ -248,6 +250,7 @@
                 result.character_id = node.character_id || '';
                 result.animation_id = node.animation_id || '';
                 result.direction = node.direction || '';
+                result.hold_ms = normalizeHoldMs(node.hold_ms);
                 result.next = node.next || '';
                 break;
 
@@ -266,6 +269,19 @@
         }
 
         return result;
+    }
+
+    /**
+     * How long the walk stops on a staging node, in milliseconds.
+     *
+     * A staging node is automatic: nobody sees it, the conversation crosses it
+     * and draws whatever it left behind. A node that declares a hold is the
+     * exception — the walk stops there long enough for the entrance, movement
+     * or departure to be seen, then resumes on its own. Absence means zero, so
+     * a file written before this field existed keeps crossing its nodes.
+     */
+    function normalizeHoldMs(value) {
+        return typeof value === 'number' && isFinite(value) && value > 0 ? value : 0;
     }
 
     /**
