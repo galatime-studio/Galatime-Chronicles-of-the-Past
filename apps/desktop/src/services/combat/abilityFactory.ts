@@ -28,6 +28,7 @@ import type {
     AbilityTriggerScope,
     CombatAbilityInstance,
 } from '../../types/AbilityType';
+import type { CombatRange } from '../../types/CombatType';
 import { asRecord, readChance, readNumber, readString } from '../../utils/combatUtils';
 
 const TRIGGER_EVENTS: readonly AbilityTriggerEvent[] = [
@@ -53,6 +54,7 @@ const TRIGGER_SCOPES: readonly AbilityTriggerScope[] = ['self', 'attacker', 'def
 const ACTION_TYPES: readonly AbilityActionType[] = [
     'modify_damage',
     'modify_durability',
+    'force_miss',
     'add_status',
     'remove_status',
     'modify_stat',
@@ -94,6 +96,8 @@ const DURATION_TYPES: readonly AbilityDurationType[] = [
 const COMPARISON_OPERATORS: readonly AbilityComparisonOperator[] = ['eq', 'ne', 'gt', 'gte', 'lt', 'lte'];
 
 const DAMAGE_TYPES: readonly string[] = ['physical', 'magical', 'true', 'any'];
+
+const RANGE_VALUES: readonly CombatRange[] = ['short', 'medium', 'long'];
 
 function isOneOf<T extends string>(allowed: readonly T[], value: string): value is T {
     return (allowed as readonly string[]).includes(value);
@@ -153,6 +157,14 @@ function normalizeCondition(raw: unknown): AbilityCondition | null {
     if (element) {
         const id = readString(element.id, '');
         if (id) condition.element = { id, operator: readOperator(element.operator) };
+    }
+
+    const range = asRecord(record.range);
+    if (range) {
+        const value = readString(range.value, '');
+        if (isOneOf(RANGE_VALUES, value)) {
+            condition.range = { value, operator: readOperator(range.operator) };
+        }
     }
 
     const turnCount = asRecord(record.turn_count);

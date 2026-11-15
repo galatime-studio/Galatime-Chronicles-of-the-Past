@@ -31,6 +31,7 @@ import type {
 import { asRecord, readBoolean, readNumber, readString } from '../utils/combatUtils';
 import type { AbilityTriggerContext } from './combat/abilityContext';
 import { foldAttackModifiers } from './combat/abilityModifiers';
+import { resolveForcedMiss } from './combat/abilityInterception';
 import { resolveAbilityEvent } from './combat/abilityTriggers';
 import { phaseEffectMultiplier, resolveDamage, isProjectileAction } from './combat/damageCalculator';
 import { reapDefeated, promoteRearLines } from './combat/defeatResolver';
@@ -516,6 +517,11 @@ function buildResolution(
     // doll intercepts it first, with a chance the blow breaks through.
     const cover = findCover(state.units, target);
     const recipient = cover ?? target;
+    // A passive can refuse the blow outright (`force_miss`): the strike is
+    // voided before any damage is rolled, and the bearer pays its price.
+    const forcedMiss = resolveForcedMiss(recipient, action, random, state.units, actor);
+    if (forcedMiss.events.length > 0) context.events?.push(...forcedMiss.events);
+    if (forcedMiss.forced) return makeMissResolution(actor, recipient, action);
     // A clay doll/sentinel on the bearer absorbs the next hit(s); a roll may let
     // the blow break through instead.
     const interceptEffect = recipient.effects.find((effect) => effect.intercept

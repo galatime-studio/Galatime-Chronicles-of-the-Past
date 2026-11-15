@@ -1,8 +1,10 @@
 /**
- * Authored monster abilities.
+ * Authored entity abilities.
  *
  * An ability is data, not an action: it has a `trigger` (when it is considered),
  * a `condition` (whether it fires) and an `action` (what it does once it fires).
+ * Both characters and mobs may declare them inline — a character's are its
+ * innate traits, a mob's its kit.
  *
  * This is the *authored* shape, written inline in the entity YAML
  * (`data/entities/{characters,mobs}/*.yaml` → `abilities:`). The runtime
@@ -18,7 +20,7 @@
  * with `action.stacking` instead.
  */
 
-import type { DamageType } from './CombatType';
+import type { CombatRange, DamageType } from './CombatType';
 
 /** Events that start an ability evaluation. */
 export type AbilityTriggerEvent =
@@ -139,6 +141,11 @@ export interface AbilityCondition {
         id?: string;
         operator?: AbilityComparisonOperator;
     };
+    /** Compares the reach of the incoming attack (`short`, `medium`, `long`). */
+    range?: {
+        value: CombatRange;
+        operator?: AbilityComparisonOperator;
+    };
     /** Compares how many of the unit's own turns have elapsed. */
     turn_count?: {
         operator?: AbilityComparisonOperator;
@@ -152,6 +159,8 @@ export type AbilityActionType =
     | 'modify_damage'
     /** Authored by the reference schema; a no-op (there is no durability system). */
     | 'modify_durability'
+    /** Voids the incoming hit outright, before any damage is rolled (passive). */
+    | 'force_miss'
     /** Applies (or refreshes) a status effect. */
     | 'add_status'
     /** Removes a status effect from the target by id. */

@@ -6,7 +6,7 @@
  * close a dependency cycle.
  */
 
-import type { CombatRandom, CombatUnit, DamageType } from '../../types/CombatType';
+import type { CombatRandom, CombatRange, CombatUnit, DamageType } from '../../types/CombatType';
 
 export interface AbilityTriggerContext {
     /** The unit that caused the trigger (the attacker/actor), when there is one. */
@@ -17,6 +17,11 @@ export interface AbilityTriggerContext {
     damageType: DamageType | null;
     /** Element of the incoming hit, when there is one. */
     elementId: string | null;
+    /**
+     * Reach of the incoming attack, when there is one. Optional: triggers that
+     * carry no attack (turn bookends, deaths) leave it unset.
+     */
+    range?: CombatRange;
     /** Damage the incoming hit dealt, before any reflection. */
     damage: number;
     /** Every combatant on the field, for battle-scoped conditions and targets. */

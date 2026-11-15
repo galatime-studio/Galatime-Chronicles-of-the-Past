@@ -64,7 +64,7 @@ export interface EntitiesData {
      * definition (natural mob attacks and legacy blocks).
      */
     weapon?: WeaponReference | null;
-    /** Only mobs declare triggered abilities; authored inline. */
+    /** Characters and mobs declare triggered abilities inline. */
     abilities?: AbilityDefinition[];
     /**
      * The unit's combat personality, authored inline like `abilities:`.

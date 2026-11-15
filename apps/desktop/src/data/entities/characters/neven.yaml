@@ -31,4 +31,26 @@ skills:
   - night
   - shadow_step_II 
 
-weapon:
+abilities:
+  - id: spatial_flicker
+    name: Spatial Flicker
+    description: "Long-range attacks against Neven have a 35% chance to miss; every blow he slips away from costs him his next turn."
+    tags: [reaction, evasion]
+    trigger:
+      event: before_damage
+      scope: self
+    condition:
+      all:
+        - range:
+            value: long
+        - chance: 0.35
+    action:
+      type: force_miss
+      target: self
+      parameters:
+        consume_next_turn: true
+    display:
+      visible: true
+      priority: 75
+
+weapon: military_dagger

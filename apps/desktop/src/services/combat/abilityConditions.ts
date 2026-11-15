@@ -2,9 +2,9 @@
  * Ability condition evaluation.
  *
  * A condition is a small tree (`all` / `any` / `not`) whose leaves compare a
- * combatant against what is happening to it: the channel and element of the
- * incoming hit, a stat, a live status, how many times the trigger has fired, how
- * many units a side still has, a flag, and a flat probability.
+ * combatant against what is happening to it: the channel, element and reach of
+ * the incoming hit, a stat, a live status, how many times the trigger has fired,
+ * how many units a side still has, a flag, and a flat probability.
  *
  * Evaluation is pure — it reads units and the context and mutates nothing — so
  * the damage fold can run it for a HUD preview as safely as for a real hit.
@@ -85,6 +85,11 @@ export function evaluateAbilityCondition(
     if (condition.element) {
         const matched = context.elementId !== null && context.elementId === condition.element.id;
         if (!checkMatch(condition.element.operator, matched)) return false;
+    }
+
+    if (condition.range) {
+        const matched = context.range === condition.range.value;
+        if (!checkMatch(condition.range.operator, matched)) return false;
     }
 
     if (condition.turn_count) {
