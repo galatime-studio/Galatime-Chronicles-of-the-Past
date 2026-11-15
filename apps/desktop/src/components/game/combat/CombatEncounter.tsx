@@ -781,10 +781,10 @@ export function CombatEncounter({
             {/* What the fight is waiting on — a target prompt or the outcome */}
             <div className="pointer-events-none absolute left-1/2 top-2 z-20 -translate-x-1/2">
                 {label && (
-                    <div className="rounded-full bg-black/60 px-3 py-1 backdrop-blur-sm">
+                    <div className="flex items-center gap-2 border-game border-white/70 bg-black/60 px-2 py-1 backdrop-blur-sm">
                         <p
                             aria-live="polite"
-                            className="text-[11px] uppercase tracking-[0.15em] text-white/70"
+                            className="text-[11px] uppercase tracking-[0.15em] text-white/80"
                         >
                             {label}
                         </p>
