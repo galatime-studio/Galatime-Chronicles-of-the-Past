@@ -17,7 +17,14 @@
  * same path a player does.
  */
 
-import { AI_PLANNER_TOP_K, AI_PLANNER_WEIGHT } from '../../../constants/AiConstants';
+import {
+    AI_PLANNER_TOP_K,
+    AI_PLANNER_WEIGHT,
+    AI_SUPPORT_ALLOWANCE,
+    AI_SUPPORT_SATURATION_FLOOR,
+    AI_SUPPORT_SATURATION_PENALTY,
+    AI_SUPPORT_WINDOW,
+} from '../../../constants/AiConstants';
 import type { AiCandidate, AiConsiderationId, AiDecisionContext } from '../../../types/AiType';
 import type { AiSituation } from '../../../types/AiSituationType';
 import type { CombatActionRequest } from '../../../types/CombatType';
@@ -25,7 +32,7 @@ import { clamp } from '../../../utils/combatUtils';
 import { buildAiCandidates } from './aiCandidates';
 import { tacticalPlanBonus } from './aiPlanner';
 import { buildAiSituation } from './aiSituation';
-import { targetBias } from './aiTargeting';
+import { actionIntent, targetBias } from './aiTargeting';
 import { modulateAiWeights, type AiWeightModulation } from './aiWeightModulation';
 import { AI_CONSIDERATIONS } from './considerations';
 
@@ -122,6 +129,7 @@ function scoreCandidate(
 
     total *= targetBias(context, candidate);
     total *= repetitionPenalty(context, candidate);
+    total *= supportSaturationPenalty(context, candidate);
     return { candidate, score: total, considerations };
 }
 
@@ -172,6 +180,49 @@ function repetitionPenalty(context: AiDecisionContext, candidate: AiCandidate): 
     }
 
     return 1 - Math.min(0.3, repeats * 0.15);
+}
+
+/**
+ * A discount for a support-heavy turn.
+ *
+ * The Utility score is memoryless, so a rotation of different buffs looked as
+ * good as the first cast every turn: Neven alternated `night` and `shadow_step`
+ * indefinitely while his dagger went unused. The penalty counts the actor's own
+ * recent casts inside a fixed window; after the allowance, each further
+ * supportive skill is discounted. Healing is exempt (a healer's repeated mends
+ * are triage), and a damaging turn still resets the immediate streak because
+ * only supportive skills are counted.
+ */
+function supportSaturationPenalty(context: AiDecisionContext, candidate: AiCandidate): number {
+    if (candidate.action.kind !== 'skill') return 1;
+    if (candidate.action.heals) return 1;
+    if (actionIntent(candidate.action) !== 'supportive') return 1;
+
+    const casts = recentSupportCasts(context);
+    const excess = casts - AI_SUPPORT_ALLOWANCE;
+    if (excess <= 0) return 1;
+
+    return Math.max(AI_SUPPORT_SATURATION_FLOOR, 1 - excess * AI_SUPPORT_SATURATION_PENALTY);
+}
+
+/** How many of the actor's last {@link AI_SUPPORT_WINDOW} actions were support skills. */
+function recentSupportCasts(context: AiDecisionContext): number {
+    const recent = context.history?.recentEvents ?? [];
+    let seen = 0;
+    let casts = 0;
+
+    for (let index = recent.length - 1; index >= 0 && seen < AI_SUPPORT_WINDOW; index -= 1) {
+        const event = recent[index];
+        if (event.type !== 'action_used' || event.actorId !== context.actor.id) continue;
+        seen += 1;
+
+        const action = context.actor.actions.find((entry) => entry.id === event.actionId);
+        if (action && action.kind === 'skill' && !action.heals && actionIntent(action) === 'supportive') {
+            casts += 1;
+        }
+    }
+
+    return casts;
 }
 
 /**

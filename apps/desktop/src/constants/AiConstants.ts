@@ -275,3 +275,22 @@ export const AI_MODULATION_NOTE_THRESHOLD = 0.15;
 
 /** Turns left before the horizon stops discounting a setup's payoff. */
 export const AI_HORIZON_TURN_FLOOR = 1;
+
+/**
+ * How many of a unit's recent actions the support penalty looks at.
+ *
+ * Support is setup, not a rotation. A unit that buffs every turn keeps several
+ * overlapping statuses up while never attacking. The check is a window rather
+ * than a raw streak: interleaving one hit must not reset the budget and let the
+ * unit return to decorating itself the next turn.
+ */
+export const AI_SUPPORT_WINDOW = 6;
+
+/** How many supportive casts fit inside the window before the penalty starts. */
+export const AI_SUPPORT_ALLOWANCE = 1;
+
+/** How much each supportive cast past the allowance discounts the next one. */
+export const AI_SUPPORT_SATURATION_PENALTY = 0.6;
+
+/** The lowest multiplier a saturated support window can reach. */
+export const AI_SUPPORT_SATURATION_FLOOR = 0.15;

@@ -291,9 +291,14 @@ export function actionAvailability(state: CombatState, actor: CombatUnit, action
     // A `silenced`-style status forbids the action outright; the reference schema
     // uses `attack` as the umbrella for the offensive kinds.
     if (isActionPrevented(action, preventedActionKinds(actor))) return 'action_unavailable';
-    // A harbour-bound status forbids its channel outright (the ice wall stops
-    // physical attacks while it stands).
-    if (preventedDamageChannels(actor).includes(action.damageType)) return 'action_unavailable';
+    // A harbour-bound status forbids its damage channel outright (the ice wall
+    // stops physical attacks while it stands). Universal moves are tagged with
+    // a channel too, but they deal no damage: a brace or a rest must remain
+    // legal even while that channel is sealed, or the unit is left with nothing
+    // it can do.
+    if (action.dealsDamage && preventedDamageChannels(actor).includes(action.damageType)) {
+        return 'action_unavailable';
+    }
     // An earth trap forbids a reach or an element outright (buried units cannot
     // use short-range or Corporis actions).
     if (preventedActionRanges(actor).includes(action.range)) return 'action_unavailable';
@@ -538,6 +543,35 @@ function advanceToNextUnit(
 /** Whether the unit holds at least one action it may legally take right now. */
 function anyActionAvailable(state: CombatState, unit: CombatUnit): boolean {
     return unit.actions.some((action) => actionAvailability(state, unit, action) === null);
+}
+
+/**
+ * The first turn in a freshly planned order that can actually act.
+ *
+ * Battle-start abilities can freeze or seal a unit before the queue opens.
+ * Handing that unit the turn would leave the presentation waiting for an action
+ * it can never submit. The mid-fight advance already skips such units, so the
+ * opening pass mirrors it and records the same `turn_skipped` events.
+ */
+function firstActionableTurn(
+    state: CombatState,
+    order: readonly string[],
+): { index: number; unit: CombatUnit | null; events: CombatEvent[] } {
+    const events: CombatEvent[] = [];
+
+    for (let index = 0; index < order.length; index += 1) {
+        const unit = findUnit(state, order[index]);
+        if (!unit || unit.status !== 'alive') continue;
+
+        if (!anyActionAvailable(state, unit)) {
+            events.push({ type: 'turn_skipped', unitId: unit.id });
+            continue;
+        }
+
+        return { index, unit, events };
+    }
+
+    return { index: 0, unit: null, events };
 }
 
 function evaluateOutcome(state: CombatState): CombatOutcome | null {    const alliesAlive = state.units.some((unit) => unit.side === 'allies' && unit.status === 'alive');
@@ -787,8 +821,10 @@ export async function startCombat(
     state.turnGauges = plan.gauges;
     opening.unshift({ type: 'combat_started', round: 1, order: plan.order });
 
-    const first = plan.order[0] ? findUnit(state, plan.order[0]) : null;
-    if (first) opening.push({ type: 'turn_started', unitId: first.id, round: 1 });
+    const first = firstActionableTurn(state, plan.order);
+    state.turnIndex = first.index;
+    opening.push(...first.events);
+    if (first.unit) opening.push({ type: 'turn_started', unitId: first.unit.id, round: 1 });
     state.log.push(...opening);
     trimLog(state.log, MAX_LOG_ENTRIES);
 
