@@ -26,7 +26,7 @@ skills:
     learning_requirements: { required_attack_ids: [fire] }
     learning_cost: { experience_points: 1 }
     targeting: any_one
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 6 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 18 } }
     accuracy: 100
     hit_count: 1
     costs: { mana: 3, stamina: 0, cooldown: 0 }
@@ -40,7 +40,7 @@ skills:
     learning_requirements: { required_attack_ids: [ember_dart] }
     learning_cost: { experience_points: 2 }
     targeting: any_one
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 14 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 42 } }
     accuracy: 95
     hit_count: 1
     costs: { mana: 6, stamina: 0, cooldown: 0 }
@@ -54,7 +54,7 @@ skills:
     learning_requirements: { required_attack_ids: [fireball] }
     learning_cost: { experience_points: 3 }
     targeting: any_one
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 12 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 36 } }
     accuracy: 90
     hit_count: 1
     costs: { mana: 8, stamina: 0, cooldown: 0 }
@@ -75,7 +75,7 @@ skills:
     learning_requirements: { required_attack_ids: [fireball] }
     learning_cost: { experience_points: 3 }
     targeting: any_one
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 13 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 39 } }
     defense_pierce: 0.15
     accuracy: 90
     hit_count: 1
@@ -90,7 +90,7 @@ skills:
     learning_requirements: { required_attack_ids: [flame_break, molten_lance] }
     learning_cost: { experience_points: 5 }
     targeting: any_one
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 16 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 48 } }
     defense_pierce: 0.15
     accuracy: 85
     hit_count: 1
@@ -112,7 +112,7 @@ skills:
     learning_requirements: { required_attack_ids: [ember_dart] }
     learning_cost: { experience_points: 2 }
     targeting: any_one
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 4 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 12 } }
     accuracy: 90
     hit_count: 3
     costs: { mana: 6, stamina: 0, cooldown: 0 }
@@ -137,7 +137,7 @@ skills:
     learning_requirements: { required_attack_ids: [ember_hail] }
     learning_cost: { experience_points: 4 }
     targeting: any_one
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 5 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 15 } }
     accuracy: 85
     hit_count: 4
     costs: { mana: 9, stamina: 0, cooldown: 0 }
@@ -162,7 +162,7 @@ skills:
     learning_requirements: { required_attack_ids: [fireball] }
     learning_cost: { experience_points: 4 }
     targeting: any_one
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 16 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 48 } }
     accuracy: 90
     hit_count: 1
     costs: { mana: 11, stamina: 0, cooldown: 0 }
@@ -177,7 +177,7 @@ skills:
     learning_requirements: { required_attack_ids: [fire] }
     learning_cost: { experience_points: 2 }
     targeting: enemies_all
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 5 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 15 } }
     accuracy: 90
     hit_count: 1
     costs: { mana: 7, stamina: 0, cooldown: 0 }
@@ -202,7 +202,7 @@ skills:
     learning_requirements: { required_attack_ids: [flame] }
     learning_cost: { experience_points: 3 }
     targeting: enemies_all
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 8 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 24 } }
     accuracy: 90
     hit_count: 1
     costs: { mana: 10, stamina: 0, cooldown: 0 }
@@ -227,7 +227,7 @@ skills:
     learning_requirements: { required_attack_ids: [flame_sweep] }
     learning_cost: { experience_points: 5 }
     targeting: enemies_all
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 10 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 30 } }
     accuracy: 85
     hit_count: 1
     costs: { mana: 15, stamina: 0, cooldown: 0 }
@@ -258,7 +258,7 @@ skills:
     learning_requirements: { required_attack_ids: [flame_sweep] }
     learning_cost: { experience_points: 5 }
     targeting: enemies_all
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 10 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 30 } }
     defense_pierce: 0.1
     accuracy: 85
     hit_count: 1
@@ -284,7 +284,7 @@ skills:
     learning_requirements: { required_attack_ids: [flame_sweep, ember_tempest] }
     learning_cost: { experience_points: 6 }
     targeting: enemies_all
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 4 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 12 } }
     accuracy: 85
     hit_count: 3
     costs: { mana: 18, stamina: 0, cooldown: 0 }
@@ -404,7 +404,7 @@ skills:
     learning_requirements: { required_attack_ids: [immolate, fireball] }
     learning_cost: { experience_points: 5 }
     targeting: any_one
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 8 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 24 } }
     accuracy: 95
     hit_count: 1
     costs: { mana: 13, stamina: 0, cooldown: 0 }
@@ -932,7 +932,7 @@ skills:
     learning_requirements: { required_attack_ids: [stifling_heat, heavy_pitch] }
     learning_cost: { experience_points: 6 }
     targeting: any_one
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 15 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 45 } }
     accuracy: 90
     hit_count: 1
     costs: { mana: 14, stamina: 0, cooldown: 0 }
@@ -1043,7 +1043,7 @@ skills:
     learning_requirements: { required_attack_ids: [smokescreen, tinder_skin] }
     learning_cost: { experience_points: 5 }
     targeting: enemies_lane
-    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 8 } }
+    damage: { kind: magical, damage_type: magical, power: { kind: fixed, value: 24 } }
     accuracy: 95
     hit_count: 1
     costs: { mana: 13, stamina: 0, cooldown: 0 }

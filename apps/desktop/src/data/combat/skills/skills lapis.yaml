@@ -146,7 +146,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 2 }
+      power: { kind: fixed, value: 6 }
     accuracy: 95
     hit_count: 1
     costs: { mana: 3, stamina: 0, cooldown: 0 }
@@ -170,7 +170,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 8 }
+      power: { kind: fixed, value: 24 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 6, stamina: 0, cooldown: 0 }
@@ -212,7 +212,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 9 }
+      power: { kind: fixed, value: 27 }
     accuracy: 85
     hit_count: 2
     costs: { mana: 9, stamina: 0, cooldown: 0 }
@@ -298,7 +298,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 8 }
+      power: { kind: fixed, value: 24 }
     accuracy: 100
     hit_count: 1
     costs: { mana: 8, stamina: 0, cooldown: 0 }
@@ -363,7 +363,7 @@ skills:
 
   - id: sinkhole
     name: Sinkhole
-    description: "The lane gives way: every enemy there takes 12 PWR and is trapped for two turns."
+    description: "The lane gives way: every enemy there takes 36 PWR and is trapped for two turns."
     element_id: lapis
     sfx: lapis
     kind: attack
@@ -373,7 +373,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 12 }
+      power: { kind: fixed, value: 36 }
     accuracy: 100
     hit_count: 1
     costs: { mana: 15, stamina: 0, cooldown: 0 }
@@ -421,7 +421,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 6 }
+      power: { kind: fixed, value: 18 }
     accuracy: 100
     hit_count: 1
     costs: { mana: 7, stamina: 0, cooldown: 0 }
@@ -446,7 +446,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 14 }
+      power: { kind: fixed, value: 42 }
     accuracy: 100
     hit_count: 1
     costs: { mana: 16, stamina: 0, cooldown: 4 }
@@ -471,7 +471,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 10 }
+      power: { kind: fixed, value: 30 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 14, stamina: 0, cooldown: 0 }
@@ -498,14 +498,14 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 5 }
+      power: { kind: fixed, value: 15 }
     accuracy: 95
     hit_count: 1
     costs: { mana: 2, stamina: 0, cooldown: 0 }
 
   - id: rock_throw
     name: Rock Throw
-    description: "A heavier, perfectly aimed throw. The mastery example of the tree uses this 14-power, 4-mana base."
+    description: "A heavier, perfectly aimed throw. The mastery example of the tree uses this 42-power, 4-mana base."
     element_id: lapis
     sfx: lapis
     kind: attack
@@ -515,7 +515,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 14 }
+      power: { kind: fixed, value: 42 }
     accuracy: 100
     hit_count: 1
     costs: { mana: 4, stamina: 0, cooldown: 0 }
@@ -532,7 +532,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 22 }
+      power: { kind: fixed, value: 66 }
     accuracy: 85
     hit_count: 1
     costs: { mana: 10, stamina: 0, cooldown: 0 }
@@ -556,7 +556,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 10 }
+      power: { kind: fixed, value: 30 }
     accuracy: 90
     hit_count: 2
     damage_variance: [0.2, 2.0]
@@ -574,7 +574,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 12 }
+      power: { kind: fixed, value: 36 }
     accuracy: 90
     hit_count: 1
     defense_pierce: 0.2
@@ -592,7 +592,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 15 }
+      power: { kind: fixed, value: 45 }
     accuracy: 85
     hit_count: 1
     costs: { mana: 12, stamina: 0, cooldown: 0 }
@@ -663,7 +663,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 9 }
+      power: { kind: fixed, value: 27 }
     accuracy: 95
     hit_count: 1
     defense_pierce: 0.1
@@ -862,7 +862,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 6 }
+      power: { kind: fixed, value: 18 }
     accuracy: 85
     hit_count: 1
     costs: { mana: 12, stamina: 0, cooldown: 0 }
@@ -889,7 +889,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 8 }
+      power: { kind: fixed, value: 24 }
     accuracy: 85
     hit_count: 1
     costs: { mana: 18, stamina: 0, cooldown: 0 }

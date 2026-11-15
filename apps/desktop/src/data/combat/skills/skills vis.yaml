@@ -1,7 +1,7 @@
 skills:
   - id: arcane_pulse
     name: Arcane Pulse
-    description: "The caster sends two broad pulses of mana across the enemy group; makes two separate hits for 8 magical damage to all enemies."
+    description: "The caster sends two broad pulses of mana across the enemy group; makes two separate hits for 24 magical damage to all enemies."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -17,7 +17,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 8
+        value: 24
     accuracy: 85
     hit_count: 2
     costs:
@@ -39,7 +39,7 @@ skills:
     costs:
       mana: 10
       stamina: 0
-      cooldown: 0
+      cooldown: 2
     effects:
       - effect_id: deep_mending_effect
         status_effect: Deep Mending
@@ -74,7 +74,7 @@ skills:
           amount: 18
   - id: focused_bolt
     name: Focused Bolt
-    description: "The caster steadies a bolt before releasing it; deals 10 magical damage."
+    description: "The caster steadies a bolt before releasing it; deals 30 magical damage."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -89,7 +89,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 10
+        value: 30
     accuracy: 90
     hit_count: 1
     costs:
@@ -123,7 +123,7 @@ skills:
           percent_of_max_hp: 18
   - id: mana
     name: Mana
-    description: "The caster releases a small, simple burst of mana; deals 3 magical damage."
+    description: "The caster releases a small, simple burst of mana; deals 9 magical damage."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -137,7 +137,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 3
+        value: 9
     accuracy: 100
     hit_count: 1
     costs:
@@ -170,7 +170,7 @@ skills:
           percent_of_max_hp: 14
   - id: mana_bolt
     name: Mana Bolt
-    description: "The caster hurls a concentrated bolt of mana; deals 6 magical damage."
+    description: "The caster hurls a concentrated bolt of mana; deals 18 magical damage."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -185,7 +185,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 6
+        value: 18
     accuracy: 100
     hit_count: 1
     costs:
@@ -194,7 +194,7 @@ skills:
       cooldown: 0
   - id: mana_burst
     name: Mana Burst
-    description: "The caster releases a denser burst of mana; deals 9 magical damage."
+    description: "The caster releases a denser burst of mana; deals 27 magical damage."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -209,7 +209,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 9
+        value: 27
     accuracy: 95
     hit_count: 1
     costs:
@@ -218,7 +218,7 @@ skills:
       cooldown: 0
   - id: mana_convergence
     name: Mana Convergence
-    description: "The caster gathers their mastery into one decisive strike; deals 24 magical damage, then restores 10% HP and 10% MN to the caster."
+    description: "The caster gathers their mastery into one decisive strike; deals 72 magical damage, then restores 10% HP and 10% MN to the caster."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -235,7 +235,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 24
+        value: 72
     accuracy: 85
     hit_count: 1
     costs:
@@ -253,7 +253,7 @@ skills:
           mana: 10
   - id: mana_crush
     name: Mana Crush
-    description: "The caster compresses mana into a forceful blow; deals 16 magical damage."
+    description: "The caster compresses mana into a forceful blow; deals 48 magical damage."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -268,7 +268,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 16
+        value: 48
     accuracy: 85
     hit_count: 1
     costs:
@@ -277,7 +277,7 @@ skills:
       cooldown: 0
   - id: mana_flurry
     name: Mana Flurry
-    description: "The caster fires two quick mana bolts; makes two separate hits for 4 magical damage each."
+    description: "The caster fires two quick mana bolts; makes two separate hits for 12 magical damage each."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -292,7 +292,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 4
+        value: 12
     accuracy: 90
     hit_count: 2
     costs:
@@ -325,7 +325,7 @@ skills:
           percent_of_max_hp: 10
   - id: mana_lance
     name: Mana Lance
-    description: "The caster drives a narrow lance of mana at the target; deals 12 magical damage."
+    description: "The caster drives a narrow lance of mana at the target; deals 36 magical damage."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -340,7 +340,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 12
+        value: 36
     accuracy: 90
     hit_count: 1
     costs:
@@ -421,7 +421,7 @@ skills:
           percent_of_max_hp: 9
   - id: mana_storm
     name: Mana Storm
-    description: "The caster overwhelms the target with repeated mana strikes; makes four separate hits for 6 magical damage each."
+    description: "The caster overwhelms the target with repeated mana strikes; makes four separate hits for 18 magical damage each."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -436,7 +436,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 6
+        value: 18
     accuracy: 85
     hit_count: 4
     costs:
@@ -469,7 +469,7 @@ skills:
           percent_of_max_hp: 6
   - id: mana_volley
     name: Mana Volley
-    description: "The caster sends a rapid volley of mana; makes three separate hits for 5 magical damage each."
+    description: "The caster sends a rapid volley of mana; makes three separate hits for 15 magical damage each."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -484,7 +484,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 5
+        value: 15
     accuracy: 90
     hit_count: 3
     costs:
@@ -493,7 +493,7 @@ skills:
       cooldown: 0
   - id: overwhelming_bolt
     name: Overwhelming Bolt
-    description: "The caster pours more mana into a single devastating bolt; deals 19 magical damage and ignores 15% of magical defence."
+    description: "The caster pours more mana into a single devastating bolt; deals 57 magical damage and ignores 15% of magical defence."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -508,7 +508,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 19
+        value: 57
     accuracy: 80
     hit_count: 1
     defense_pierce: 0.15
@@ -518,7 +518,7 @@ skills:
       cooldown: 0
   - id: piercing_bolt
     name: Piercing Bolt
-    description: "The caster sends a tightly focused bolt through the target's guard; deals 14 magical damage and ignores 10% of magical defence."
+    description: "The caster sends a tightly focused bolt through the target's guard; deals 42 magical damage and ignores 10% of magical defence."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -533,7 +533,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 14
+        value: 42
     accuracy: 85
     hit_count: 1
     defense_pierce: 0.1

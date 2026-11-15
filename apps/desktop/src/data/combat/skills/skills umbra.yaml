@@ -37,7 +37,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 22
+        value: 66
     accuracy: 100
     hit_count: 1
     lunar: true
@@ -63,7 +63,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 10
+        value: 30
     accuracy: 95
     hit_count: 2
     lunar: true
@@ -89,7 +89,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 30
+        value: 90
     accuracy: 95
     hit_count: 1
     lunar: true
@@ -122,7 +122,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 11
+        value: 33
     accuracy: 95
     hit_count: 3
     lunar: true
@@ -149,7 +149,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 40
+        value: 120
     accuracy: 95
     hit_count: 1
     lunar: true
@@ -183,7 +183,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 7
+        value: 21
     accuracy: 90
     hit_count: 4
     lunar: true
@@ -584,7 +584,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 26
+        value: 78
     accuracy: 100
     hit_count: 1
     lunar: true
@@ -611,7 +611,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 28
+        value: 84
     accuracy: 95
     hit_count: 1
     lunar: true
@@ -694,7 +694,7 @@ skills:
         polarity: negative
   - id: life_drain
     name: Life Drain
-    description: "The caster lifts a dense black mist that absorbs the targets life force; Drain up to 15% of the HP damaged from the target to the user."
+    description: "The caster lifts a dense black mist that absorbs the targets life force; Drain up to 5% of the HP damaged from the target to the user."
     element_id: umbra
     sfx: umbra
     learning_cost:
@@ -708,7 +708,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 14
+        value: 42
     accuracy: 95
     hit_count: 1
     costs:
@@ -720,11 +720,11 @@ skills:
         status_effect: Life Drain
         apply_to: target
         turns: 1
-        drain_percent_of_damage: 0.15
+        drain_percent_of_damage: 0.05
         polarity: negative
   - id: crimson_siphon
     name: Crimson Siphon
-    description: "The caster lifts a dense black mist that absorbs the targets life force; Drain up to 30% of the HP damaged from the target to the user."
+    description: "The caster lifts a dense black mist that absorbs the targets life force; Drain up to 10% of the HP damaged from the target to the user."
     element_id: umbra
     sfx: umbra
     learning_cost:
@@ -738,7 +738,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 18
+        value: 54
     accuracy: 95
     hit_count: 1
     costs:
@@ -750,11 +750,11 @@ skills:
         status_effect: Crimson Siphon
         apply_to: target
         turns: 1
-        drain_percent_of_damage: 0.3
+        drain_percent_of_damage: 0.1
         polarity: negative
   - id: hemorrhage
     name: Hemorrhage
-    description: "The caster lifts a dense black mist that absorbs a group of targets life force; Drain up to 15% of the HP damaged from every target to the user."
+    description: "The caster lifts a dense black mist that absorbs a group of targets life force; Drain up to 5% of the HP damaged from every target to the user."
     element_id: umbra
     sfx: umbra
     learning_cost:
@@ -768,7 +768,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 10
+        value: 30
     accuracy: 95
     hit_count: 1
     costs:
@@ -780,11 +780,11 @@ skills:
         status_effect: Hemorrhage
         apply_to: enemies_all
         turns: 1
-        drain_percent_of_damage: 0.15
+        drain_percent_of_damage: 0.05
         polarity: negative
   - id: crimson_tide
     name: Crimson Tide
-    description: "The caster lifts a dense black mist that absorbs a group of targets life force; Drain up to 30% of the HP damaged from every target to the user."
+    description: "The caster lifts a dense black mist that absorbs a group of targets life force; Drain up to 10% of the HP damaged from every target to the user."
     element_id: umbra
     sfx: umbra
     learning_cost:
@@ -799,7 +799,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 16
+        value: 48
     accuracy: 90
     hit_count: 1
     costs:
@@ -811,7 +811,7 @@ skills:
         status_effect: Crimson Tide
         apply_to: enemies_all
         turns: 1
-        drain_percent_of_damage: 0.3
+        drain_percent_of_damage: 0.1
         polarity: negative
   - id: blind
     name: Blind
@@ -1091,7 +1091,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 32
+        value: 96
     accuracy: 90
     hit_count: 1
     costs:
@@ -1122,7 +1122,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 28
+        value: 84
     accuracy: 95
     hit_count: 1
     costs:
@@ -1179,7 +1179,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 36
+        value: 108
     accuracy: 90
     hit_count: 1
     flee_below_hp: 0.4
@@ -1200,5 +1200,5 @@ skills:
         status_effect: Umbral Ascendant
         apply_to: enemies_all
         turns: 1
-        drain_percent_of_damage: 0.15
+        drain_percent_of_damage: 0.05
         polarity: negative

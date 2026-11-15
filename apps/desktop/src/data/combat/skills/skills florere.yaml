@@ -64,7 +64,7 @@ skills:
     learning_requirements: { required_attack_ids: [regrowth] }
     learning_cost: { experience_points: 3 }
     targeting: any_one
-    costs: { mana: 10, stamina: 0, cooldown: 0 }
+    costs: { mana: 10, stamina: 0, cooldown: 2 }
     effects:
       - effect_id: mending_bloom
         status_effect: Mending Bloom
@@ -83,7 +83,7 @@ skills:
     learning_requirements: { required_attack_ids: [mending_bloom] }
     learning_cost: { experience_points: 4 }
     targeting: any_one
-    costs: { mana: 12, stamina: 0, cooldown: 0 }
+    costs: { mana: 12, stamina: 0, cooldown: 1 }
     effects:
       - effect_id: deep_rooted_remedy
         status_effect: Deep Rooted Remedy
@@ -102,7 +102,7 @@ skills:
     learning_requirements: { required_attack_ids: [mending_bloom] }
     learning_cost: { experience_points: 4 }
     targeting: any_one
-    costs: { mana: 14, stamina: 0, cooldown: 0 }
+    costs: { mana: 14, stamina: 0, cooldown: 3 }
     effects:
       - effect_id: enduring_bloom
         status_effect: Enduring Bloom
@@ -120,7 +120,7 @@ skills:
     learning_requirements: { required_attack_ids: [regrowth] }
     learning_cost: { experience_points: 5 }
     targeting: any_one
-    costs: { mana: 16, stamina: 0, cooldown: 0 }
+    costs: { mana: 16, stamina: 0, cooldown: 3 }
     effects:
       - effect_id: flore_heal
         status_effect: Flore
@@ -157,28 +157,28 @@ skills:
 
   - id: garden_of_renewal
     name: Garden of Renewal
-    description: "Restores 12% max HP to every ally, removes 1 negative effect from each, and applies a 2-turn HoT restoring 5% per turn."
+    description: "Restores 9% max HP to every ally, removes 1 negative effect from each, and applies a 2-turn HoT restoring 3% per turn."
     element_id: florere
     sfx: florere
     kind: heal
     learning_requirements: { required_attack_ids: [flore, pollen_ward] }
     learning_cost: { experience_points: 7 }
     targeting: allies_all
-    costs: { mana: 28, stamina: 0, cooldown: 0 }
+    costs: { mana: 28, stamina: 0, cooldown: 3 }
     effects:
       - effect_id: garden_heal
         status_effect: Garden of Renewal
         apply_to: allies_all
         turns: 1
         polarity: positive
-        heal_percent_of_max: 12
+        heal_percent_of_max: 9
         cleanse: 1
       - effect_id: garden_hot
         status_effect: Garden of Renewal
         apply_to: allies_all
         turns: 2
         polarity: positive
-        regen_per_turn_percent: { hp: 5 }
+        regen_per_turn_percent: { hp: 3 }
 
   - id: life_from_decay
     name: Life From Decay
@@ -189,7 +189,7 @@ skills:
     learning_requirements: { required_attack_ids: [regrowth] }
     learning_cost: { experience_points: 6 }
     targeting: any_one
-    costs: { mana: 18, stamina: 0, cooldown: 0 }
+    costs: { mana: 18, stamina: 0, cooldown: 1 }
     effects:
       - effect_id: life_from_decay_extra
         status_effect: Life From Decay
@@ -210,7 +210,7 @@ skills:
   # Bloom — Vine
   - id: vine_whip
     name: Vine Whip
-    description: "The caster strikes an enemy with a thorned vine for 6 physical damage at 95% accuracy."
+    description: "The caster strikes an enemy with a thorned vine for 18 physical damage at 95% accuracy."
     element_id: florere
     sfx: florere
     kind: attack
@@ -220,14 +220,14 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 6 }
+      power: { kind: fixed, value: 18 }
     accuracy: 95
     hit_count: 1
     costs: { mana: 3, stamina: 0, cooldown: 0 }
 
   - id: spreading_whip
     name: Spreading Whip
-    description: "Deals 6 physical damage and may strike adjacent enemies with the spreading vine."
+    description: "Deals 18 physical damage and may strike adjacent enemies with the spreading vine."
     element_id: florere
     sfx: florere
     kind: attack
@@ -237,7 +237,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 6 }
+      power: { kind: fixed, value: 18 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 6, stamina: 0, cooldown: 0 }
@@ -498,7 +498,7 @@ skills:
     learning_requirements: { required_attack_ids: [cleansing_breeze] }
     learning_cost: { experience_points: 5 }
     targeting: allies_all
-    costs: { mana: 20, stamina: 0, cooldown: 0 }
+    costs: { mana: 20, stamina: 0, cooldown: 1 }
     effects:
       - effect_id: shower_of_blooms
         status_effect: Shower of Blooms
@@ -516,7 +516,7 @@ skills:
     learning_requirements: { required_attack_ids: [garden_of_renewal, shower_of_blooms] }
     learning_cost: { experience_points: 8 }
     targeting: allies_all
-    costs: { mana: 34, stamina: 0, cooldown: 0 }
+    costs: { mana: 34, stamina: 0, cooldown: 3 }
     effects:
       - effect_id: world_bloom_heal
         status_effect: World Bloom
@@ -550,7 +550,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 4 }
+      power: { kind: fixed, value: 12 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 6, stamina: 0, cooldown: 0 }
@@ -728,7 +728,7 @@ skills:
 
   - id: thorn_volley
     name: Thorn Volley
-    description: "Deals 8 physical damage to every enemy in the target lane; each hit has a 25% chance to reduce PDEF by 6 for 2 turns."
+    description: "Deals 24 physical damage to every enemy in the target lane; each hit has a 25% chance to reduce PDEF by 6 for 2 turns."
     element_id: florere
     sfx: florere
     kind: attack
@@ -738,7 +738,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 8 }
+      power: { kind: fixed, value: 24 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 14, stamina: 0, cooldown: 0 }
@@ -814,7 +814,7 @@ skills:
   # Blight — Drain
   - id: life_drain
     name: Life Drain
-    description: "Deals 6 magical damage and drains 8% of the target's max HP, healing the caster for the same amount."
+    description: "Deals 18 magical damage and drains 8% of the target's max HP, healing the caster for the same amount."
     element_id: florere
     sfx: florere
     kind: attack
@@ -824,7 +824,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 6 }
+      power: { kind: fixed, value: 18 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 6, stamina: 0, cooldown: 0 }
@@ -838,7 +838,7 @@ skills:
 
   - id: greater_life_drain
     name: Greater Life Drain
-    description: "Deals 10 magical damage and drains 16% of the target's max HP, healing the caster for the same amount."
+    description: "Deals 30 magical damage and drains 16% of the target's max HP, healing the caster for the same amount."
     element_id: florere
     sfx: florere
     kind: attack
@@ -848,7 +848,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 10 }
+      power: { kind: fixed, value: 30 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 12, stamina: 0, cooldown: 0 }
@@ -898,7 +898,7 @@ skills:
 
   - id: mana_drain
     name: Mana Drain
-    description: "Deals 6 magical damage and drains 8% of the target's max mana, restoring it to the caster."
+    description: "Deals 18 magical damage and drains 8% of the target's max mana, restoring it to the caster."
     element_id: florere
     sfx: florere
     kind: attack
@@ -908,7 +908,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 6 }
+      power: { kind: fixed, value: 18 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 6, stamina: 0, cooldown: 0 }
@@ -922,7 +922,7 @@ skills:
 
   - id: greater_mana_drain
     name: Greater Mana Drain
-    description: "Deals 10 magical damage and drains 16% of the target's max mana, restoring it to the caster."
+    description: "Deals 30 magical damage and drains 16% of the target's max mana, restoring it to the caster."
     element_id: florere
     sfx: florere
     kind: attack
@@ -932,7 +932,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 10 }
+      power: { kind: fixed, value: 30 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 12, stamina: 0, cooldown: 0 }
@@ -1043,7 +1043,7 @@ skills:
 
   - id: blightfall
     name: Blightfall
-    description: "Deals 12 damage to every enemy, poisons for 4 turns dealing 6 per turn, reduces PDEF/MDEF by 8 for 4 turns, and heals the caster for 10% of damage dealt."
+    description: "Deals 36 damage to every enemy, poisons for 4 turns dealing 6 per turn, reduces PDEF/MDEF by 8 for 4 turns, and heals the caster for 3% of damage dealt."
     element_id: florere
     sfx: florere
     kind: attack
@@ -1053,7 +1053,7 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 12 }
+      power: { kind: fixed, value: 36 }
     accuracy: 85
     hit_count: 1
     costs: { mana: 34, stamina: 0, cooldown: 0 }
@@ -1075,4 +1075,4 @@ skills:
         apply_to: target
         turns: 1
         polarity: neutral
-        drain_percent_of_damage: 0.1
+        drain_percent_of_damage: 0.033

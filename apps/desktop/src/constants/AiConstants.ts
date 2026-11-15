@@ -192,6 +192,16 @@ export const AI_EFFECT_REFERENCE = 40;
 /** How far a disliked-but-legal target's score is scaled down (never to zero). */
 export const AI_TARGET_BIAS_FLOOR = 0.5;
 
+/**
+ * How far apart two aims must score before the preference reads as a choice.
+ *
+ * A pool of targets is rarely identical, but a two-point health difference is
+ * noise, not a reason to halve every blow at the healthier one. The spread is
+ * capped by this threshold: below it the bias only leans, and at or above it
+ * the worst aim pays the full floor.
+ */
+export const AI_PREFERENCE_DISCRIMINATION = 0.25;
+
 /** Guards the threat normalisation against a divide by zero. */
 export const AI_MIN_THREAT = 1;
 

@@ -1,7 +1,7 @@
 skills:
   - id: punch
     name: Punch
-    description: "The caster drives a straight punch; one physical hit deals power 10 at 95% accuracy."
+    description: "The caster drives a straight punch; one physical hit deals power 30 at 95% accuracy."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -11,14 +11,14 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 10 }
+      power: { kind: fixed, value: 30 }
     accuracy: 95
     hit_count: 1
     costs: { mana: 0, stamina: 4, cooldown: 0 }
 
   - id: kick
     name: Kick
-    description: "The caster snaps a balanced kick into the target; one physical hit deals power 9 at 95% accuracy."
+    description: "The caster snaps a balanced kick into the target; one physical hit deals power 27 at 95% accuracy."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -28,14 +28,14 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 9 }
+      power: { kind: fixed, value: 27 }
     accuracy: 95
     hit_count: 1
     costs: { mana: 0, stamina: 4, cooldown: 0 }
 
   - id: flurry
     name: Flurry
-    description: "The caster pours several quick punches into the target; three physical hits each have power 4 and 95% accuracy."
+    description: "The caster pours several quick punches into the target; three physical hits each have power 12 and 95% accuracy."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -45,14 +45,14 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 4 }
+      power: { kind: fixed, value: 12 }
     accuracy: 95
     hit_count: 3
     costs: { mana: 0, stamina: 6, cooldown: 0 }
 
   - id: bone_crusher
     name: Bone Crusher
-    description: "The caster puts their whole body behind one fist; one physical hit deals power 16 at 90% accuracy."
+    description: "The caster puts their whole body behind one fist; one physical hit deals power 48 at 90% accuracy."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -62,7 +62,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 16 }
+      power: { kind: fixed, value: 48 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 0, stamina: 10, cooldown: 1 }
@@ -79,7 +79,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 12 }
+      power: { kind: fixed, value: 36 }
     accuracy: 95
     hit_count: 1
     costs: { mana: 0, stamina: 6, cooldown: 0 }
@@ -94,7 +94,7 @@ skills:
 
   - id: fist_storm
     name: Fist Storm
-    description: "The caster combines a fast flurry with a rising finish; five physical hits each have power 3 and 90% accuracy, and the final hit may stun for 1 turn."
+    description: "The caster combines a fast flurry with a rising finish; five physical hits each have power 9 and 90% accuracy, and the final hit may stun for 1 turn."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -104,7 +104,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 3 }
+      power: { kind: fixed, value: 9 }
     accuracy: 90
     hit_count: 5
     costs: { mana: 0, stamina: 11, cooldown: 1 }
@@ -119,7 +119,7 @@ skills:
 
   - id: quick_kicks
     name: Quick Kicks
-    description: "The caster drives a rapid sequence of kicks into the target; three physical hits each have power 4 and 90% accuracy."
+    description: "The caster drives a rapid sequence of kicks into the target; three physical hits each have power 12 and 90% accuracy."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -129,14 +129,14 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 4 }
+      power: { kind: fixed, value: 12 }
     accuracy: 90
     hit_count: 3
     costs: { mana: 0, stamina: 6, cooldown: 0 }
 
   - id: heavy_kick
     name: Heavy Kick
-    description: "The caster commits their weight to one crushing kick; one physical hit deals power 16 at 90% accuracy."
+    description: "The caster commits their weight to one crushing kick; one physical hit deals power 48 at 90% accuracy."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -146,14 +146,14 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 16 }
+      power: { kind: fixed, value: 48 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 0, stamina: 10, cooldown: 1 }
 
   - id: ripple_punch
     name: Ripple Punch
-    description: "The caster lands a breath-guided punch that resonates with the target; deals power 12, with a ×1.25 damage modifier against Corporis weakness and ×0.75 against Corporis resistance after normal elemental effectiveness."
+    description: "The caster lands a breath-guided punch that resonates with the target; deals power 36, with a ×1.25 damage modifier against Corporis weakness and ×0.75 against Corporis resistance after normal elemental effectiveness."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -163,7 +163,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 12 }
+      power: { kind: fixed, value: 36 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 0, stamina: 10, cooldown: 0 }
@@ -171,7 +171,7 @@ skills:
 
   - id: perfect_ripple_punch
     name: Perfect Ripple Punch
-    description: "The caster releases a fully focused ripple punch; deals power 18, with a ×1.5 damage modifier against Corporis weakness and ×0.5 against Corporis resistance after normal elemental effectiveness."
+    description: "The caster releases a fully focused ripple punch; deals power 54, with a ×1.5 damage modifier against Corporis weakness and ×0.5 against Corporis resistance after normal elemental effectiveness."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -181,7 +181,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 18 }
+      power: { kind: fixed, value: 54 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 0, stamina: 14, cooldown: 1 }
@@ -189,7 +189,7 @@ skills:
 
   - id: ripple_kick
     name: Ripple Kick
-    description: "The caster sends a breath-guided kick through the target's guard; deals power 12 and ignores 25% of the target's PDEF."
+    description: "The caster sends a breath-guided kick through the target's guard; deals power 36 and ignores 25% of the target's PDEF."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -199,7 +199,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 12 }
+      power: { kind: fixed, value: 36 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 0, stamina: 10, cooldown: 0 }
@@ -207,7 +207,7 @@ skills:
 
   - id: perfect_ripple_kick
     name: Perfect Ripple Kick
-    description: "The caster drives a fully focused ripple kick through the target's guard; deals power 18 and ignores 50% of the target's PDEF."
+    description: "The caster drives a fully focused ripple kick through the target's guard; deals power 54 and ignores 50% of the target's PDEF."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -217,7 +217,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 18 }
+      power: { kind: fixed, value: 54 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 0, stamina: 14, cooldown: 1 }
@@ -226,7 +226,7 @@ skills:
   # Pure physicality capstones: the last node of the punch and of the kick line
   - id: perfect_punch
     name: Perfect Punch
-    description: "The caster lands a perfectly centred punch; one physical hit deals power 20 at 90% accuracy, ignores 25% of the target's PDEF, and lands at normal effectiveness even against a target immune to Corporis."
+    description: "The caster lands a perfectly centred punch; one physical hit deals power 60 at 90% accuracy, ignores 25% of the target's PDEF, and lands at normal effectiveness even against a target immune to Corporis."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -236,7 +236,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 20 }
+      power: { kind: fixed, value: 60 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 0, stamina: 14, cooldown: 1 }
@@ -245,7 +245,7 @@ skills:
 
   - id: perfect_kick
     name: Perfect Kick
-    description: "The caster drives a perfectly centred kick; one physical hit deals power 20 at 90% accuracy, ignores 50% of the target's PDEF, and lands at normal effectiveness even against a target immune to Corporis."
+    description: "The caster drives a perfectly centred kick; one physical hit deals power 60 at 90% accuracy, ignores 50% of the target's PDEF, and lands at normal effectiveness even against a target immune to Corporis."
     element_id: corporis
     sfx: corporis
     kind: attack
@@ -255,7 +255,7 @@ skills:
     damage:
       kind: physical
       damage_type: physical
-      power: { kind: fixed, value: 20 }
+      power: { kind: fixed, value: 60 }
     accuracy: 90
     hit_count: 1
     costs: { mana: 0, stamina: 14, cooldown: 1 }

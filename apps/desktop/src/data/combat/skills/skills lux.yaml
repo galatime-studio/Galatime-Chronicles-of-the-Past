@@ -202,7 +202,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 65
+        value: 195
     accuracy: 100
     hit_count: 1
     solar: true
@@ -326,7 +326,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 22
+        value: 66
     accuracy: 95
     hit_count: 1
     bonus_vs_elements:
@@ -507,7 +507,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 18
+        value: 54
     accuracy: 100
     hit_count: 1
     defense_pierce: 0.3
@@ -592,7 +592,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 8
+        value: 24
     accuracy: 95
     hit_count: 5
     scatter_targets: true
@@ -624,7 +624,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 18
+        value: 54
     accuracy: 95
     hit_count: 1
     solar: true
@@ -718,7 +718,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 30
+        value: 90
     accuracy: 85
     hit_count: 1
     solar: true
@@ -775,7 +775,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 16
+        value: 48
     accuracy: 100
     hit_count: 1
     bonus_vs_elements:
@@ -801,7 +801,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 26
+        value: 78
     accuracy: 90
     hit_count: 1
     costs:
@@ -838,7 +838,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 16
+        value: 48
     accuracy: 85
     hit_count: 1
     solar: true
@@ -872,7 +872,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 28
+        value: 84
     accuracy: 95
     hit_count: 1
     solar: true
@@ -953,7 +953,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 26
+        value: 78
     accuracy: 100
     hit_count: 1
     solar: true
@@ -986,7 +986,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 14
+        value: 42
     accuracy: 70
     hit_count: 5
     scatter_targets: true
@@ -1011,7 +1011,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 20
+        value: 60
     accuracy: 75
     hit_count: 5
     scatter_targets: true
@@ -1036,7 +1036,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 28
+        value: 84
     accuracy: 100
     hit_count: 1
     solar: true

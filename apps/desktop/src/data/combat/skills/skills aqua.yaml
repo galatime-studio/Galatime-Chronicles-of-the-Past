@@ -43,7 +43,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 6
+        value: 18
     accuracy: 100
     hit_count: 1
     costs:
@@ -67,7 +67,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 9
+        value: 27
     accuracy: 100
     hit_count: 1
     costs:
@@ -104,7 +104,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 10
+        value: 30
     accuracy: 95
     hit_count: 1
     defense_pierce: 0.1
@@ -145,7 +145,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 12
+        value: 36
     accuracy: 100
     hit_count: 1
     costs:
@@ -182,7 +182,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 14
+        value: 42
     accuracy: 95
     hit_count: 1
     costs:
@@ -211,7 +211,7 @@ skills:
           - ignis
   - id: undertow
     name: Undertow
-    description: "The caster draws water from the target, draining it to themselves; On hit, heal 8-12% HP of the damage to the user."
+    description: "The caster draws water from the target, draining it to themselves; On hit, heal 3-4% HP of the damage to the user."
     element_id: aqua
     sfx: aqua_water
     learning_cost:
@@ -226,7 +226,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 6
+        value: 18
     accuracy: 80
     hit_count: 1
     costs:
@@ -236,10 +236,10 @@ skills:
     effects:
       - effect_id: undertow_effect
         apply_to: target
-        drain_percent_of_damage: 0.1
+        drain_percent_of_damage: 0.033
   - id: water_absorption
     name: Water Absorption
-    description: "The caster draws moisture from the target, draining it to themselves; On hit, heal 15-18% HP of the damage to the user."
+    description: "The caster draws moisture from the target, draining it to themselves; On hit, heal 5-6% HP of the damage to the user."
     element_id: aqua
     sfx: aqua_water
     learning_cost:
@@ -254,7 +254,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 9
+        value: 27
     accuracy: 95
     hit_count: 1
     costs:
@@ -264,10 +264,10 @@ skills:
     effects:
       - effect_id: water_absorption_effect
         apply_to: target
-        drain_percent_of_damage: 0.16
+        drain_percent_of_damage: 0.053
   - id: riptide
     name: Riptide
-    description: "The caster pulls the target with a small current, damaging them and any adjacent enemies. If they are on the back lane, they are moved to the front; On hit, heal 12-15% HP of the damage to the user, may hit adjacent enemies."
+    description: "The caster pulls the target with a small current, damaging them and any adjacent enemies. If they are on the back lane, they are moved to the front; On hit, heal 4-5% HP of the damage to the user, may hit adjacent enemies."
     element_id: aqua
     sfx: aqua_water
     learning_cost:
@@ -282,7 +282,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 11
+        value: 33
     accuracy: 100
     hit_count: 1
     costs:
@@ -296,7 +296,7 @@ skills:
     effects:
       - effect_id: riptide_drain_effect
         apply_to: target
-        drain_percent_of_damage: 0.13
+        drain_percent_of_damage: 0.043
       - effect_id: riptide_move_effect
         apply_to: target
         move:
@@ -304,7 +304,7 @@ skills:
           to_line: front
   - id: whirlpool
     name: Whirlpool
-    description: "A small whirlpool ensnares the target, holding them in place. Deals magic damage and roots the target for 1 turn. On hit, heal the caster for 10-12% of the damage dealt. If the target is wet, the root has a chance to persist for an extra turn."
+    description: "A small whirlpool ensnares the target, holding them in place. Deals magic damage and roots the target for 1 turn. On hit, heal the caster for 3-4% of the damage dealt. If the target is wet, the root has a chance to persist for an extra turn."
     element_id: aqua
     sfx: aqua_water
     learning_cost:
@@ -319,7 +319,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 9
+        value: 27
     accuracy: 90
     hit_count: 1
     costs:
@@ -340,10 +340,10 @@ skills:
           extra_turns_chance: 0.5
       - effect_id: whirlpool_drain_effect
         apply_to: target
-        drain_percent_of_damage: 0.11
+        drain_percent_of_damage: 0.037
   - id: maelstrom
     name: Maelstrom
-    description: "A modest whirlpool drags enemies into its current. Deals AoE magical damage to all enemies. Heal the caster for 10-12% of the total damage dealt by this skill. Each enemy hit has a 30% chance to become wet for 2 turns."
+    description: "A modest whirlpool drags enemies into its current. Deals AoE magical damage to all enemies. Heal the caster for 3-4% of the total damage dealt by this skill. Each enemy hit has a 30% chance to become wet for 2 turns."
     element_id: aqua
     sfx: aqua_water
     learning_cost:
@@ -358,7 +358,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 11
+        value: 33
     accuracy: 90
     hit_count: 1
     costs:
@@ -368,7 +368,7 @@ skills:
     effects:
       - effect_id: maelstrom_drain_effect
         apply_to: target
-        drain_percent_of_damage: 0.11
+        drain_percent_of_damage: 0.037
       - effect_id: maelstrom_wet_effect
         status_effect: Wet
         apply_to: target
@@ -767,7 +767,7 @@ skills:
     costs:
       mana: 16
       stamina: 0
-      cooldown: 0
+      cooldown: 3
     effects:
       - effect_id: aquatic_renewal_effect
         status_effect: Aquatic Renewal
@@ -795,7 +795,7 @@ skills:
     costs:
       mana: 30
       stamina: 0
-      cooldown: 0
+      cooldown: 2
     effects:
       - effect_id: deluge_of_purity_effect
         status_effect: Deluge
@@ -834,7 +834,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 4
+        value: 12
     accuracy: 50
     hit_count: 1
     bonus_vs_status:
@@ -889,7 +889,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 2
+        value: 6
     accuracy: 90
     hit_count: 1
     bonus_vs_status:
@@ -945,7 +945,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 3
+        value: 9
     accuracy: 85
     hit_count: 1
     bonus_vs_status:
@@ -1003,7 +1003,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 4
+        value: 12
     accuracy: 85
     hit_count: 2
     bonus_vs_status:
@@ -1067,7 +1067,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 5
+        value: 15
     accuracy: 85
     hit_count: 1
     bonus_vs_status:
@@ -1125,7 +1125,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 5
+        value: 15
     accuracy: 85
     hit_count: 2
     bonus_vs_status:
@@ -1189,7 +1189,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 6
+        value: 18
     accuracy: 85
     hit_count: 2
     defense_pierce: 0.15
@@ -1255,7 +1255,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 4
+        value: 12
     accuracy: 90
     hit_count: 2
     bonus_vs_status:
@@ -1319,7 +1319,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 5
+        value: 15
     accuracy: 90
     hit_count: 2
     bonus_vs_status:
@@ -1383,7 +1383,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 5
+        value: 15
     accuracy: 90
     hit_count: 3
     bonus_vs_status:
@@ -1477,7 +1477,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 9
+        value: 27
     accuracy: 85
     hit_count: 2
     bonus_per_charge:
@@ -1844,7 +1844,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 6
+        value: 18
     accuracy: 80
     hit_count: 1
     bonus_vs_status:

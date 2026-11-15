@@ -383,7 +383,13 @@ function statValue(
     const stats = effectiveStats(bearer);
 
     let share = statShare(readStatDelta(record.buff), stats);
-    share += statShare(readStatDelta(record.debuff), stats);
+
+    // A debuff is only a gain when it lands on the other side. `granite_hide`
+    // taxes the caster's speed to raise its guard; pricing that tax as value
+    // paid the AI for hurting itself and made the wall outrank an attack.
+    const harmsOpponent = targets.some((entry) => entry.side !== context.actor.side);
+    if (harmsOpponent) share += statShare(readStatDelta(record.debuff), stats);
+
     share += multiplierMagnitude(record.stat_multipliers);
 
     return clamp(share * turns * AI_STAT_TURN_VALUE, 0, AI_STAT_EFFECT_CAP);

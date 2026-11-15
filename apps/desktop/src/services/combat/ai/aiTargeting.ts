@@ -14,7 +14,7 @@
  * enemy would be broken by candidate key, and a unit would happily punch itself.
  */
 
-import { AI_TARGET_BIAS_FLOOR } from '../../../constants/AiConstants';
+import { AI_PREFERENCE_DISCRIMINATION, AI_TARGET_BIAS_FLOOR } from '../../../constants/AiConstants';
 import type { AiCandidate, AiDecisionContext, AiTargetPreference } from '../../../types/AiType';
 import type { AbilityCondition } from '../../../types/AbilityType';
 import type { CombatAction, CombatUnit } from '../../../types/CombatType';
@@ -52,15 +52,41 @@ export function targetBias(context: AiDecisionContext, candidate: AiCandidate): 
     const targets = candidateTargetUnits(context, candidate);
     if (targets.length === 0) return 1;
 
+    const pool = aimPool(context, candidate);
     let total = 0;
-    for (const target of targets) total += biasForTarget(context, candidate.action, target);
+    for (const target of targets) total += biasForTarget(context, candidate.action, target, pool);
     return total / targets.length;
+}
+
+/**
+ * The legal aims a single-target action was expanded from.
+ *
+ * `candidate.targetIds` names the units one aim lands on, which for `any_one`
+ * is only the chosen target. The preference is a *rank*, so it has to be read
+ * against every legal aim: with one aim there is nothing to prefer, and with
+ * two identical aims neither should pay for the tie.
+ */
+function aimPool(context: AiDecisionContext, candidate: AiCandidate): CombatUnit[] {
+    if (candidate.action.targeting !== 'any_one' && candidate.action.targeting !== 'enemies_lane') {
+        return candidateTargetUnits(context, candidate);
+    }
+
+    const preview = context.previews.find(
+        (entry) => entry.usable && entry.action.id === candidate.action.id,
+    );
+    if (!preview) return candidateTargetUnits(context, candidate);
+
+    const byId = new Map(context.state.units.map((unit) => [unit.id, unit]));
+    return preview.targetIds
+        .map((id) => byId.get(id))
+        .filter((unit): unit is CombatUnit => unit !== undefined);
 }
 
 function biasForTarget(
     context: AiDecisionContext,
     action: CombatAction,
     target: CombatUnit,
+    pool: readonly CombatUnit[],
 ): number {
     if (isAvoided(context, action, target)) return 0;
 
@@ -80,16 +106,37 @@ function biasForTarget(
     const { prefer } = context.profile.targeting;
     let bias = 1;
 
-    if (prefer.length > 0) {
-        let best = 0;
-        for (const preference of prefer) {
-            best = Math.max(best, preferenceScore(context, action, target, preference));
+    if (prefer.length > 0 && pool.length > 0) {
+        const scores = pool.map((entry) => rawPreference(context, action, entry));
+        const best = Math.max(...scores);
+        const worst = Math.min(...scores);
+        const spread = best - worst;
+
+        // A preference that separates nobody is not a choice. The separation
+        // ramps in with the spread, so two aims a hair apart both stay cheap
+        // while a real gap lets the worst aim pay the full floor.
+        if (spread > Number.EPSILON) {
+            const separation = Math.min(1, spread / AI_PREFERENCE_DISCRIMINATION);
+            const rank = (best - rawPreference(context, action, target)) / spread;
+            bias = 1 - rank * separation * (1 - AI_TARGET_BIAS_FLOOR);
         }
-        bias = AI_TARGET_BIAS_FLOOR + (1 - AI_TARGET_BIAS_FLOOR) * clamp(best, 0, 1);
     }
 
     if (isWrongSide(context.actor, action, target)) bias *= WRONG_SIDE_BIAS;
     return bias;
+}
+
+/** The strongest authored preference for one target, before pool ranking. */
+function rawPreference(
+    context: AiDecisionContext,
+    action: CombatAction,
+    target: CombatUnit,
+): number {
+    let best = 0;
+    for (const preference of context.profile.targeting.prefer) {
+        best = Math.max(best, preferenceScore(context, action, target, preference));
+    }
+    return clamp(best, 0, 1);
 }
 
 /** Whether the action's intent points the other way (a blow at an ally, a mend at an enemy). */

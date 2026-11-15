@@ -237,7 +237,7 @@ skills:
   # ── Chant ─────────────────────────────────────────────────────────────────
   - id: chant_of_echoes
     name: Chant of Echoes
-    description: "Channels for 1 turn and gains 1 charge. When the chant completes, it releases a small magical burst for 6 damage at one enemy."
+    description: "Channels for 1 turn and gains 1 charge. When the chant completes, it releases a small magical burst for 18 damage at one enemy."
     element_id: vetus
     sfx: vetus
     kind: buff
@@ -257,14 +257,14 @@ skills:
         polarity: positive
         chant:
           max_charges: 1
-          damage_per_charge: 6
+          damage_per_charge: 18
           element_mode: fixed
           interrupt_chance: 0
           scope: one
 
   - id: chant_of_gathering
     name: Chant of Gathering
-    description: "Channels for up to 2 turns, gaining 1 charge each turn. On release it deals 8 magical damage per charge to one enemy. Taking damage has a 20% chance to interrupt it and consume every charge."
+    description: "Channels for up to 2 turns, gaining 1 charge each turn. On release it deals 24 magical damage per charge to one enemy. Taking damage has a 20% chance to interrupt it and consume every charge."
     element_id: vetus
     sfx: vetus
     kind: buff
@@ -286,14 +286,14 @@ skills:
         polarity: positive
         chant:
           max_charges: 2
-          damage_per_charge: 8
+          damage_per_charge: 24
           element_mode: fixed
           interrupt_chance: 0.20
           scope: one
 
   - id: chant_of_sacrifice
     name: Chant of Sacrifice
-    description: "Channels for up to 2 turns, paying 6 mana each turn to gain 1 charge. On release it deals 10 magical damage per charge to one enemy; each hit taken has a 20% chance to interrupt it."
+    description: "Channels for up to 2 turns, paying 6 mana each turn to gain 1 charge. On release it deals 30 magical damage per charge to one enemy; each hit taken has a 20% chance to interrupt it."
     element_id: vetus
     sfx: vetus
     kind: buff
@@ -315,7 +315,7 @@ skills:
         polarity: positive
         chant:
           max_charges: 2
-          damage_per_charge: 10
+          damage_per_charge: 30
           element_mode: fixed
           interrupt_chance: 0.20
           pay_mana: 6
@@ -323,7 +323,7 @@ skills:
 
   - id: chant_of_endurance
     name: Chant of Endurance
-    description: "Channels for up to 3 turns and gains 1 charge each turn. On release it deals 9 magical damage per charge to one enemy. Taking damage has a 15% chance per instance to interrupt it."
+    description: "Channels for up to 3 turns and gains 1 charge each turn. On release it deals 27 magical damage per charge to one enemy. Taking damage has a 15% chance per instance to interrupt it."
     element_id: vetus
     sfx: vetus
     kind: buff
@@ -345,14 +345,14 @@ skills:
         polarity: positive
         chant:
           max_charges: 3
-          damage_per_charge: 9
+          damage_per_charge: 27
           element_mode: fixed
           interrupt_chance: 0.15
           scope: one
 
   - id: chant_of_ruin
     name: Chant of Ruin
-    description: "Strikes one enemy for 8 magical damage and channels for up to 2 turns. Each charge adds 10 magical damage on release; each hit taken has a 20% chance to interrupt and consume the charges."
+    description: "Strikes one enemy for 24 magical damage and channels for up to 2 turns. Each charge adds 30 magical damage on release; each hit taken has a 20% chance to interrupt and consume the charges."
     element_id: vetus
     sfx: vetus
     kind: attack
@@ -366,7 +366,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 8
+        value: 24
     accuracy: 95
     hit_count: 1
     costs:
@@ -382,14 +382,14 @@ skills:
         polarity: positive
         chant:
           max_charges: 2
-          damage_per_charge: 10
+          damage_per_charge: 30
           element_mode: fixed
           interrupt_chance: 0.20
           scope: one
 
   - id: chant_of_heroes
     name: Chant of Heroes
-    description: "Strikes one enemy for 12 magical damage and channels for up to 3 turns. Each charge adds 12 magical damage of one randomly chosen element (Aqua, Ignis or Florere) on release; 15% chance to interrupt per hit."
+    description: "Strikes one enemy for 36 magical damage and channels for up to 3 turns. Each charge adds 36 magical damage of one randomly chosen element (Aqua, Ignis or Florere) on release; 15% chance to interrupt per hit."
     element_id: vetus
     sfx: vetus
     kind: attack
@@ -403,7 +403,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 12
+        value: 36
     accuracy: 90
     hit_count: 1
     costs:
@@ -419,7 +419,7 @@ skills:
         polarity: positive
         chant:
           max_charges: 3
-          damage_per_charge: 12
+          damage_per_charge: 36
           element_mode: random
           random_elements: [aqua, ignis, florere]
           interrupt_chance: 0.15
@@ -427,7 +427,7 @@ skills:
 
   - id: chant_of_unity
     name: Chant of Unity
-    description: "Strikes an enemy lane for 10 magical damage and channels for up to 3 turns. On release, each charge adds 10 magical damage of one random element to the whole lane; 15% chance to interrupt per hit."
+    description: "Strikes an enemy lane for 30 magical damage and channels for up to 3 turns. On release, each charge adds 30 magical damage of one random element to the whole lane; 15% chance to interrupt per hit."
     element_id: vetus
     sfx: vetus
     kind: attack
@@ -441,7 +441,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 10
+        value: 30
     accuracy: 85
     hit_count: 1
     costs:
@@ -457,7 +457,7 @@ skills:
         polarity: positive
         chant:
           max_charges: 3
-          damage_per_charge: 10
+          damage_per_charge: 30
           element_mode: random
           random_elements: [aqua, ignis, florere]
           interrupt_chance: 0.15
@@ -465,7 +465,7 @@ skills:
 
   - id: chant_of_ancients
     name: Chant of Ancients
-    description: "Strikes every enemy for 14 magical damage and channels for up to 3 turns. On release, each charge adds 14 magical damage of one random element to all enemies; 10% chance to interrupt per hit."
+    description: "Strikes every enemy for 42 magical damage and channels for up to 3 turns. On release, each charge adds 42 magical damage of one random element to all enemies; 10% chance to interrupt per hit."
     element_id: vetus
     sfx: vetus
     kind: attack
@@ -479,7 +479,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 14
+        value: 42
     accuracy: 80
     hit_count: 1
     costs:
@@ -495,7 +495,7 @@ skills:
         polarity: positive
         chant:
           max_charges: 3
-          damage_per_charge: 14
+          damage_per_charge: 42
           element_mode: random
           random_elements: [aqua, ignis, florere]
           interrupt_chance: 0.10
@@ -614,7 +614,7 @@ skills:
 
   - id: oath_of_sacrifice
     name: Oath of Sacrifice
-    description: "Pays 50% of the caster's maximum HP, then deals 30 magical damage to one enemy at 90% accuracy. The oath fails if the blood price would defeat the caster."
+    description: "Pays 50% of the caster's maximum HP, then deals 90 magical damage to one enemy at 90% accuracy. The oath fails if the blood price would defeat the caster."
     element_id: vetus
     sfx: vetus
     kind: attack
@@ -628,7 +628,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 30
+        value: 90
     accuracy: 90
     hit_count: 1
     costs:
@@ -639,7 +639,7 @@ skills:
 
   - id: oath_of_destruction
     name: Oath of Destruction
-    description: "Pays 50% of the caster's maximum HP, then deals 24 magical damage to an enemy lane at 85% accuracy. It cannot be cast if the price would defeat the caster."
+    description: "Pays 50% of the caster's maximum HP, then deals 72 magical damage to an enemy lane at 85% accuracy. It cannot be cast if the price would defeat the caster."
     element_id: vetus
     sfx: vetus
     kind: attack
@@ -653,7 +653,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 24
+        value: 72
     accuracy: 85
     hit_count: 1
     costs:
@@ -664,7 +664,7 @@ skills:
 
   - id: oath_of_finality
     name: Oath of Finality
-    description: "Pays 50% of the caster's maximum HP, deals 45 magical damage to one enemy at 90% accuracy and restores 8% of the maximum HP of every living ally."
+    description: "Pays 50% of the caster's maximum HP, deals 135 magical damage to one enemy at 90% accuracy and restores 8% of the maximum HP of every living ally."
     element_id: vetus
     sfx: vetus
     kind: attack
@@ -678,7 +678,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 45
+        value: 135
     accuracy: 90
     hit_count: 1
     costs:

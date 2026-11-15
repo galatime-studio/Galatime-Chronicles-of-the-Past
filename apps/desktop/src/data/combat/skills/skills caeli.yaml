@@ -15,7 +15,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 4
+        value: 12
     accuracy: 50
     hit_count: 1
     costs:
@@ -48,7 +48,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 5
+        value: 15
     accuracy: 95
     hit_count: 3
     costs:
@@ -73,7 +73,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 5
+        value: 15
     accuracy: 95
     hit_count: 5
     costs:
@@ -98,7 +98,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 14
+        value: 42
     accuracy: 95
     hit_count: 1
     costs:
@@ -131,7 +131,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 6
+        value: 18
     accuracy: 95
     hit_count: 6
     power_scaling:
@@ -159,7 +159,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 22
+        value: 66
     accuracy: 95
     hit_count: 1
     defense_pierce: 0.25
@@ -194,7 +194,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 6
+        value: 18
     accuracy: 90
     hit_count: 4
     costs:
@@ -668,7 +668,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 16
+        value: 48
     accuracy: 85
     damage_variance: [0.5, 1.5]
 
@@ -693,7 +693,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 22
+        value: 66
     accuracy: 85
     damage_variance: [0.6, 1.4]
 
@@ -718,7 +718,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 18
+        value: 54
     accuracy: 100
     defense_pierce: 0.25
 
@@ -743,7 +743,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 20
+        value: 60
     accuracy: 95
     effects:
       - effect_id: downburst_effect
@@ -775,7 +775,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 28
+        value: 84
     accuracy: 85
     damage_variance: [0.6, 1.4]
 
@@ -800,7 +800,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 34
+        value: 102
     accuracy: 80
     damage_variance: [0.5, 1.5]
     crit_multiplier: 2
@@ -826,7 +826,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 14
+        value: 42
     accuracy: 95
     defense_pierce: 0.25
 
@@ -851,7 +851,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 8
+        value: 24
     accuracy: 95
 
   - id: thunderhead
@@ -876,7 +876,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 12
+        value: 36
     accuracy: 85
     effects:
       - effect_id: thunderhead_weather_effect
@@ -955,7 +955,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 12
+        value: 36
     accuracy: 85
     effects:
       - effect_id: storm_weather_effect
@@ -988,7 +988,7 @@ skills:
       damage_type: magical
       power:
         kind: fixed
-        value: 32
+        value: 96
     accuracy: 80
     effects:
       - effect_id: tornado_drag_effect
