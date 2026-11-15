@@ -9,13 +9,14 @@
  *
  * Balance intent (all tunables in `CombatConstants`):
  *
- * - **Worth taking:** power grows +15%/level while cost grows only +5%/level,
- *   so mana efficiency rises ~9.5% every tier — a level V skill delivers ~33%
- *   more output per point of mana than level I.
- * - **Not strictly dominant:** absolute cost still grows (+20% at level V) and
- *   level III+ buy extra cooldown turns, so spamming one maxed skill is worse
- *   than rotating a varied kit. Upgrades reward investment without making the
- *   other skills dead weight.
+ * - **Worth taking:** power grows +20%/level while cost grows only +4%/level,
+ *   so a level V skill delivers 80% more output for 16% more mana — clearly
+ *   stronger per cast and per resource point than level I.
+ * - **Support keeps pace:** positive effects also gain duration (+1 turn at II
+ *   and III, +2 at IV and V), so an upgraded buff or regeneration is not just
+ *   a more expensive copy of the base skill.
+ * - **No hidden tax:** tiers never add cooldown. The higher absolute cost is the
+ *   trade-off; an upgrade must not make a skill slower to come back.
  *
  * Everything here is pure — no catalogue or session access — so the derivation
  * is unit-testable and usable from both the combat builder and the content API.
@@ -23,8 +24,8 @@
 
 import {
     MAX_SKILL_LEVEL,
-    SKILL_LEVEL_COOLDOWN_EVERY,
     SKILL_LEVEL_COST_GROWTH,
+    SKILL_LEVEL_POSITIVE_TURN_EVERY,
     SKILL_LEVEL_POWER_GROWTH,
 } from '../../constants/CombatConstants';
 import type { AttackEffect, PublicAttack } from '../../types/AttackDataType';
@@ -115,11 +116,24 @@ function scaleNumericRecord<T extends Record<string, number>>(record: T, factor:
  * Only *output* numbers move: flat `damage`, `resource_regen`/`resource_drain`
  * and `buff`/`debuff` magnitudes (so a pure buff or heal skill also gets stronger
  * — otherwise its upgrade would cost more for the exact same effect). Control
- * knobs stay authored: `turns`, `effect_hit_chance`, `can_stack`,
- * `status_effect` and `apply_to`.
+ * knobs stay authored: `effect_hit_chance`, `can_stack`, `status_effect` and
+ * `apply_to`.
+ *
+ * Positive effects additionally gain `extraTurns`: duration is the supportive
+ * half of the tier curve. Negative effects keep their authored duration, because
+ * extending a lock or a damage-over-time would make an upgrade oppressive
+ * rather than rewarding.
  */
-function scaleEffect(effect: AttackEffect, factor: number): AttackEffect {
+function scaleEffect(effect: AttackEffect, factor: number, extraTurns: number): AttackEffect {
     const next: AttackEffect = { ...effect };
+
+    if (effect.polarity === 'positive' && extraTurns > 0) {
+        if (typeof effect.turns === 'number' && effect.turns > 0) {
+            next.turns = effect.turns + extraTurns;
+        } else if (Array.isArray(effect.turns)) {
+            next.turns = [effect.turns[0] + extraTurns, effect.turns[1] + extraTurns];
+        }
+    }
 
     if (effect.damage !== undefined) next.damage = scaleRounded(effect.damage, factor);
     if (effect.resource_regen) next.resource_regen = scaleNumericRecord(effect.resource_regen, factor);
@@ -253,15 +267,16 @@ function scaleEffect(effect: AttackEffect, factor: number): AttackEffect {
  * catalogue cache stays pristine no matter how many tiers are resolved.
  *
  * What moves per level above 1:
- * - `power` and `damage.power`: ×(1 + 15% × steps)
- * - `costs.mana` / `costs.stamina`: ×(1 + 5% × steps), rounded
- * - `costs.cooldown`: +⌊steps / 2⌋ turns (level II +0, III/IV +1, V +2)
+ * - `power` and `damage.power`: ×(1 + 20% × steps)
+ * - `costs.mana` / `costs.stamina`: ×(1 + 4% × steps), rounded
+ * - positive effect `turns`: +1 at II/III, +2 at IV/V
  * - effect output numbers (`damage`, regen/drain, buffs/debuffs): × power factor
  * - `name`: suffixed with the roman tier (`Freeze` → `Freeze II`)
+ * - `level`: the resolved tier, for UI and AI callers that need it
  *
- * Everything else — accuracy, hit count, variance, targeting, range, effect
- * duration/chance — is deliberately left alone: those multiply the whole chain
- * and would push the top tiers into "must pick, why anything else" territory.
+ * Everything else — accuracy, hit count, variance, targeting, range, cooldown,
+ * negative effect duration and effect chance — is deliberately left alone:
+ * upgrades must never introduce a drawback.
  */
 export function applySkillLevel(skill: PublicAttack, level: number): PublicAttack {
     const target = Math.min(Math.max(Math.round(level), 1), MAX_SKILL_LEVEL);
@@ -270,10 +285,10 @@ export function applySkillLevel(skill: PublicAttack, level: number): PublicAttac
     const steps = target - 1;
     const powerFactor = 1 + SKILL_LEVEL_POWER_GROWTH * steps;
     const costFactor = 1 + SKILL_LEVEL_COST_GROWTH * steps;
-    const extraCooldown = Math.floor(steps / SKILL_LEVEL_COOLDOWN_EVERY);
+    const extraTurns = Math.ceil(steps / SKILL_LEVEL_POSITIVE_TURN_EVERY);
     const label = skillLevelLabel(target);
 
-    const next: PublicAttack = { ...skill };
+    const next: PublicAttack = { ...skill, level: target };
     if (label) next.name = `${skill.name} ${label}`;
 
     // `damage.power` and the top-level `power` fallback are both read by the
@@ -293,10 +308,13 @@ export function applySkillLevel(skill: PublicAttack, level: number): PublicAttac
         hp: Math.round(readNumber(authoredCosts.hp, 0)),
         // Blood prices are a share of max HP: mastery never inflates them.
         hp_percent_max: readNumber(authoredCosts.hp_percent_max, 0),
-        cooldown: Math.round(readNumber(authoredCosts.cooldown, 0)) + extraCooldown,
+        // Upgrades never buy extra wait: the authored cooldown is final.
+        cooldown: Math.round(readNumber(authoredCosts.cooldown, 0)),
     };
 
-    if (Array.isArray(skill.effects)) next.effects = skill.effects.map((effect) => scaleEffect(effect, powerFactor));
+    if (Array.isArray(skill.effects)) {
+        next.effects = skill.effects.map((effect) => scaleEffect(effect, powerFactor, extraTurns));
+    }
 
     // Chaos action outputs that are not driven by `power` (secondary blasts,
     // shrapnel, backline clips and friendly splash) scale with the tier too.

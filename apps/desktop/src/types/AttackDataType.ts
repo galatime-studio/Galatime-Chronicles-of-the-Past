@@ -987,7 +987,16 @@ export type PublicAttack = Pick<AttackSkill,
     | 'ignore_rescue'
     | 'rune_fate'
     | 'sfx'
->;
+> & {
+    /**
+     * Derived upgrade tier (`2`–`5`) when the skill was resolved from a
+     * `[id]_II` … `[id]_V` reference; absent for the authored base skill.
+     *
+     * The numbers above already carry the tier's scaling. This field exists so
+     * the UI and AI can name the tier without re-parsing the id.
+     */
+    level?: number;
+};
 
 export interface SkillTreeNode {
     attack_id: string;

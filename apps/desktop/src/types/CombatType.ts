@@ -849,6 +849,8 @@ export interface CombatActionCost {
 /** A ready-to-use action, derived from a skill, a weapon or the universal list. */
 export interface CombatAction {
     id: string;
+    /** Upgrade tier for a skill (`2`–`5`); `1` for the authored base skill. */
+    skillLevel?: number;
     kind: CombatActionKind;
     name: string;
     description: string;

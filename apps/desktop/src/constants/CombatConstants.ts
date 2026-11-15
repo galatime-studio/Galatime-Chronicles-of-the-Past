@@ -308,29 +308,30 @@ export const MAX_LOG_ENTRIES = 200;
 export const MAX_SKILL_LEVEL = 5;
 
 /**
- * Power growth per level above 1 (level II = x1.15 … level V = x1.60).
+ * Power growth per level above 1 (level II = x1.20 … level V = x1.80).
  *
- * Power grows faster than cost so every tier is more mana-efficient than the
- * last — upgrading is never a downgrade — while the absolute cost growth below
- * keeps a rotated kit better than spamming a single skill.
+ * Upgrades must read as a reward, not a sidegrade: every tier adds a fifth of
+ * the base output, so a mastered skill is visibly worth the investment.
  */
-export const SKILL_LEVEL_POWER_GROWTH = 0.15;
+export const SKILL_LEVEL_POWER_GROWTH = 0.2;
 
 /**
- * Mana/stamina growth per level above 1 (level II = x1.05 … level V = x1.20).
+ * Mana/stamina growth per level above 1 (level II = x1.04 … level V = x1.16).
  *
- * Deliberately gentler than the power curve: efficiency still climbs ~9.5% per
- * level, but a level V skill costs 20% more per cast, so resource pools keep
- * cheaper skills relevant.
+ * Deliberately much gentler than the power curve. A maxed skill costs 16% more
+ * per cast while delivering 80% more output, so the resource pool still pushes
+ * toward a varied kit without making an upgrade feel like a tax.
  */
-export const SKILL_LEVEL_COST_GROWTH = 0.05;
+export const SKILL_LEVEL_COST_GROWTH = 0.04;
 
 /**
- * Extra cooldown turns bought every N levels above 1 (level III and IV add 1,
- * level V adds 2).
+ * Extra duration granted to positive effects every N levels above 1.
  *
- * The second lever against one-skill spam: the top tiers hit harder but cannot
- * be strung back-to-back, so the rest of the kit keeps earning its slots.
- * Level II is the pure upside tier — more power, no extra wait.
+ * Damage and control already grow through the power curve; duration is the
+ * supportive counterpart, and it is what makes an upgraded buff or heal-over-
+ * time feel stronger instead of merely costing more. Levels II–III add one turn
+ * and IV–V add two (`ceil(steps / 2)`), so a `Haste IV` lasts four turns instead
+ * of two. Negative effects keep their authored duration: extending a lock or a
+ * DoT would turn an upgrade into a control lockout.
  */
-export const SKILL_LEVEL_COOLDOWN_EVERY = 2;
+export const SKILL_LEVEL_POSITIVE_TURN_EVERY = 2;

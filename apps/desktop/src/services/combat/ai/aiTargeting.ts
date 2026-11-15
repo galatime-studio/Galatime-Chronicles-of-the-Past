@@ -68,6 +68,15 @@ function biasForTarget(
     // so there is no target choice to bias.
     if (action.targeting === 'self') return 1;
 
+    // A self-buff is not a bad target choice just because the profile prefers
+    // wounded allies or dangerous enemies: `any_one` support aimed at the caster
+    // must compete on its payload, not on a target-preference penalty.
+    if (action.targeting === 'any_one'
+        && target.id === context.actor.id
+        && actionIntent(action) === 'supportive') {
+        return 1;
+    }
+
     const { prefer } = context.profile.targeting;
     let bias = 1;
 

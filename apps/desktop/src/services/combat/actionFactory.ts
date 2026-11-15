@@ -485,6 +485,7 @@ export function createCombatActionFromSkill(skill: PublicAttack): CombatAction {
 
     return {
         id: skill.id,
+        skillLevel: skill.level ?? 1,
         kind: 'skill',
         name: skill.name,
         description: readString(skill.description, ''),

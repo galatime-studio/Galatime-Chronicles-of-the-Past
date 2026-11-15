@@ -286,8 +286,14 @@ export const AI_HORIZON_TURN_FLOOR = 1;
  */
 export const AI_SUPPORT_WINDOW = 6;
 
-/** How many supportive casts fit inside the window before the penalty starts. */
-export const AI_SUPPORT_ALLOWANCE = 1;
+/**
+ * How many supportive casts fit inside the window before the penalty starts.
+ *
+ * Two casts leave room for a real setup — a defensive buff, an offensive one and
+ * then a speed or accuracy buff — without letting a unit spend the whole fight
+ * decorating itself. The third cast and beyond are discounted.
+ */
+export const AI_SUPPORT_ALLOWANCE = 2;
 
 /** How much each supportive cast past the allowance discounts the next one. */
 export const AI_SUPPORT_SATURATION_PENALTY = 0.6;

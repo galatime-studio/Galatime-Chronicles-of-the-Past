@@ -144,7 +144,8 @@ export interface ResolvedAttack {
  *
  * The catalogue only authors base skills, so `[id]_II` … `[id]_V` are not in
  * `skills.yaml` — they resolve to the base skill with {@link applySkillLevel}
- * applied (`freeze_ii` → `Freeze II`, level 2, +15% power, +5% cost).
+ * applied (`freeze_ii` → `Freeze II`, level 2, +20% power, +4% cost, and extra
+ * duration on positive effects).
  *
  * An exact catalogue hit always wins (an authored id is never reinterpreted),
  * and an unknown id returns `null` — matching `getAttack`.
