@@ -107,15 +107,30 @@ const STATUS_TONE_TEXT: Record<'buff' | 'debuff' | 'neutral', string> = {
 
 /** The animation a floating number plays, and the delay before it starts. */
 function numberAnimation(hit: ArenaHit): string {
-    return hit.isHit ? 'combat-rise' : 'combat-miss';
+    // A blocked or immune blow landed but took nothing; it drifts like a miss
+    // rather than rising like damage.
+    if (!hit.isHit || hit.blocked || hit.immune) return 'combat-miss';
+    return 'combat-rise';
 }
 
-/** The message a number carries: a miss, or the signed amount of one blow. */
-function numberText(hit: ArenaHit, amount: number, miss: string): string {
-    if (!hit.isHit) return miss;
+/** The message a number carries: a miss, a block, or the signed amount of one blow. */
+interface HitNumberLabels {
+    miss: string;
+    evade: string;
+    blocked: string;
+    immune: string;
+}
+
+function numberText(hit: ArenaHit, amount: number, labels: HitNumberLabels): string {
+    if (!hit.isHit) return hit.evaded ? labels.evade : labels.miss;
     const rounded = Math.round(amount);
-    // An immunity still lands ("hit") for zero; print `0`, never `-0`.
-    if (hit.kind === 'damage' && rounded <= 0) return '0';
+    if (hit.kind === 'damage' && rounded <= 0) {
+        // A landed blow can still cost no health: a shield swallowed it or the
+        // target is immune. Name the reason instead of printing a bare `0`.
+        if (hit.immune) return labels.immune;
+        if (hit.blocked) return labels.blocked;
+        return '0';
+    }
     return `${hit.kind === 'heal' ? '+' : '-'}${rounded}`;
 }
 
@@ -702,7 +717,7 @@ export function CombatFormationEntity({
                                                 )}
                                                 <span
                                                     className={`block whitespace-nowrap font-pixel font-bold leading-none tabular-nums ${beat.ambient ? 'text-xs sm:text-sm' : 'text-sm sm:text-lg'} ${
-                                                        !beat.isHit
+                                                        !beat.isHit || beat.blocked || beat.immune
                                                             ? 'text-white/85'
                                                             : beat.kind === 'heal'
                                                                 ? 'text-galatime-stats-gain-health'
@@ -712,7 +727,12 @@ export function CombatFormationEntity({
                                                     }`}
                                                     style={beat.ambient ? AMBIENT_NUMBER_STYLE : FLOATING_NUMBER_STYLE}
                                                 >
-                                                    {numberText(beat, amount, t(beat.evaded ? 'combat.evade' : 'combat.miss'))}
+                                                    {numberText(beat, amount, {
+                                                        miss: t('combat.miss'),
+                                                        evade: t('combat.evade'),
+                                                        blocked: t('combat.blocked'),
+                                                        immune: t('combat.immune'),
+                                                    })}
                                                 </span>
                                             </span>
                                         ))}

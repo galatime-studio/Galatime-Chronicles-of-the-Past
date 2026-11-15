@@ -38,6 +38,15 @@ export interface ArenaHit {
     /** `false` when the blow missed; the reaction is then a "MISS", not a number. */
     isHit: boolean;
     /**
+     * A shield, ward or intercept swallowed the whole blow.
+     *
+     * The target did lose nothing, but printing `0` reads like a bug: the arena
+     * says `BLOCKED` so the layer that took the hit is visible.
+     */
+    blocked?: boolean;
+    /** The target is immune to this damage, so the hit lands for nothing. */
+    immune?: boolean;
+    /**
      * The blow was dodged rather than merely off target.
      *
      * A dodge has its own reaction: the unit slips aside, while an accuracy miss
@@ -219,6 +228,8 @@ export function buildArenaSequence(
         existing.amount += hit.amount;
         existing.isHit = existing.isHit || hit.isHit;
         existing.evaded = existing.evaded || hit.evaded;
+        existing.blocked = (existing.blocked ?? false) || (hit.blocked ?? false);
+        existing.immune = (existing.immune ?? false) || (hit.immune ?? false);
         existing.fatal = existing.fatal || hit.fatal;
         // A missed hop still produces a resolution; it must not count as a blow.
         existing.hits += hit.isHit ? hit.hits : 0;
@@ -234,6 +245,9 @@ export function buildArenaSequence(
                 const target = state.units.find((unit) => unit.id === resolution.targetId);
                 const maxHp = target?.stats.maxHp ?? 0;
                 const fatal = resolution.targetHpAfter <= 0;
+                const immune = resolution.immune || resolution.elementMultiplier === 0;
+                /** A landed blow that cost no health: a wall, a ward or a full intercept. */
+                const blocked = resolution.isHit && resolution.finalDamage <= 0 && !immune;
 
                 if (fatal || (maxHp > 0 && resolution.finalDamage >= maxHp * ARENA_SHAKE_RATIO)) {
                     shake = true;
@@ -244,6 +258,8 @@ export function buildArenaSequence(
                     amount: resolution.finalDamage,
                     kind: 'damage',
                     isHit: resolution.isHit,
+                    blocked,
+                    immune,
                     evaded: resolution.evaded === true,
                     elementId: findActionElement(state.units, resolution.actionId),
                     multiplier: resolution.elementMultiplier,

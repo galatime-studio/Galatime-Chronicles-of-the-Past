@@ -8,6 +8,8 @@
 		"acting": "{{actor}} uses {{action}}",
 		"miss": "MISS",
 		"evade": "EVADE",
+		"blocked": "BLOCKED",
+		"immune": "IMMUNE",
 		"resist": "RESIST",
 		"statusBuff": "BUFF",
 		"statusDebuff": "DEBUFF",
