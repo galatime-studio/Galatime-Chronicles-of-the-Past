@@ -138,15 +138,27 @@ export const EXTRA_TURN_RATIO = 3.5;
 /**
  * Damage channel a weapon uses.
  *
- * Weapons share the skill damage formula (`ATK x EFFECT x PWR / RES`) and are
- * always physical for now, so an authored `damage_type` is not consulted.
+ * Weapons share the skill damage formula and are always physical for now, so an
+ * authored `damage_type` is not consulted.
  */
 export const WEAPON_DAMAGE_TYPE: DamageType = 'physical';
 
 /** Divisor applied to an action's power before the defence step. */
 export const POWER_DIVISOR = 1;
 
-/** Defence is a divisor, so it can never drop below this. */
+/**
+ * Weight of the attacker's stat in the damage mitigation ratio.
+ *
+ * The hit scales by `WEIGHT x ATK / (ATK + DEF)` instead of `ATK / DEF`. At the
+ * authored 2:1 benchmark (`20 ATK` against `10 DEF`) the two read the same `x2`,
+ * but the curve bends towards `0` and `WEIGHT` at the extremes: a frail mage
+ * facing a wall still chips it, and an overwhelming attacker no longer
+ * multiplies the hit into the hundreds. That keeps a strong character ahead
+ * without letting the gap between the strongest and the weakest run away.
+ */
+export const ATTACK_DEFENSE_WEIGHT = 3;
+
+/** Defence is clamped before the mitigation ratio, so it can never be zero. */
 export const MINIMUM_DEFENSE = 1;
 
 /**

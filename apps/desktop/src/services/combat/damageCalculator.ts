@@ -3,7 +3,14 @@
  *
  * The authored formula is:
  *
- *     dano = (ATK_TIPO / RES_TIPO) x EFFECT x (PWR / POWER_DIVISOR) x VARIANCE
+ *     dano = MITIGATION x EFFECT x (PWR / POWER_DIVISOR) x VARIANCE
+ *
+ * `MITIGATION` is `ATTACK_DEFENSE_WEIGHT x ATK / (ATK + DEF)`. It replaces the
+ * old `ATK / DEF` ratio so a frail attacker still scratches an armoured target
+ * and a huge attack advantage cannot balloon one hit into the hundreds. At the
+ * authored 2:1 benchmark it still reads `x2`, and it is capped below the weight
+ * (`3`) instead of growing without bound. `attackDefenseFactor` is the exported
+ * helper for previews and diagnostics.
  *
  * `POWER_DIVISOR` is the constant in `CombatConstants` (currently `1`); read it
  * before reasoning about balance — this comment used to hard-code `/5`, which
@@ -37,6 +44,7 @@
  */
 
 import {
+    ATTACK_DEFENSE_WEIGHT,
     CRIT_MULTIPLIER,
     DAMAGE_VARIANCE_RANGE,
     DEFEND_DAMAGE_REDUCTION,
@@ -130,6 +138,21 @@ export function attackStat(stats: CombatStats, damageType: DamageType): number {
 /** The defence stat a damage channel reads. */
 export function defenseStat(stats: CombatStats, damageType: DamageType): number {
     return damageType === 'physical' ? stats.physicalDefense : stats.magicalDefense;
+}
+
+/**
+ * The attack/defence multiplier of one hit.
+ *
+ * `ATTACK_DEFENSE_WEIGHT x ATK / (ATK + DEF)`: a soft ratio that preserves the
+ * authored 2:1 benchmark (`20 ATK` vs `10 DEF` = `x2`) while compressing the
+ * extremes. Equal stats read `1.5`, overwhelming attack approaches `3`, and a
+ * frail attacker against a wall approaches `0` instead of going negative or
+ * exploding. Exported so previews and diagnostics show the same factor.
+ */
+export function attackDefenseFactor(attackValue: number, defenseValue: number): number {
+    const attack = Math.max(0, attackValue);
+    const defense = Math.max(MINIMUM_DEFENSE, defenseValue);
+    return (ATTACK_DEFENSE_WEIGHT * attack) / (attack + defense);
 }
 
 /**
@@ -356,8 +379,9 @@ interface BaseDamageParams {
     /** `true` when an ability makes the target immune to the hit. */
     immune: boolean;
     /**
-     * John II's `atk_def_ratio`: the hit is scaled again by `ATK / RES`, so a
-     * fragile target takes far more and an armoured one far less.
+     * John II's `atk_def_ratio`: the hit is scaled by the same mitigation
+     * factor again (the factor squared), so a fragile target takes far more and
+     * an armoured one far less without returning to a raw `ATK / DEF` blow-up.
      */
     atkDefRatio?: boolean;
     /**
@@ -382,23 +406,25 @@ interface DamageBreakdown {
 }
 
 /**
- * The damage chain: `(ATK / RES) x EFFECT x (PWR / POWER_DIVISOR)`, then the
+ * The damage chain: `MITIGATION x EFFECT x (PWR / POWER_DIVISOR)`, then the
  * skill's traits, the lane and the bracing, then the variance, then rounded.
  *
- * Defence is a divisor, so it can never drop below {@link MINIMUM_DEFENSE}. A hit
- * that lands always deals at least {@link MINIMUM_DAMAGE} — except against an
- * immune target (effect `x0`), which takes nothing.
+ * `MITIGATION` is {@link attackDefenseFactor}: a soft ratio that keeps the
+ * authored 2:1 benchmark at `x2` but compresses the extremes. Defence is
+ * clamped to {@link MINIMUM_DEFENSE} before the ratio. A hit that lands always
+ * deals at least {@link MINIMUM_DAMAGE} — except against an immune target
+ * (effect `x0`), which takes nothing.
  */
 function calculateDamage(params: BaseDamageParams): DamageBreakdown {
     const { attackValue, defenseValue, power, elementMultiplier: effect } = params;
     if (power <= 0) return { base: 0, positioned: 0, varied: 0, final: 0 };
 
-    const defense = Math.max(MINIMUM_DEFENSE, defenseValue);
-    const base = (attackValue / defense) * effect * (power / POWER_DIVISOR);
+    const mitigation = attackDefenseFactor(attackValue, defenseValue);
+    const base = mitigation * effect * (power / POWER_DIVISOR);
     const reduction = 1 - clamp(params.defenseReduction, 0, 0.9);
     const positioned = base * (params.traits ?? 1) * params.positionModifier * reduction;
-    // A `royal` weapon (John II) scales the hit by the same ATK/RES ratio again.
-    const ratio = params.atkDefRatio ? attackValue / defense : 1;
+    // A `royal` weapon (John II) applies the same mitigation factor again.
+    const ratio = params.atkDefRatio ? mitigation : 1;
     const varied = positioned * params.variance * params.attackMultiplier * ratio;
     const final = params.immune || effect === 0 ? 0 : Math.max(MINIMUM_DAMAGE, Math.round(varied));
     return { base, positioned, varied, final };
@@ -502,6 +528,8 @@ export interface DamageResult {
     attackValue: number;
     /** Defence stat the action read from the defender. */
     defenseValue: number;
+    /** Soft attack/defence multiplier applied before element and power. */
+    mitigation: number;
     /** Authored power. */
     power: number;
     /** Damage channel the action used. */
@@ -644,6 +672,7 @@ export function resolveDamage(request: DamageRequest): DamageResult {
     // `bonus_vs_status` trait (hydro_lance versus Wet) deepens it further.
     const statusBonus = bonusVsStatusFor(action, request.defender);
     const pierced = piercedDefense(rawDefense, (action.defensePierce ?? 0) + statusBonus.defensePierce);
+    const mitigation = attackDefenseFactor(attackValue, pierced);
     // A projectile/ranged action may borrow another element (`kindled_ordnance`).
     const effectiveElement = damageElementFor(request.attacker, action);
     const statusModulation = elementModulationFor(request.defender, effectiveElement);
@@ -773,6 +802,7 @@ export function resolveDamage(request: DamageRequest): DamageResult {
         hitDamages,
         attackValue,
         defenseValue: rawDefense,
+        mitigation,
         power: hitPowerBase,
         damageType: action.damageType,
         elementMultiplier: effect,

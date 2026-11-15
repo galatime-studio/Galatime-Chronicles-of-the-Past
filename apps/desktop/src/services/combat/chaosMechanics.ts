@@ -90,6 +90,7 @@ export function dealFlatDamage(
         hitDamages: [resolvedDamage],
         attackValue: 0,
         defenseValue: 0,
+        mitigation: 1,
         power,
         damageType,
         elementMultiplier: 1,

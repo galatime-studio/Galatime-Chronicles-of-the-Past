@@ -197,9 +197,9 @@ function formatEvents(
                 }
 
                 // The chain in the order it is evaluated:
-                // (ATK / DEF) x EFFECT x PWR -> lane -> bracing -> variance.
+                // mitigation x EFFECT x PWR -> lane -> bracing -> variance.
                 const chain = t('playground.combat.log.attackRatio', {
-                    ratio: short(hit.attackValue / Math.max(1, hit.defenseValue)),
+                    mitigation: short(hit.mitigation),
                     element: hit.elementMultiplier,
                     base: short(hit.baseDamage),
                     position: hit.positionModifier,

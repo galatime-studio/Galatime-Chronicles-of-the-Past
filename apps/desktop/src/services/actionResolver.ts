@@ -471,6 +471,7 @@ function makeMissResolution(
         hitDamages: [],
         attackValue: 0,
         defenseValue: 0,
+        mitigation: 0,
         power: action.power,
         damageType: action.damageType,
         elementMultiplier: 1,

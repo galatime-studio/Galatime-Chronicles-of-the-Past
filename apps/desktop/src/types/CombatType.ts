@@ -1077,6 +1077,8 @@ export interface CombatActionImpact {
     immune: boolean;
     /** Defence stat the action read from the defender. */
     defenseValue: number;
+    /** Soft attack/defence multiplier applied before element and power. */
+    mitigation: number;
     /** Authored power. */
     power: number;
     /** Damage channel the action uses. */
@@ -1129,6 +1131,8 @@ export interface AttackResolution {
     attackValue: number;
     /** Defence stat the action read from the defender. */
     defenseValue: number;
+    /** Soft attack/defence multiplier applied before element and power. */
+    mitigation: number;
     /** Authored power. */
     power: number;
     /** Damage channel the action used. */

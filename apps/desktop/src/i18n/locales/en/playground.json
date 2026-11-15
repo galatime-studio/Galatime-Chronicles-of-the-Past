@@ -125,7 +125,7 @@
 				"miss": "misses {{target}}",
 				"element": "elem ×{{value}}",
 				"attackStats": "ATK {{attack}} ({{type}}) · DEF {{defense}} · PW {{power}}",
-				"attackRatio": "ATK÷DEF {{ratio}} · elem ×{{element}} · base {{base}} · pos ×{{position}}{{brace}} · var ×{{variance}} = {{final}}{{hits}}",
+				"attackRatio": "mitigation ×{{mitigation}} · elem ×{{element}} · base {{base}} · pos ×{{position}}{{brace}} · var ×{{variance}} = {{final}}{{hits}}",
 				"brace": " · brace ×{{value}}",
 				"hits_one": " · {{count}} hit",
 				"hits_other": " · {{count}} hits",
