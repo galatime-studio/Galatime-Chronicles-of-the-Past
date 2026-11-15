@@ -9,6 +9,7 @@ import {
     ARENA_DEATH_SINK_MS,
     ARENA_ENTER_MS,
     ARENA_ENTER_STAGGER_MS,
+    ARENA_EVADE_MS,
     ARENA_HIT_MS,
     ARENA_IMPACT_MS,
     ARENA_LUNGE_MS,
@@ -317,24 +318,29 @@ export function CombatFormationEntity({
                 : null,
         ].filter(Boolean).join(', ') || undefined,
     };
+    // A dodged blow moves the unit; an accuracy miss does not. They still share the
+    // drifting label, which is why the slip is its own, shorter reaction.
+    const dodged = hit !== undefined && !hit.isHit && hit.evaded;
     const hitStyle: ArenaLayerStyle = {
         '--arena-dir': arenaDir,
-        // A miss is dodged, not struck: only a landed damaging blow knocks the unit.
+        // Only a landed damaging blow knocks the unit; a dodge slips it aside.
         // A flurry knocks once per blow: the knocks are chained on the rhythm of the
         // flurry, and each one is exactly as long as the gap to the next, so they tile
         // instead of overlapping. Two knocks running at once would fight over the same
         // property and the unit would snap back to rest between blows.
-        animation: hit && hit.kind === 'damage' && hit.isHit
-            ? (() => {
-                const blows = Math.max(1, hit.blows.length);
-                const knockMs = blows > 1 ? ARENA_MULTI_HIT_STAGGER_MS : ARENA_HIT_MS;
+        animation: dodged
+            ? `combat-evade ${ARENA_EVADE_MS}ms ease-out ${ARENA_IMPACT_MS + (hit?.delayMs ?? 0)}ms both`
+            : hit && hit.kind === 'damage' && hit.isHit
+                ? (() => {
+                    const blows = Math.max(1, hit.blows.length);
+                    const knockMs = blows > 1 ? ARENA_MULTI_HIT_STAGGER_MS : ARENA_HIT_MS;
 
-                return Array.from(
-                    { length: blows },
-                    (_, index) => `combat-hit ${knockMs}ms ease-out ${ARENA_IMPACT_MS + hit.delayMs + index * ARENA_MULTI_HIT_STAGGER_MS}ms`,
-                ).join(', ');
-            })()
-            : undefined,
+                    return Array.from(
+                        { length: blows },
+                        (_, index) => `combat-hit ${knockMs}ms ease-out ${ARENA_IMPACT_MS + hit.delayMs + index * ARENA_MULTI_HIT_STAGGER_MS}ms`,
+                    ).join(', ');
+                })()
+                : undefined,
     };
 
     const flashTint = hit && hit.kind === 'damage' && hit.isHit ? elementTint(hit.elementId) : null;
@@ -706,7 +712,7 @@ export function CombatFormationEntity({
                                                     }`}
                                                     style={beat.ambient ? AMBIENT_NUMBER_STYLE : FLOATING_NUMBER_STYLE}
                                                 >
-                                                    {numberText(beat, amount, t('combat.miss'))}
+                                                    {numberText(beat, amount, t(beat.evaded ? 'combat.evade' : 'combat.miss'))}
                                                 </span>
                                             </span>
                                         ))}

@@ -162,7 +162,9 @@ function toStatusBadges(unit: CombatUnit): CombatStatusBadge[] {
             named: effect.statusEffect !== null,
             elementId: effect.elementId,
             tone,
-            turns: effect.turns,
+            // The last usable turn leaves the counter at zero; the badge still
+            // promises a turn, because the effect is standing until the next tick.
+            turns: effect.turns === null ? null : Math.max(1, effect.turns),
         };
     });
 }

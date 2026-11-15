@@ -1103,7 +1103,15 @@ export interface AttackResolution {
     targetId: string;
     actionId: string;
     /** `false` when every hit missed. */
-    isHit: boolean;    /** Ability multiplier folded from the target's passive abilities (`1` = none). */
+    isHit: boolean;
+    /**
+     * The blow was dodged, not merely inaccurate.
+     *
+     * Set when a live `evade_next` status or a `force_miss` passive voided the
+     * strike; the arena plays a slip instead of the ordinary miss.
+     */
+    evaded?: boolean;
+    /** Ability multiplier folded from the target's passive abilities (`1` = none). */
     attackMultiplier: number;
     /** `true` when an ability made the target immune to the hit. */
     immune: boolean;    /** How many hits landed. */

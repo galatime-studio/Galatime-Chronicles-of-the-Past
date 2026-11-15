@@ -447,13 +447,24 @@ function consumeEvade(
     return evade;
 }
 
-/** A resolution for a hit that was dodged before it could land. */
-function makeMissResolution(actor: CombatUnit, target: CombatUnit, action: CombatAction): AttackResolution {
+/**
+ * A resolution for a hit that never landed.
+ *
+ * `evaded` separates a dodge (a live `evade_next` status or a `force_miss`
+ * passive) from an ordinary accuracy miss, so the arena can play a slip.
+ */
+function makeMissResolution(
+    actor: CombatUnit,
+    target: CombatUnit,
+    action: CombatAction,
+    evaded = false,
+): AttackResolution {
     return {
         attackerId: actor.id,
         targetId: target.id,
         actionId: action.id,
         isHit: false,
+        evaded: evaded || undefined,
         attackMultiplier: 1,
         immune: false,
         hits: 0,
@@ -521,7 +532,7 @@ function buildResolution(
     // voided before any damage is rolled, and the bearer pays its price.
     const forcedMiss = resolveForcedMiss(recipient, action, random, state.units, actor);
     if (forcedMiss.events.length > 0) context.events?.push(...forcedMiss.events);
-    if (forcedMiss.forced) return makeMissResolution(actor, recipient, action);
+    if (forcedMiss.forced) return makeMissResolution(actor, recipient, action, true);
     // A clay doll/sentinel on the bearer absorbs the next hit(s); a roll may let
     // the blow break through instead.
     const interceptEffect = recipient.effects.find((effect) => effect.intercept
@@ -863,7 +874,7 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
             for (const target of cascadeTargets) {
                 const evade = consumeEvade(state.units, target, action.damageType, random, events, action);
                 if (evade) {
-                    resolutions.set(target.id, makeMissResolution(actor, target, action));
+                    resolutions.set(target.id, makeMissResolution(actor, target, action, true));
                     if ((evade.evadeNext?.power ?? 0) > 0) {
                         dealFlatDamage(events, target, actor, evade.evadeNext?.power ?? 0, action.id, 'physical', random);
                     }

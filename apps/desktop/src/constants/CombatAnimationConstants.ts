@@ -105,6 +105,14 @@ export const ARENA_MULTI_HIT_STAGGER_MS = 130;
  */
 export const ARENA_HIT_MS = 420;
 
+/**
+ * How long a dodged unit's slip lasts.
+ *
+ * Shorter than a knock: the unit leaves the line of the blow and is back before the
+ * next beat, so a dodge reads as a movement, not as a stagger.
+ */
+export const ARENA_EVADE_MS = 380;
+
 /** How long a buff/debuff label lingers over the unit it just landed on. */
 export const ARENA_STATUS_MS = 760;
 

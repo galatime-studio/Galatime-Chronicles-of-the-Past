@@ -2409,6 +2409,11 @@ function resolveRuneReturnOnExpiry(
  * The same tick pays what the effect owes its holder: `regen_per_turn` gives
  * the resources back, `self_upkeep` takes them, and `deferred_cost` is paid
  * once, on the turn after the effect landed.
+ *
+ * Duration is counted in *usable* turns: an effect authored for three turns is
+ * still standing, and still paying, during its holder's third turn. Its counter
+ * reaches zero there and the effect is reaped at the following turn's tick,
+ * before it could pay a fourth time.
  */
 export function tickUnitEffects(
     unit: CombatUnit,
@@ -2422,6 +2427,14 @@ export function tickUnitEffects(
     const shedThisTick = new Set<string>();
 
     for (const effect of unit.effects) {
+        // The counter hit zero on the previous tick: the effect already lived its
+        // last turn in full and is only waiting to be reaped below. It must not
+        // pay its upkeep a second time on the way out.
+        if (effect.turns !== null && effect.turns <= 0) {
+            remaining.push(effect);
+            continue;
+        }
+
         if (effect.damagePerTurn > 0 && effect.damageTiming !== 'turn_end') {
             // A variable DoT rolls its own `damage_variance` every tick, so a
             // rot can bite hard one turn and barely the next.
@@ -2529,8 +2542,10 @@ export function tickUnitEffects(
         if (shedThisTick.has(effect.effectId)) continue;
         // A `turn_start` status ends the very moment its holder's turn begins
         // (`Updraft`); its turn is spent guarding, not counting.
+        // A timed status is spent only once its counter is already at zero, so
+        // the turn that takes it there is still played under its effect.
         const expires = effect.expiresMode === 'turn_start'
-            || (effect.turns !== null && effect.turns - 1 <= 0);
+            || (effect.turns !== null && effect.turns <= 0);
         if (!expires) {
             expiring.push(
                 effect.turns === null ? effect : { ...effect, turns: effect.turns - 1 },

@@ -105,6 +105,33 @@
   }
 }
 
+/* A blow that was dodged: the unit slips back out of the strike's line and
+   returns, thinning like an afterimage on the way. Distinct from an accuracy
+   miss, where the sprite never moves; still no flash and no shake, because
+   nothing connected. */
+@keyframes combat-evade {
+  0% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  20% {
+    opacity: 0.55;
+    translate: calc(var(--arena-dir, 1) * -0.5rem) 0.1rem;
+  }
+  45% {
+    opacity: 0.85;
+    translate: calc(var(--arena-dir, 1) * -0.32rem) 0;
+  }
+  75% {
+    opacity: 1;
+    translate: calc(var(--arena-dir, 1) * -0.1rem) 0;
+  }
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
 /* A heal: a soft green wash over the sprite, swelling as it fades. */
 @keyframes combat-heal {
   0% {

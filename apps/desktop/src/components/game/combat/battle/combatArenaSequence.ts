@@ -37,6 +37,13 @@ export interface ArenaHit {
     kind: 'damage' | 'heal';
     /** `false` when the blow missed; the reaction is then a "MISS", not a number. */
     isHit: boolean;
+    /**
+     * The blow was dodged rather than merely off target.
+     *
+     * A dodge has its own reaction: the unit slips aside, while an accuracy miss
+     * only drifts a MISS past an unmoving sprite.
+     */
+    evaded: boolean;
     /** Element of the action, for the flash/spark tint. */
     elementId: string | null;
     /** Element efficacy (`x0`…`x1.6`), read by the damage number's colour. */
@@ -211,6 +218,7 @@ export function buildArenaSequence(
 
         existing.amount += hit.amount;
         existing.isHit = existing.isHit || hit.isHit;
+        existing.evaded = existing.evaded || hit.evaded;
         existing.fatal = existing.fatal || hit.fatal;
         // A missed hop still produces a resolution; it must not count as a blow.
         existing.hits += hit.isHit ? hit.hits : 0;
@@ -236,6 +244,7 @@ export function buildArenaSequence(
                     amount: resolution.finalDamage,
                     kind: 'damage',
                     isHit: resolution.isHit,
+                    evaded: resolution.evaded === true,
                     elementId: findActionElement(state.units, resolution.actionId),
                     multiplier: resolution.elementMultiplier,
                     fatal,
@@ -253,6 +262,7 @@ export function buildArenaSequence(
                     amount: resolution.amount,
                     kind: 'heal',
                     isHit: true,
+                    evaded: false,
                     elementId: findActionElement(state.units, resolution.actionId),
                     multiplier: 1,
                     fatal: false,
@@ -283,6 +293,7 @@ export function buildArenaSequence(
                         amount,
                         kind,
                         isHit: true,
+                        evaded: false,
                         elementId: null,
                         multiplier: 1,
                         fatal,
