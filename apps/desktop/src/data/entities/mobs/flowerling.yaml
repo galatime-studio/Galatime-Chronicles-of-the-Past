@@ -67,7 +67,6 @@ abilities:
   - id: thorned_body
     name: Thorned Body
     description: Corporis attacks wound the attacker with part of the damage.
-    tags: [reaction, reflect]
     trigger:
       event: after_damage
     condition:

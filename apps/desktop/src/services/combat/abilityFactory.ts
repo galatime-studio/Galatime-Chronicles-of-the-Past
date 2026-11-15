@@ -103,16 +103,6 @@ function isOneOf<T extends string>(allowed: readonly T[], value: string): value 
     return (allowed as readonly string[]).includes(value);
 }
 
-/** Reads an optional list of non-empty strings. */
-function readStringArray(value: unknown): string[] | undefined {
-    if (!Array.isArray(value)) return undefined;
-    const strings = value
-        .filter((entry): entry is string => typeof entry === 'string')
-        .map((entry) => entry.trim())
-        .filter((entry) => entry !== '');
-    return strings.length > 0 ? strings : undefined;
-}
-
 /** Reads a comparison operator, defaulting to `eq`. */
 function readOperator(value: unknown): AbilityComparisonOperator {
     const operator = readString(value, 'eq');
@@ -337,9 +327,6 @@ export function normalizeAbilityDefinition(raw: unknown): AbilityDefinition | nu
         trigger,
         action,
     };
-
-    const tags = readStringArray(record.tags);
-    if (tags) definition.tags = tags;
 
     if (typeof record.enabled === 'boolean') definition.enabled = record.enabled;
 

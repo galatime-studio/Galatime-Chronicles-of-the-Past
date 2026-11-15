@@ -75,7 +75,6 @@ abilities:
   - id: gelatinous_body
     name: Gelatinous Body
     description: Physical attacks lose 90% of their power against it.
-    tags: [defense, physical]
     trigger:
       event: before_damage
     condition:
@@ -95,7 +94,6 @@ abilities:
   - id: slime_split
     name: Slime Split
     description: When it dies, it bursts into 2 Slimes.
-    tags: [death, summon]
     trigger:
       event: on_death
     action:

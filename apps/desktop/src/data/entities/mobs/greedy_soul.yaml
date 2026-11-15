@@ -61,7 +61,6 @@ abilities:
   - id: soul_inversion
     name: Soul Inversion
     description: After 4 of its turns, it turns into a Charitable Soul.
-    tags: [transform, cycle]
     trigger:
       event: turn_end
       once: true

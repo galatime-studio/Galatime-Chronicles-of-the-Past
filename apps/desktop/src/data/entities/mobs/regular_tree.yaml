@@ -68,7 +68,6 @@ abilities:
   - id: seed_flowerling
     name: Seed Flowerling
     description: After 3 of its turns, it grows a Flowerling.
-    tags: [summon]
     trigger:
       event: turn_end
       once: true

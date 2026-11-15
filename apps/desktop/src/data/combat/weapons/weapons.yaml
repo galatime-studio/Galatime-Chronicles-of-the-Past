@@ -326,7 +326,7 @@ weapons:
     target: any_one
     hits: 1
     accuracy: 0.80
-    power: 100
+    power: 60
     stamina_cost: 6
     damage_variance: [0.9, 1.6]
     durability: { max: 200, wear: 1 }

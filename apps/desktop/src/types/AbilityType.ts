@@ -258,7 +258,6 @@ export interface AbilityDefinition {
     id: string;
     name: string;
     description: string;
-    tags?: string[];
     enabled?: boolean;
     /** Higher priority is evaluated first when several abilities fire together. */
     priority?: number;

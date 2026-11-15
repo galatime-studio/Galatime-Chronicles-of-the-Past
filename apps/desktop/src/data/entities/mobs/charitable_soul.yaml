@@ -60,7 +60,6 @@ abilities:
   - id: soul_inversion
     name: Soul Inversion
     description: After 4 of its turns, it turns back into a Greedy Soul.
-    tags: [transform, cycle]
     trigger:
       event: turn_end
       once: true
@@ -82,7 +81,6 @@ abilities:
   - id: radiant_reflection
     name: Radiant Reflection
     description: Magical attacks are partly thrown back at the attacker.
-    tags: [reaction, reflect]
     trigger:
       event: after_damage
     condition:

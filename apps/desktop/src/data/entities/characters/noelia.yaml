@@ -32,7 +32,7 @@ skills: #todo
 weapon:
   id: sunpetal_rapier
   name: Sunpetal Rapier
-  description: "A slender duelling rapier whose gilt guard unfolds like a flower. It carries Lux along the blade, so its edge answers to wit rather than strength."
+  description: "Add description."
   type: longsword
   element: lux
   damage_type: magical

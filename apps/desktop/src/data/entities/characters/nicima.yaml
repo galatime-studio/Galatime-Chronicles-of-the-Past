@@ -31,7 +31,7 @@ skills: #todo
 weapon:
   id: scepter_of_dawn
   name: Scepter of Dawn
-  description: "A pale-gold scepter crowned with a shard of morning light. It strikes with Lux and returns a measure of mana to its bearer."
+  description: "Add a description."
   type: staff
   element: lux
   damage_type: magical

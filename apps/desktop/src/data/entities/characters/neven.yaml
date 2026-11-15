@@ -16,7 +16,7 @@ elements:
   - spatium
 
 base_stats:
-  hp: 250
+  hp: 480
   mana: 122
   stamina: 35
   physical_attack: 25
@@ -32,10 +32,9 @@ skills:
   - shadow_step_II 
 
 abilities:
-  - id: spatial_flicker
-    name: Spatial Flicker
+  - id: spatial_instinct
+    name: Spatial Instinct
     description: "Long-range attacks against Neven have a 35% chance to miss; every blow he slips away from costs him his next turn."
-    tags: [reaction, evasion]
     trigger:
       event: before_damage
       scope: self

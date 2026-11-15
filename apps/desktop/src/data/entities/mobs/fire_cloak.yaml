@@ -82,7 +82,6 @@ abilities:
   - id: kindled_immunity
     name: Kindled Immunity
     description: The first physical hit ignites it, making it immune to physical attacks until it dies.
-    tags: [reaction, immunity]
     trigger:
       event: after_damage
       once: true
@@ -103,7 +102,6 @@ abilities:
   - id: kindled_haste
     name: Kindled Haste
     description: The first physical hit also stokes its flames, raising its speed until it dies.
-    tags: [reaction, buff]
     trigger:
       event: after_damage
       once: true

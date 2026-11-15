@@ -53,9 +53,9 @@ skills: #todo
 weapon:
   id: skyhunter_bow
   name: Skyhunter Bow
-  description: "A longbow strung with spun wind, firing arrows of compressed air instead of wood and steel."
+  description: "Add a description."
   type: bow
-  element: caeli
+  element: inanus
   damage_type: magical
   target: any_one
   range: long

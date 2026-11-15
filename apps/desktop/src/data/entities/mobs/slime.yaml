@@ -75,7 +75,6 @@ abilities:
   - id: slime_split_small
     name: Slime Split
     description: When it dies, it bursts into 2 Small Slimes.
-    tags: [death, summon]
     trigger:
       event: on_death
     action:
