@@ -57,6 +57,17 @@ export interface DialogueViewProps {
     onExit?: () => void;
     /** Shown on the stage while there is no conversation. */
     idleContent?: ReactNode;
+    /**
+     * Holds the ended conversation open instead of closing it.
+     *
+     * The box's result panel is the *player's* ending: it announces the
+     * outcome and closes the conversation behind a Close button. Tooling that
+     * reports the end in a readout of its own (through `onSessionChange`)
+     * wants the session to stay on `completed` instead — so with this on the
+     * surface draws no result panel, ignores the press that would close it,
+     * and skips the auto-close hold. Escape still leaves through `onExit`.
+     */
+    holdEndSession?: boolean;
     className?: string;
     stageClassName?: string;
 }
@@ -74,6 +85,7 @@ export function DialogueView({
     onFinished,
     onExit,
     idleContent,
+    holdEndSession = false,
     className = '',
     stageClassName = '',
 }: DialogueViewProps) {
@@ -253,7 +265,11 @@ export function DialogueView({
                 }
 
                 case 'completed':
-                    closeSession('finished');
+                    // Held sessions belong to the caller's readout: there is no
+                    // panel to close and nothing to leave yet.
+                    if (!holdEndSession) {
+                        closeSession('finished');
+                    }
                     return;
 
                 default:
@@ -262,7 +278,7 @@ export function DialogueView({
                     return;
             }
         });
-    }, [runOnce, status, dialogueRef, advance, choices, selectedIndex, choose, closeSession]);
+    }, [runOnce, status, dialogueRef, advance, choices, selectedIndex, choose, closeSession, holdEndSession]);
 
     const moveSelection = useCallback((step: number) => {
         runOnce(() => {
@@ -293,8 +309,10 @@ export function DialogueView({
     // A conversation that ran itself off the end of a self-advancing line is not
     // waiting for a click to dismiss the result panel either. Anything that
     // reached the ending from a line the player had to advance still waits.
+    // A held session waits forever: its end is the readout's to report, so the
+    // closing hold never runs.
     useEffect(() => {
-        if (status !== 'completed' || !lastNodeAutoAdvance.current) {
+        if (status !== 'completed' || !lastNodeAutoAdvance.current || holdEndSession) {
             return undefined;
         }
 
@@ -304,7 +322,7 @@ export function DialogueView({
         );
 
         return () => window.clearTimeout(timer);
-    }, [status, closeSession]);
+    }, [status, closeSession, holdEndSession]);
 
     return (
         <div className={`relative flex flex-col overflow-hidden bg-galatime-background ${className}`}>
@@ -397,7 +415,7 @@ export function DialogueView({
                     />
                 )}
 
-                {!showBox && status === 'completed' && (
+                {!holdEndSession && !showBox && status === 'completed' && (
                     <DialogueResultPanel
                         result={result}
                         changes={response?.state_changes ?? NO_CHANGES}

@@ -1,17 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { playSfx } from '../../../controllers/audioController';
 import { fetchDialogue } from '../../../controllers/dialogueController';
-import { useElementWidth } from '../../../hooks/useElementWidth';
 import CommonButton from '../../../components/common/CommonButton';
 import CommonInput from '../../../components/common/CommonInput';
 import CommonSwitch from '../../../components/common/CommonSwitch';
 import { DialogueView } from '../../../components/game/dialogue/DialogueView';
+import { TestDialoguePopup, type TestDialoguePopupTab } from './components/TestDialoguePopup';
 import {
     DIALOGUE_BOX_HEIGHT_ALLOWANCE_PX,
     DIALOGUE_SPRITE_MIN_HEIGHT_PX,
+    resolveResultLabelKey,
 } from '../../../constants/DialogueConstants';
 import type { DialogueSessionSnapshot } from '../../../hooks/useDialogueSession';
+import type { DialogueResponse } from '../../../types/DialogueType';
 import type { StateChange, WorldStateInput } from '../../../types/WorldStateType';
 import {
     OBJECTIVE_STATUSES,
@@ -22,6 +24,11 @@ import {
     type RequirementValues,
 } from '../../../services/dialogueRequirementService';
 import { relationshipStatePath } from '../../../services/state/worldStateService';
+import { resolveCharacter } from '../../../services/dialogue/characterRegistryService';
+import {
+    hasCharacterEmotion,
+    resolveCharacterPortrait,
+} from '../../../services/characterPortraitService';
 
 /**
  * Plays a dialogue for real, against the dialogue backend.
@@ -36,23 +43,17 @@ import { relationshipStatePath } from '../../../services/state/worldStateService
  * 2. **Set those values**, then start. The defaults open every branch, so the
  *    interesting thing to do here is lower one and watch an option disappear.
  *
+ * The stage takes the whole panel: the values and the session readout do not
+ * stand beside it, they float over its right edge in one popup behind two tabs
+ * (`TestDialoguePopup`), the way the combat log floats over a fight. The panel
+ * mounts it open on Variables and switches it to Session the moment the
+ * conversation ends, because the end is reported there: the box does not
+ * announce it, and Session also lists — in red — the expressions no sprite
+ * answered for while the session ran.
+ *
  * The session readout reports exactly what the backend returned — which node,
  * which options it considered visible, what it changed and what it warned about.
  */
-
-/**
- * How narrow the panel has to be before its two halves stack.
- *
- * Measured, not taken from a breakpoint: `matchMedia` is evaluated against the
- * magnified viewport, so at 200% zoom a 1051px window still reports 1051px while
- * the panel is laid out on 525px — a `md:` rule would keep the halves side by side
- * on a surface that has no room for them.
- *
- * 720px is where the 280px column of variables stops leaving the stage enough
- * width for a readable cast. Below it each half takes the full width instead, the
- * variables on top and the stage underneath.
- */
-const PANEL_STACK_MIN_WIDTH_PX = 720;
 
 /** One editor, chosen by the shape of the value the dialogue compares against. */
 function RequirementEditor({
@@ -199,21 +200,79 @@ function applyRelationshipChanges(
     return updated;
 }
 
+/** One face a response wants drawn: a cast member, or whoever is speaking. */
+interface ExpressionRequest {
+    characterId: string;
+    emotion: string | null;
+}
+
+/**
+ * The faces one response asks for: everyone standing in the cast, plus the
+ * line and the question being read — they carry the emotion of this very step.
+ */
+function collectExpressionRequests(response: DialogueResponse): ExpressionRequest[] {
+    const requests: ExpressionRequest[] = response.cast_state.characters.map((member) => ({
+        characterId: member.character_id,
+        emotion: member.emotion,
+    }));
+
+    const node = response.current_node;
+
+    if (node?.speaker_id) {
+        requests.push({ characterId: node.speaker_id, emotion: node.emotion });
+    }
+
+    if (node?.prompt?.speaker_id) {
+        requests.push({ characterId: node.prompt.speaker_id, emotion: node.prompt.emotion ?? null });
+    }
+
+    return requests;
+}
+
+/**
+ * The requested faces no sprite answers, as `character/emotion` keys.
+ *
+ * A named emotion is looked up on its own — no neutral fallback, because the
+ * fallback is exactly what hides a missing expression from the stage. A face
+ * that names no emotion only counts as missing when the character has no
+ * artwork at all, and is then reported as `character/*`, since every
+ * expression it could wear is missing with it.
+ *
+ * The key is the pair the stage would try to draw, so a line of this list
+ * names the request that failed rather than a file path nobody authored.
+ */
+function findMissingExpressions(response: DialogueResponse): string[] {
+    const pending = new Map<string, ExpressionRequest>();
+
+    for (const request of collectExpressionRequests(response)) {
+        const key = request.emotion
+            ? `${request.characterId}/${request.emotion}`
+            : `${request.characterId}/*`;
+
+        pending.set(key, request);
+    }
+
+    const missing: string[] = [];
+
+    for (const [key, { characterId, emotion }] of pending) {
+        const displayName = resolveCharacter(characterId)?.display_name ?? null;
+        const found = emotion
+            ? hasCharacterEmotion(characterId, emotion, displayName)
+            : resolveCharacterPortrait(characterId, null, displayName) !== null;
+
+        if (!found) {
+            missing.push(key);
+        }
+    }
+
+    return missing;
+}
+
 export function TestDialoguePanel() {
     const { t } = useTranslation(['playground', 'dialogue']);
     const [dialogueId, setDialogueId] = useState('');
     const [error, setError] = useState<string | null>(null);
 
-    /**
-     * The panel itself, which decides whether its halves stack.
-     *
-     * The panel's own width is the right question — not the window's — because the
-     * panel is already narrower than the window by a sidebar and two lots of
-     * padding, and all of that shrinks again under the render scale.
-     */
-    const panelRef = useRef<HTMLDivElement>(null);
-    const panelWidth = useElementWidth(panelRef);
-    const isStacked = panelWidth !== null && panelWidth < PANEL_STACK_MIN_WIDTH_PX;
     /** The loaded dialogue and the values it gates on. `null` is step one. */
     const [loaded, setLoaded] = useState<{
         id: string;
@@ -234,6 +293,23 @@ export function TestDialoguePanel() {
      */
     const [relationships, setRelationships] = useState<Record<string, RelationshipReading>>({});
 
+    /**
+     * The popup's own two pieces of state, lifted so the panel can move them:
+     * it mounts open on Variables and switches itself to Session the moment the
+     * conversation ends.
+     */
+    const [popupOpen, setPopupOpen] = useState(true);
+    const [popupTab, setPopupTab] = useState<TestDialoguePopupTab>('variables');
+
+    /**
+     * The faces the session asked for and no sprite answered, sorted.
+     *
+     * Accumulated step by step rather than read from the file: the list
+     * reports what playback has actually tried to draw, so a branch that was
+     * never taken stays out of it.
+     */
+    const [missingExpressions, setMissingExpressions] = useState<string[]>([]);
+
     const response = snapshot?.response ?? null;
     const node = response?.current_node ?? null;
 
@@ -250,6 +326,48 @@ export function TestDialoguePanel() {
         if (changes && changes.length > 0) {
             setRelationships((previous) => applyRelationshipChanges(previous, changes));
         }
+    }, [snapshot]);
+
+    // The end is reported in Session — the box no longer announces it — so the
+    // popup opens on that tab the moment the conversation completes.
+    useEffect(() => {
+        if (snapshot?.status !== 'completed') {
+            return;
+        }
+
+        setPopupOpen(true);
+        setPopupTab('session');
+    }, [snapshot]);
+
+    // Fold each step's unanswered faces in as they arrive. Keys already
+    // listed change nothing, so the effect is a read on every step and a
+    // write only when something new is missing.
+    useEffect(() => {
+        const response = snapshot?.response;
+
+        if (!response) {
+            return;
+        }
+
+        setMissingExpressions((previous) => {
+            const found = findMissingExpressions(response);
+
+            if (found.length === 0) {
+                return previous;
+            }
+
+            const merged = new Set(previous);
+            let changed = false;
+
+            for (const key of found) {
+                if (!merged.has(key)) {
+                    merged.add(key);
+                    changed = true;
+                }
+            }
+
+            return changed ? [...merged].sort() : previous;
+        });
     }, [snapshot]);
 
     const handleLoad = async () => {
@@ -281,6 +399,9 @@ export function TestDialoguePanel() {
         setRunning(null);
         setSnapshot(null);
         setRelationships({});
+        setMissingExpressions([]);
+        setPopupOpen(true);
+        setPopupTab('variables');
     };
 
     // The `Change dialogue` and `Start` buttons play their own click; nothing here
@@ -291,6 +412,9 @@ export function TestDialoguePanel() {
         setSnapshot(null);
         setError(null);
         setRelationships({});
+        setMissingExpressions([]);
+        setPopupOpen(true);
+        setPopupTab('variables');
     };
 
     const handleStart = () => {
@@ -302,6 +426,7 @@ export function TestDialoguePanel() {
         // about to be given, so an affinity left alone reads as itself rather
         // than as something the conversation never touched.
         setRelationships(seedRelationships(worldState));
+        setMissingExpressions([]);
         setSnapshot(null);
         setRunning((previous) => ({ id: loaded.id, key: (previous?.key ?? 0) + 1 }));
     };
@@ -362,7 +487,7 @@ export function TestDialoguePanel() {
 
     //region — Render
     return (
-        <div ref={panelRef} className="flex h-full min-h-0 flex-col gap-3">
+        <div className="flex h-full min-h-0 flex-col gap-3">
             {loaded === null ? (
                 /* Step one: the id, and nothing else. */
                 <div
@@ -394,19 +519,13 @@ export function TestDialoguePanel() {
                     )}
                 </div>
             ) : (
-                /* Step two: the values this dialogue gates on, and the stage. */
+                /* Step two: the stage, with the values it gates on and what the
+                   backend answered floating over its right edge. */
                 <>
                     <header className="flex shrink-0 flex-wrap items-end justify-between gap-3 border-b-game border-white/10 pb-3">
                         <div className="min-w-0">
-                            <p className="settings-label">{t('playground.dialogue.variables')}</p>
+                            <p className="settings-label">{t('playground.dialogue.inputTitle')}</p>
                             <p className="truncate font-mono text-sm text-white">{loaded.id}</p>
-                            {/* The explanation is the first thing to go when the halves
-                                stack: on a short screen it is worth more as stage. */}
-                            {!isStacked && (
-                                <p className="mt-1 max-w-lg text-xs text-white/40">
-                                    {t('playground.dialogue.variablesDescription')}
-                                </p>
-                            )}
                         </div>
 
                         <div className="flex shrink-0 items-center gap-3">
@@ -420,65 +539,27 @@ export function TestDialoguePanel() {
                     </header>
 
                     {/*
-                      Stacked, the two halves each take the full width: the variables on
-                      top and the stage underneath. Side by side, the variables keep their
-                      fixed column and the stage takes what is left.
+                      The floor of the dialogue surface, and the only place the
+                      minimum character height is enforced.
 
-                      The row is floored because a short viewport would otherwise give it
-                      nothing at all: the header above it is `shrink-0` and wraps to
-                      several lines on a narrow screen, so the space left for the halves
-                      can reach zero and take the variables with it. This floor is what
-                      keeps the variables column usable; the stage has its own, on
-                      `DialogueView`.
+                      It belongs on the whole surface, not on the stage.
+                      `DialogueView` clips its own overflow, so a floor on the stage
+                      would not push the panel into a scroll — it would push the box
+                      out of the bottom of the clip, and a half-drawn line is the one
+                      thing that must never happen. Flooring the surface instead
+                      makes the *panel* taller than its section, and the section
+                      scrolls.
+
+                      The number is derived rather than written down so that changing
+                      `DIALOGUE_SPRITE_MIN_HEIGHT_PX` cannot leave a floor too small to
+                      honour it: the stage is what the characters stand on, so the
+                      floor has to move with the minimum.
+
+                      The stage takes the whole width: its neighbours — the variables
+                      and the session readout — float over it rather than standing
+                      beside it, so nothing here has to be shared out.
                     */}
-                    <div className={`flex min-h-[16rem] flex-1 gap-4 ${isStacked ? 'flex-col' : 'flex-row'}`}>
-                        {/* Only the values the dialogue reads or moves — nothing else
-                            would do anything, so nothing else is offered. Stacked, the
-                            column is capped and scrolls on its own: left to size itself it
-                            would take the stage's height with it and there would be
-                            nothing left to look at. */}
-                        <section
-                            className={`min-h-0 overflow-y-auto pr-1 ${isStacked
-                                ? 'max-h-[35%] w-full'
-                                : 'w-56 shrink-0'
-                                }`}
-                        >
-                            {loaded.requirements.length === 0 ? (
-                                <p className="text-xs text-white/40">
-                                    {t('playground.dialogue.noVariables')}
-                                </p>
-                            ) : (
-                                loaded.requirements.map((requirement) => (
-                                    <RequirementEditor
-                                        key={requirement.path}
-                                        requirement={requirement}
-                                        value={values[requirement.path] ?? ''}
-                                        onChange={(value) => setValues((previous) => ({
-                                            ...previous,
-                                            [requirement.path]: value,
-                                        }))}
-                                    />
-                                ))
-                            )}
-                        </section>
-
-                        {/*
-                          The floor of the dialogue surface, and the only place the
-                          minimum character height is enforced.
-
-                          It belongs on the whole surface, not on the stage.
-                          `DialogueView` clips its own overflow, so a floor on the stage
-                          would not push the panel into a scroll — it would push the box
-                          out of the bottom of the clip, and a half-drawn line is the one
-                          thing that must never happen. Flooring the surface instead
-                          makes the *panel* taller than its section, and the section
-                          scrolls.
-
-                          The number is derived rather than written down so that changing
-                          `DIALOGUE_SPRITE_MIN_HEIGHT_PX` cannot leave a floor too small to
-                          honour it: the stage is what the characters stand on, so the
-                          floor has to move with the minimum.
-                        */}
+                    <div className="relative flex min-h-[16rem] flex-1">
                         <section
                             className="flex min-w-0 flex-1 flex-col"
                             style={{
@@ -491,6 +572,10 @@ export function TestDialoguePanel() {
                                 worldState={worldState}
                                 onSessionChange={setSnapshot}
                                 onExit={() => setRunning(null)}
+                                // The end belongs to the Session readout: no box
+                                // announces it, and the session stays completed
+                                // until Escape, Start or Change dialogue leaves.
+                                holdEndSession
                                 className="min-h-0 flex-1"
                                 stageClassName="min-h-0"
                                 idleContent={(
@@ -502,30 +587,97 @@ export function TestDialoguePanel() {
                                 )}
                             />
                         </section>
-                    </div>
 
-                    {/* Session readout */}
-                    <details className="max-h-44 shrink-0 overflow-y-auto border-game border-white/10 px-3 py-2">
-                        <summary className="cursor-pointer text-xs uppercase tracking-[0.15em] text-white/60">
-                            {t('dialogue.debug.title')}
-                        </summary>
-
-                        <dl className="mt-2 flex flex-col gap-1 font-mono text-xs">
-                            <DebugRow label={t('dialogue.debug.node')} value={node ? `${node.id} (${node.type})` : t('dialogue.debug.none')} />
-                            <DebugRow label={t('dialogue.debug.waitingFor')} value={node?.next_action ?? t('dialogue.debug.none')} />
-                            <DebugRow label="auto_advance" value={String(node?.auto_advance ?? false)} />
-                            <DebugRow label="status" value={snapshot?.status ?? 'idle'} />
-                            <DebugRow label={t('dialogue.debug.speaker')} value={speakerDescription} />
-                            <DebugRow label={t('dialogue.debug.cast')} value={castDescription} />
-                            <DebugRow label={t('dialogue.debug.choices')} value={choiceDescription} />
-                            <DebugRow label={t('dialogue.debug.changes')} value={changeDescription} />
-                            <DebugRow label={t('dialogue.debug.relationships')} value={relationshipDescription} />
-                            <DebugRow label={t('dialogue.debug.warnings')} value={warningDescription} />
-                            {snapshot?.error && (
-                                <DebugRow label="error" value={`${snapshot.error.code}: ${snapshot.error.message}`} />
+                        {/*
+                          Both readouts in one panel over the stage's right edge,
+                          opened and closed from its own header — the dialogue's
+                          answer to the combat log.
+                        */}
+                        <TestDialoguePopup
+                            open={popupOpen}
+                            onOpenChange={setPopupOpen}
+                            tab={popupTab}
+                            onTabChange={setPopupTab}
+                            variableCount={loaded.requirements.length}
+                            variables={(
+                                <>
+                                    {loaded.requirements.length === 0 ? (
+                                        <p className="mt-3 text-xs text-white/40">
+                                            {t('playground.dialogue.noVariables')}
+                                        </p>
+                                    ) : (
+                                        <div className="mt-2">
+                                            {loaded.requirements.map((requirement) => (
+                                                <RequirementEditor
+                                                    key={requirement.path}
+                                                    requirement={requirement}
+                                                    value={values[requirement.path] ?? ''}
+                                                    onChange={(value) => setValues((previous) => ({
+                                                        ...previous,
+                                                        [requirement.path]: value,
+                                                    }))}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
                             )}
-                        </dl>
-                    </details>
+                            session={(
+                                <>
+                                    {/*
+                                      The end, reported where the bench reads it:
+                                      the box no longer announces it, so this is
+                                      the one place that says the conversation is
+                                      over and which outcome it produced.
+                                    */}
+                                    {snapshot?.status === 'completed' && (
+                                        <p className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-l-game border-galatime-accent bg-white/5 px-2 py-1.5 text-xs uppercase tracking-[0.1em] text-white">
+                                            <span>{t('dialogue.result.title')}</span>
+                                            <span className="text-galatime-accent">
+                                                {t(resolveResultLabelKey(response?.result ?? null))}
+                                            </span>
+                                        </p>
+                                    )}
+
+                                    <dl className="flex flex-col gap-1 font-mono text-xs">
+                                        <DebugRow label={t('dialogue.debug.node')} value={node ? `${node.id} (${node.type})` : t('dialogue.debug.none')} />
+                                        <DebugRow label={t('dialogue.debug.waitingFor')} value={node?.next_action ?? t('dialogue.debug.none')} />
+                                        <DebugRow label="auto_advance" value={String(node?.auto_advance ?? false)} />
+                                        <DebugRow label="status" value={snapshot?.status ?? 'idle'} />
+                                        <DebugRow label={t('dialogue.debug.speaker')} value={speakerDescription} />
+                                        <DebugRow label={t('dialogue.debug.cast')} value={castDescription} />
+                                        <DebugRow label={t('dialogue.debug.choices')} value={choiceDescription} />
+                                        <DebugRow label={t('dialogue.debug.changes')} value={changeDescription} />
+                                        <DebugRow label={t('dialogue.debug.relationships')} value={relationshipDescription} />
+                                        <DebugRow label={t('dialogue.debug.warnings')} value={warningDescription} />
+                                        {snapshot?.error && (
+                                            <DebugRow label="error" value={`${snapshot.error.code}: ${snapshot.error.message}`} />
+                                        )}
+                                    </dl>
+
+                                    {/*
+                                      The expressions no sprite answered for, under
+                                      the rows: red, because every line of this
+                                      list is a face the stage could not draw.
+                                    */}
+                                    {missingExpressions.length > 0 && (
+                                        <div className="mt-3 border-t-game border-white/10 pt-2">
+                                            <p className="text-xs uppercase tracking-[0.1em] text-galatime-error">
+                                                {t('playground.dialogue.missingExpressions')}
+                                            </p>
+                                            <ul className="mt-1 flex flex-col gap-0.5 font-mono text-xs text-galatime-error">
+                                                {missingExpressions.map((expression) => (
+                                                    <li key={expression} className="break-words">
+                                                        {expression}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        />
+                    </div>
                 </>
             )}
         </div>

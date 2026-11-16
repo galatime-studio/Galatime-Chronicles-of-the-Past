@@ -7,12 +7,19 @@
  *   root → key → (subKey for relationship) → operator → value
  *
  * For example:
- *   dialogue.seen = fala_47        → dialogue + seen + = + fala_47
- *   dialogue.not_seen = fala_47    → dialogue + seen + ≠ + fala_47
+ *   dialogues.seen = test_12       → dialogue + seen + = + test_12
+ *   phrases.seen = fala_47         → phrase + seen + = + fala_47
+ *   phrases.seen ≠ fala_47         → phrase + seen + ≠ + fala_47
  *   relationship.pacci.friendship > 10
  *     → relationship + pacci + friendship + > + 10
  *   inventory.herb has             → inventory + herb + = true
  *   inventory.herb > 1             → inventory + herb + > + 1
+ *
+ * The menus show the singular root a condition reads as (`dialogue`, `phrase`);
+ * what lands in the file is the engine's plural spelling (`dialogues.`,
+ * `phrases.`), because the game's `parseStatePath` only accepts the plural.
+ * `dialogues.seen` holds dialogue file ids (external dialogues, like
+ * `test_12`); `phrases.seen` holds the node ids of the dialogue being written.
  *
  * The available options adapt to what was chosen, keeping the writer inside
  * valid combinations. An inventory item defaults to a "has" (= true) check
@@ -37,10 +44,18 @@
     var MODE_GROUPS = { all: 'all', notAll: 'all', any: 'any', notAny: 'any' };
     var MODE_NEGATED = { notAll: true, notAny: true };
 
-    var EXAMPLES = 'ex.: dialogue.seen = fala_47 · relationship.pacci.friendship > 10 · inventory.herb = true (tem)';
+    var EXAMPLES = 'ex.: phrases.seen = fala_47 · dialogues.seen = test_12 · relationship.pacci.friendship > 10 · inventory.herb = true (tem)';
 
     var ROOT_ALIASES = {
         dialogues: 'dialogue',
+        phrases: 'phrase',
+    };
+
+    // The menus read the singular root; the file keeps the engine's plural
+    // spelling, which is the only one `parseStatePath` in the game accepts.
+    var ENGINE_ROOTS = {
+        dialogue: 'dialogues',
+        phrase: 'phrases',
     };
 
     function normalizeRoot(root) {
@@ -48,7 +63,7 @@
     }
 
     function operatorsFor(root) {
-        if (root === 'dialogue') return DIALOGUE_OPERATORS;
+        if (root === 'dialogue' || root === 'phrase') return DIALOGUE_OPERATORS;
         if (root === 'inventory') return INVENTORY_HAS_OPERATORS.concat(INVENTORY_COUNT_OPERATORS);
         if (root === 'relationship') return RELATIONSHIP_OPERATORS;
         if (root === 'skill' || root === 'element' || root === 'elements') return INVENTORY_HAS_OPERATORS;
@@ -56,7 +71,7 @@
     }
 
     function defaultOperatorFor(root) {
-        if (root === 'dialogue') return 'equals';
+        if (root === 'dialogue' || root === 'phrase') return 'equals';
         if (root === 'inventory') return 'equals';
         if (root === 'relationship') return 'greater_than';
         if (root === 'skill' || root === 'element' || root === 'elements') return 'equals';
@@ -64,13 +79,13 @@
     }
 
     function isBooleanContext(root) {
-        return root === 'dialogue' || root === 'flags'
+        return root === 'dialogue' || root === 'phrase' || root === 'flags'
             || root === 'skill' || root === 'element' || root === 'elements';
     }
 
     function buildPath(root, key, subKey) {
         if (root === 'relationship') return 'relationship.' + key + '.' + subKey;
-        return root + '.' + key;
+        return (ENGINE_ROOTS[root] || root) + '.' + key;
     }
 
     function parsePath(left) {
@@ -204,10 +219,15 @@
         // comparison needs a box to type into.
         function valueField(theRoot) {
             var isInventory = theRoot === 'inventory';
+            var placeholder = isBooleanContext(theRoot) ? 'true' : '1';
+            // Dialogue and phrase values are ids, not booleans; the hint below
+            // the field carries the example, the box names what goes in it.
+            if (theRoot === 'dialogue') placeholder = 'id do diálogo';
+            if (theRoot === 'phrase') placeholder = 'id da frase';
 
             return ui.field(isInventory ? 'Quantidade' : 'Valor', ui.text({
                 value: Forger.model.formatLiteral(current.right),
-                placeholder: isBooleanContext(theRoot) ? 'true' : '1',
+                placeholder: placeholder,
                 onInput: function (raw) {
                     current.right = Forger.model.parseLiteral(raw);
                     publish();
@@ -252,26 +272,26 @@
                 })));
             }
 
-            if (root !== 'dialogue') {
-                fields.push(ui.field('Condição', ui.select({
-                    value: current.condition,
-                    options: operatorsFor(root),
-                    onChange: function (value) {
-                        current.condition = value;
-                        if (root === 'inventory') {
-                            if (value === 'equals') current.right = true;
-                            else if (value === 'not_equals') current.right = false;
-                            else if (typeof current.right !== 'number') current.right = 1;
-                            // Rebuild so a count shows its quantity box and the
-                            // "tem"/"nao tem" cases drop the box they never used.
-                            rebuild();
-                        }
-                        publish();
-                    },
-                })));
-            } else {
-                current.condition = 'equals';
-            }
+            // Every root picks its operator from its own vocabulary. `dialogue`
+            // and `phrase` share the seen/not-seen pair; hiding the field for
+            // them would make "not yet" unauthorable and would silently rewrite
+            // an existing ≠ leaf back to "=" on the next edit.
+            fields.push(ui.field('Condição', ui.select({
+                value: current.condition,
+                options: operatorsFor(root),
+                onChange: function (value) {
+                    current.condition = value;
+                    if (root === 'inventory') {
+                        if (value === 'equals') current.right = true;
+                        else if (value === 'not_equals') current.right = false;
+                        else if (typeof current.right !== 'number') current.right = 1;
+                        // Rebuild so a count shows its quantity box and the
+                        // "tem"/"nao tem" cases drop the box they never used.
+                        rebuild();
+                    }
+                    publish();
+                },
+            })));
 
             // An item's yes/no checks ("tem", "nao tem") are answered by the
             // item itself, so they carry no quantity box; a count comparison does.
@@ -292,7 +312,8 @@
         }
 
         function literalHint(root) {
-            if (root === 'dialogue') return 'ex.: fala_47';
+            if (root === 'dialogue') return 'id do diálogo (ex.: test_12)';
+            if (root === 'phrase') return 'ex.: fala_47';
             if (root === 'inventory') return 'quantidade (ex.: 3)';
             if (root === 'input') return 'o valor guardado (ex.: Fogo, 3, true)';
             if (root === 'skill' || root === 'element' || root === 'elements')

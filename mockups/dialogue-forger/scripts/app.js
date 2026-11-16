@@ -1322,7 +1322,7 @@
      * author actually typed.
      */
     function compactFlowLabel(value) {
-        return String(value || '').replace(/(relationship|inventory|objectives|dialogues|paths|stats|flags)\./g, '');
+        return String(value || '').replace(/(relationship|inventory|objectives|dialogues|phrases|paths|stats|flags)\./g, '');
     }
 
     /** Card height grows with the option list a branching node has to print. */

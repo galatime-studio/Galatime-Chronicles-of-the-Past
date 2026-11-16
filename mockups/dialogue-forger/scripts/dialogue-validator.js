@@ -20,9 +20,13 @@
         'less_than', 'less_or_equal',
     ];
 
+    // The engine's roots, spelled the way the engine spells them: plurals for
+    // the set slices (`dialogues`, `phrases`, `paths`), so a singular
+    // `dialogue.seen` is rejected here exactly as `parseStatePath` rejects it
+    // in the game.
     var STATE_ROOTS = [
         'flags', 'inventory', 'relationship', 'objectives',
-        'stats', 'time', 'dialogue', 'paths', 'input',
+        'stats', 'time', 'dialogues', 'phrases', 'paths', 'input',
     ];
 
     /** Effect type → the string fields it must declare. */
@@ -763,8 +767,6 @@
         return canExit;
     }
 
-    var ROOT_ALIASES = { dialogues: 'dialogue' };
-
     /** Splits a state path, rejecting anything the engine could not read. */
     function parseStatePath(path) {
         if (typeof path !== 'string') {
@@ -777,7 +779,9 @@
             return null;
         }
 
-        var root = ROOT_ALIASES[segments[0]] || segments[0];
+        // No aliases: the engine's `parseStatePath` looks the root up in
+        // `STATE_PATH_ROOTS` as authored, so `dialogue.seen` fails there too.
+        var root = segments[0];
 
         if (STATE_ROOTS.indexOf(root) === -1) {
             return null;

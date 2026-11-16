@@ -30,8 +30,10 @@
 			"notFound": "No dialogue with that id exists.",
 			"back": "Change dialogue",
 			"variables": "Variables",
-			"variablesDescription": "Only the values this dialogue branches on, plus the items it gives or takes. They are applied when the conversation starts.",
-			"noVariables": "This dialogue branches on nothing and uses no items, so there is nothing to set.",
+			"noVariables": "No variables",
+			"panelTitle": "Variables and session",
+			"panelClose": "Close the variables and session panel",
+			"missingExpressions": "Missing expressions",
 			"start": "Start",
 			"idle": "Press Start to play it here."
 		},

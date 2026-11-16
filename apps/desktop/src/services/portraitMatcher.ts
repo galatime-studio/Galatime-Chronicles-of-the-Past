@@ -68,6 +68,26 @@ function findByEmotion(images: EntityImage[], emotion: string): EntityImage[] {
 }
 
 /**
+ * The sprite that answers `emotion` on its own, or `null` when the folder has none.
+ *
+ * `matchPortraitImage` falls back to the resting sprite, which is right for
+ * drawing and wrong for auditing: a bench asking "does this expression exist?"
+ * needs the fallback taken away, because the fallback is exactly what hides a
+ * missing expression from the stage.
+ */
+export function matchEmotionImage(
+    images: EntityImage[],
+    emotion?: string | null,
+): EntityImage | null {
+    if (!emotion) {
+        return null;
+    }
+
+    const [match] = findByEmotion(images, emotion);
+    return match ?? null;
+}
+
+/**
  * The best sprite for an emotion, or `null` when the character has none.
  *
  * Falls back to the resting sprite when the requested emotion was never drawn —

@@ -1,5 +1,5 @@
 import { getEntityImages } from './entityImageService';
-import { matchPortraitImage, type PortraitMatch } from './portraitMatcher';
+import { matchEmotionImage, matchPortraitImage, type PortraitMatch } from './portraitMatcher';
 import type { EntityImage } from '../types/EntityImageType';
 
 /**
@@ -57,6 +57,25 @@ export function resolveCharacterPortrait(
     displayName?: string | null,
 ): PortraitMatch | null {
     return matchPortraitImage(getImagesFor(characterId, displayName), emotion);
+}
+
+/**
+ * Whether the character has a sprite for that exact emotion.
+ *
+ * The stage would quietly fall back to the resting sprite; the dialogue bench
+ * wants the expression named instead, so this does not fall back. An emotion
+ * nobody drew — or no emotion at all — is `false` here.
+ */
+export function hasCharacterEmotion(
+    characterId: string,
+    emotion?: string | null,
+    displayName?: string | null,
+): boolean {
+    if (!emotion) {
+        return false;
+    }
+
+    return matchEmotionImage(getImagesFor(characterId, displayName), emotion) !== null;
 }
 
 /** Drops the resolved sprite lists. Intended for tests and tooling. */

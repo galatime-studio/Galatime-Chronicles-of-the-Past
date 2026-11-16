@@ -4,8 +4,9 @@ import { cloneWorldState } from '../state/worldStateService';
 /**
  * Engine bookkeeping that outlives a single conversation.
  *
- * Note what is **not** here: which dialogues the player has seen. That lives in
- * `WorldState.dialogues.seen`, because it is game state the game owns and
+ * Note what is **not** here: which dialogues the player has seen, and which
+ * phrases they have been shown. Those live in `WorldState.dialogues.seen` and
+ * `WorldState.phrases.seen`, because they are game state the game owns and
  * persists. This service only holds things the dialogue engine needs for
  * itself, and is deliberately an interface so a Tauri-backed implementation can
  * replace the in-memory one without touching the session service.

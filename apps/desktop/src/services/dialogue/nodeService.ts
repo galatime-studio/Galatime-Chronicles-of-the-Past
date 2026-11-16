@@ -624,18 +624,22 @@ function pickBranch(node: ConditionalNode, state: WorldState): ConditionalBranch
 }
 
 /**
- * Records a visit so conditions on `dialogues.seen` can check it.
+ * Records a visit so conditions on `phrases.seen` can check it.
  *
  * Every node the walk crosses is marked, exactly like the forger's preview
  * runner marks the nodes it walks. Without this a choice gated on
- * `dialogues.seen` — "hide this option once `fala_47` has been shown" — could
- * never change during a conversation, because the list would only ever hold
- * dialogue ids recorded at completion. Quiet on purpose: a visit is not an
- * authored effect, so it produces no state change for the presentation to show.
+ * `phrases.seen` — "hide this option once `fala_47` has been shown" — could
+ * never change during a conversation. The entry is qualified with the
+ * session's `phraseScope` so node ids that repeat across dialogue files stay
+ * read only by the dialogue that owns them; an unscoped state (unreachable
+ * inside a session) records the bare id rather than losing the visit. Quiet
+ * on purpose: a visit is not an authored effect, so it produces no state
+ * change for the presentation to show.
  */
 function markNodeSeen(state: WorldState, nodeId: string): void {
-    if (!state.dialogues.seen.includes(nodeId)) {
-        state.dialogues.seen.push(nodeId);
+    const entry = state.phraseScope ? `${state.phraseScope}/${nodeId}` : nodeId;
+    if (!state.phrases.seen.includes(entry)) {
+        state.phrases.seen.push(entry);
     }
 }
 

@@ -29,6 +29,7 @@ export const STATE_PATH_ROOTS = [
     'stats',
     'time',
     'dialogues',
+    'phrases',
     'paths',
     'input',
 ] as const;
@@ -134,7 +135,7 @@ export function isStatePathRoot(value: string): value is StatePathRoot {
  *
  * Missing slices default to empty so a caller can pass only the state a given
  * dialogue actually reads, and the engine-managed slices (`dialogues`,
- * `paths`) never need to be supplied at all.
+ * `phrases`, `paths`) never need to be supplied at all.
  *
  * The inventory is normalised rather than copied: `WorldStateInput` reaches this
  * function from YAML and from loose test values, which are not type-checked, and
@@ -156,6 +157,8 @@ export function createWorldState(input: WorldStateInput = {}): WorldState {
             seen: [...(input.dialogues?.seen ?? [])],
             unlocked: [...(input.dialogues?.unlocked ?? [])],
         },
+        phrases: { seen: [...(input.phrases?.seen ?? [])] },
+        phraseScope: input.phraseScope,
         paths: { unlocked: [...(input.paths?.unlocked ?? [])] },
         input: { ...(input.input ?? {}) },
         entityInventories: input.entityInventories
@@ -250,8 +253,10 @@ export function parseStatePath(path: string): StatePathParts | null {
  *
  * Unknown paths return `null` rather than throwing: a condition that reads a
  * state entry the game never supplied simply evaluates as absent. List roots
- * (`dialogues.seen`, `paths.unlocked`) are returned as copies so a caller
- * cannot mutate the state through the result.
+ * (`dialogues.seen`, `phrases.seen`, `paths.unlocked`) are returned as copies
+ * so a caller cannot mutate the state through the result. `phrases.seen` is
+ * filtered to the dialogue the state is scoped to and comes back bare; without
+ * a scope it reads as an empty list.
  */
 export function readStatePath(state: WorldState, path: string): StatePathValue {
     const parts = parseStatePath(path);
@@ -279,6 +284,9 @@ export function readStatePath(state: WorldState, path: string): StatePathValue {
             if (parts.key === 'seen') return [...state.dialogues.seen];
             if (parts.key === 'unlocked') return [...state.dialogues.unlocked];
             return null;
+        case 'phrases':
+            if (parts.key === 'seen') return readScopedPhrases(state);
+            return null;
         case 'paths':
             return parts.key === 'unlocked' ? [...state.paths.unlocked] : null;
         case 'input':
@@ -288,6 +296,45 @@ export function readStatePath(state: WorldState, path: string): StatePathValue {
         default:
             return null;
     }
+}
+
+/**
+ * The phrase memory of the dialogue the state is scoped to, bare node ids.
+ *
+ * Entries are stored qualified (`"<dialogueId>/<nodeId>"`) because node ids
+ * repeat across dialogue files; the scope picks this dialogue's slice and
+ * strips the prefix so a condition compares against the authored node id.
+ * Without a scope nothing is readable, which is why an unscoped state reads
+ * as an empty list rather than someone else's phrases.
+ */
+function readScopedPhrases(state: WorldState): string[] {
+    const scope = state.phraseScope;
+    if (!scope) {
+        return [];
+    }
+
+    const prefix = `${scope}/`;
+
+    return state.phrases.seen
+        .filter((entry) => entry.startsWith(prefix))
+        .map((entry) => entry.slice(prefix.length));
+}
+
+/**
+ * Scopes a state's phrase memory to one dialogue, at session start.
+ *
+ * Seeded bare entries mean "this dialogue's phrases" and get qualified here;
+ * entries already qualified keep their dialogue, so memory threaded in from
+ * another dialogue stays out of this one's reach. The scope is stamped on the
+ * state so `readStatePath` can filter without a dialogue id travelling
+ * through every condition call. Runs before the entry conditions are
+ * evaluated, so an entry condition may already ask about `phrases.seen`.
+ */
+export function scopePhraseMemory(state: WorldState, dialogueId: string): void {
+    state.phraseScope = dialogueId;
+    state.phrases.seen = state.phrases.seen.map((entry) =>
+        entry.includes('/') ? entry : `${dialogueId}/${entry}`,
+    );
 }
 
 /**

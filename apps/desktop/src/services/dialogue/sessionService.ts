@@ -11,7 +11,7 @@ import type {
 } from '../../types/DialogueType';
 import type { StateChange, WorldState, WorldStateInput } from '../../types/WorldStateType';
 import { createDialogueError } from '../../utils/dialogueUtils';
-import { cloneWorldState, createWorldState } from '../state/worldStateService';
+import { cloneWorldState, createWorldState, scopePhraseMemory } from '../state/worldStateService';
 import { isKnownCharacter, primeCharacterRegistry } from './characterRegistryService';
 import { evaluateCondition } from './conditionService';
 import { collectReferencedCharacterIds } from './dialogueTraversal';
@@ -113,6 +113,7 @@ export async function startSession(
     }
 
     const state = createWorldState(worldStateInput);
+    scopePhraseMemory(state, dialogueId);
 
     if (!evaluateCondition(definition.entry_conditions, state)) {
         return failure(

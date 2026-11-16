@@ -43,6 +43,7 @@
                 seen: ((source.dialogues || {}).seen || []).slice(),
                 unlocked: ((source.dialogues || {}).unlocked || []).slice(),
             },
+            phrases: { seen: ((source.phrases || {}).seen || []).slice() },
             paths: { unlocked: ((source.paths || {}).unlocked || []).slice() },
             // What the player typed or picked at a call-to-action node. Local to
             // the run: the game would carry it in its save, the forger only holds
@@ -707,6 +708,11 @@
                 if (key === 'seen') return state.dialogues.seen.slice();
                 if (key === 'unlocked') return state.dialogues.unlocked.slice();
                 return null;
+            case 'phrases':
+                // The preview plays a single dialogue, so its phrase memory is
+                // the bare node ids of that dialogue — the engine's scoped read
+                // would return exactly this list for its own scope.
+                return key === 'seen' ? state.phrases.seen.slice() : null;
             case 'paths':
                 return key === 'unlocked' ? state.paths.unlocked.slice() : null;
             case 'input':
@@ -723,13 +729,19 @@
         return affinities && relationshipKind in affinities ? affinities[relationshipKind] : null;
     }
 
-    /** Marks a node as seen so conditions on `dialogues.seen` can check it. */
+    /**
+     * Marks a node as seen so conditions on `phrases.seen` can check it.
+     *
+     * The preview runs one dialogue, so the ids stay bare: the engine
+     * qualifies them with the dialogue id, which only matters when node ids
+     * from several dialogues share one state.
+     */
     function markNodeSeen(session, nodeId) {
-        if (!nodeId || session.state.dialogues.seen.indexOf(nodeId) !== -1) {
+        if (!nodeId || session.state.phrases.seen.indexOf(nodeId) !== -1) {
             return;
         }
 
-        session.state.dialogues.seen.push(nodeId);
+        session.state.phrases.seen.push(nodeId);
         session.log.push('nó visto: ' + nodeId);
     }
 

@@ -576,12 +576,12 @@ nodes:
         visible_if:
           all:
             - condition: not_equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_47
         enabled_if:
           all:
             - condition: not_equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_47
         next: fala_47
       - choice_id: opcao_2
@@ -589,18 +589,18 @@ nodes:
         visible_if:
           all:
             - condition: equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_47
             - condition: not_equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_51
         enabled_if:
           all:
             - condition: equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_47
             - condition: not_equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_51
         next: fala_51
       - choice_id: opcao_3
@@ -608,18 +608,18 @@ nodes:
         visible_if:
           all:
             - condition: equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_47
             - condition: not_equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_57
         enabled_if:
           all:
             - condition: equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_47
             - condition: not_equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_57
         next: fala_57
       - choice_id: opcao_4
@@ -627,12 +627,12 @@ nodes:
         visible_if:
           all:
             - condition: not_equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_66
         enabled_if:
           all:
             - condition: not_equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_66
         next: fala_66
       - choice_id: opcao_5
@@ -968,36 +968,36 @@ nodes:
           any:
             - all:
                 - condition: not_equals
-                  left: dialogues.seen
+                  left: phrases.seen
                   right: fala_47
                 - condition: not_equals
-                  left: dialogues.seen
+                  left: phrases.seen
                   right: fala_51
                 - condition: not_equals
-                  left: dialogues.seen
+                  left: phrases.seen
                   right: fala_57
                 - condition: not_equals
-                  left: dialogues.seen
+                  left: phrases.seen
                   right: fala_66
             - all:
                 - condition: not_equals
-                  left: dialogues.seen
+                  left: phrases.seen
                   right: fala_78
         next: escolha_2
       - branch_id: ramo_2
         if:
           all:
             - condition: equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_47
             - condition: equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_51
             - condition: equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_57
             - condition: equals
-              left: dialogues.seen
+              left: phrases.seen
               right: fala_66
         next: fala_79
       - branch_id: caso_padrão

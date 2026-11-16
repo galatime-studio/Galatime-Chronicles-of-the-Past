@@ -254,6 +254,7 @@ window.DialogueForger = window.DialogueForger || {};
     /** The state slices a condition may read. */
     var CONDITION_ROOTS = [
         { value: 'dialogue', label: 'Diálogo' },
+        { value: 'phrase', label: 'Frase' },
         { value: 'relationship', label: 'Relação' },
         { value: 'input', label: 'Entrada do jogador' },
         { value: 'inventory', label: 'Inventário' },
@@ -267,6 +268,9 @@ window.DialogueForger = window.DialogueForger || {};
     /** The named entries a root has below it, where it does not take a free key. */
     var CONDITION_ROOT_KEYS = {
         dialogue: [
+            { value: 'seen', label: 'Visto' },
+        ],
+        phrase: [
             { value: 'seen', label: 'Visto' },
         ],
     };
@@ -367,6 +371,7 @@ window.DialogueForger = window.DialogueForger || {};
         time: 1,
         relationship: 2,
         dialogues: 1,
+        phrases: 1,
         paths: 1,
         // A player input a "call to action" node collected. In the forger it only
         // lives in the preview; the goal is that the game keeps it, one name deep.
@@ -380,12 +385,15 @@ window.DialogueForger = window.DialogueForger || {};
     /**
      * The roots whose entries are lists of names.
      *
-     * `dialogues.seen` and `paths.unlocked` hold a set, so an entry under them
-     * adds a member rather than setting a value: `dialogues.seen.teste_1` says
-     * the player has already seen that dialogue.
+     * `dialogues.seen`, `phrases.seen` and `paths.unlocked` hold a set, so an
+     * entry under them adds a member rather than setting a value:
+     * `dialogues.seen.teste_1` says the player has already played that
+     * dialogue file, and `phrases.seen.fala_47` that this dialogue has shown
+     * that node.
      */
     var STATE_LIST_KEYS = {
         dialogues: ['seen', 'unlocked'],
+        phrases: ['seen'],
         paths: ['unlocked'],
     };
 
@@ -398,6 +406,7 @@ window.DialogueForger = window.DialogueForger || {};
         'objectives.falar_pacci.active',
         'time.hour.9',
         'dialogues.seen.teste_1',
+        'phrases.seen.fala_47',
     ];
 
     /* ----------------------------------------------------------- sugestões */
@@ -428,7 +437,7 @@ window.DialogueForger = window.DialogueForger || {};
         literals: ['true', 'false'],
         paths: [
             'flags.', 'inventory.', 'stats.', 'objectives.',
-            'time.hour', 'time.day', 'dialogues.seen', 'dialogues.unlocked',
+            'time.hour', 'time.day', 'dialogues.seen', 'dialogues.unlocked', 'phrases.seen',
             'paths.unlocked', 'skill.', 'element.', 'elements.', 'name.',
         ],
     };

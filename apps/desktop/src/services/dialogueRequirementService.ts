@@ -34,11 +34,11 @@ import type {
  * can also set what the player already holds; it imposes no requirement, so its
  * default is simply none.
  *
- * Only the slices `WorldStateInput` can express are returned. `dialogues.seen`
- * and `paths.unlocked` are deliberately left out: the engine owns them, and a
- * caller that sets them is fighting the engine rather than testing it. Item
- * effects on *entities* are left out too: they touch `entityInventories`, which
- * `WorldStateInput` cannot express.
+ * Only the slices `WorldStateInput` can express are returned. `dialogues.seen`,
+ * `phrases.seen` and `paths.unlocked` are deliberately left out: the engine owns
+ * them, and a caller that sets them is fighting the engine rather than testing
+ * it. Item effects on *entities* are left out too: they touch
+ * `entityInventories`, which `WorldStateInput` cannot express.
  */
 
 /** A slice of the world state a tester can set. */

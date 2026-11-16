@@ -108,11 +108,28 @@ export interface WorldState {
     objectives: ObjectiveStateMap;
     stats: StatState;
     time: TimeState;
-    /** Which dialogues were already seen, and which were unlocked. */
+    /**
+     * Which dialogue files were already played to completion, and which were
+     * unlocked. `seen` holds dialogue ids only — a node inside a dialogue
+     * belongs to `phrases.seen`.
+     */
     dialogues: {
         seen: string[];
         unlocked: string[];
     };
+    /**
+     * Phrases (nodes) the player has been shown, qualified as
+     * `"<dialogueId>/<nodeId>"` so node ids that repeat across dialogue files
+     * cannot read as seen in the wrong dialogue.
+     *
+     * `phraseScope` selects which dialogue's memory is readable; the session
+     * stamps it on start, and `readStatePath` filters by it.
+     */
+    phrases: {
+        seen: string[];
+    };
+    /** Which dialogue's phrase memory `phrases.seen` reads. Set by the session. */
+    phraseScope?: string;
     /** Narrative paths unlocked by dialogues. */
     paths: {
         unlocked: string[];
@@ -144,6 +161,16 @@ export interface WorldStateInput {
         seen?: string[];
         unlocked?: string[];
     };
+    /**
+     * Phrase memory to seed. Entries may be bare (`"fala_47"`, meaning this
+     * dialogue's phrases) or already qualified (`"test_5/fala_47"`); the
+     * session normalises them when it scopes the state.
+     */
+    phrases?: {
+        seen?: string[];
+    };
+    /** Carried across a clone; callers do not set it — the session does. */
+    phraseScope?: string;
     paths?: {
         unlocked?: string[];
     };

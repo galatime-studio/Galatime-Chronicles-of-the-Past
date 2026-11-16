@@ -145,6 +145,15 @@ const CommonInput: React.FC<CommonInputProps> = ({
     // Left-anchored layouts keep the rule starting where the title/text starts.
     const itemsClassName = isTitleLeft || isBare ? 'items-start' : 'items-center';
     const hasCustomItems = /\bitems-(start|end|center|baseline|stretch)\b/.test(containerClassName);
+    /*
+     * A number field reserves room on its right for the spin buttons, so its
+     * centred value lands a few pixels left of the centred rule below it. The
+     * `textfield` appearance drops that reserve — the value, the hidden mirror
+     * and the rule are then measured against the same box.
+     */
+    const numberFieldClassName = type === 'number'
+        ? '[-webkit-appearance:textfield] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+        : '';
 
     useLayoutEffect(() => {
         const line = lineRef.current;
@@ -192,8 +201,15 @@ const CommonInput: React.FC<CommonInputProps> = ({
                 </div>
             )}
 
+            {/*
+                The field is 100ch wide so typing never scrolls the text, which
+                only stays inside the container while this row has a definite
+                width for the `max-w-full` of the field below to resolve
+                against. `min-w-0` does the same for `title-left`, where the row
+                is a flex item that has to be allowed to shrink.
+            */}
             <div
-                className={`relative flex flex-col items-center justify-center ${showTitle && !isTitleLeft ? 'mt-1' : ''} ${stretchClassName}`}
+                className={`relative flex min-w-0 flex-col items-center justify-center ${showTitle && !isTitleLeft ? 'mt-1' : ''} ${isTitleLeft ? stretchClassName : 'w-full'}`}
             >
                 {/* Description floats above the layout so it is never clipped by the tab panel */}
                 <CommonTooltip
@@ -202,7 +218,17 @@ const CommonInput: React.FC<CommonInputProps> = ({
                     textClassName={descriptionClassName}
                 >
                     <div className={`flex ${itemsClassName} flex-col justify-center max-w-full ${stretchClassName}`}>
-                        <div className="relative max-w-full" style={{ width: fieldWidth }}>
+                        {/*
+                            The field is 100ch wide so typing never scrolls the
+                            text; the hidden mirror below is as long as the field
+                            may fill, so `overflow-hidden` keeps it from handing a
+                            horizontal scrollbar to a narrow container. Clipping
+                            never changes what `getBoundingClientRect` measures.
+                        */}
+                        <div
+                            className="relative max-w-full overflow-hidden"
+                            style={{ width: fieldWidth }}
+                        >
                             <input
                                 ref={inputRef}
                                 type={type}
@@ -214,7 +240,7 @@ const CommonInput: React.FC<CommonInputProps> = ({
                                 placeholder={placeholder}
                                 aria-label={title}
                                 aria-describedby={showInlineDescription ? descriptionId : undefined}
-                                className={`w-full bg-transparent border-0 border-b-game border-transparent text-lg text-white placeholder:text-galatime-primary/40 focus:placeholder:opacity-0 focus:outline-none focus:ring-0 px-0 ${alignClassName} ${inputClassName}`}
+                                className={`w-full bg-transparent border-0 border-b-game border-transparent text-lg text-white placeholder:text-galatime-primary/40 focus:placeholder:opacity-0 focus:outline-none focus:ring-0 px-0 ${alignClassName} ${numberFieldClassName} ${inputClassName}`}
                             />
                             <span
                                 ref={lineRef}

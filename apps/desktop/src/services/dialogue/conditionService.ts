@@ -91,8 +91,10 @@ export function evaluateLeaf(leaf: ConditionLeaf, state: WorldState): boolean {
  *
  * Every other comparison stays strict, so a number never equals its quoted
  * string form and authored text values must be quoted consistently. A list is
- * compared by membership (`equals: some_dialogue_id` reads as "has already seen
- * it"), while numeric operators compare the list length.
+ * compared by membership — `equals: some_dialogue_id` on `dialogues.seen` reads
+ * as "has already played that dialogue", and `equals: fala_47` on
+ * `phrases.seen` as "has already been shown that node" — while numeric
+ * operators compare the list length.
  */
 export function compareValues(
     operator: ComparisonOperator,
