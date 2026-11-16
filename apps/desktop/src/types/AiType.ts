@@ -49,7 +49,7 @@ export type AiConsiderationId =
     | 'item';
 
 /** How a profile likes its targets. A bias, never a legality rule. */
-export type AiTargetPreference = 'weakest' | 'squishiest' | 'healers' | 'threat';
+export type AiTargetPreference = 'weakest' | 'squishiest' | 'healers' | 'threat' | 'damage';
 
 /** What a profile refuses to waste a turn on (auto-detected from the target's kit). */
 export type AiTargetAvoidance = 'immune' | 'reflect';

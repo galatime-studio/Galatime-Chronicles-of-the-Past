@@ -54,3 +54,8 @@ weapon:
         mana: 6
   display:
     summary: "60% chance to restore 6 mana to the wielder on hit."
+
+ai:
+  targeting:
+    # `damage` only ranks offensive aims, so mends still follow `weakest`.
+    prefer: [weakest, damage]

@@ -107,6 +107,26 @@ import type { InventoryErrorCode, ItemTargetRule } from '../types/InventoryType'
 import type { WeaponAmmo } from '../types/WeaponType';
 import type { Difficulty } from '../constants/DifficultyConstants';
 
+/**
+ * Appends one step's events to both fight records.
+ *
+ * The visible log is capped at {@link MAX_LOG_ENTRIES}, but the AI's `damage`
+ * preference prices what a unit has done over the whole fight. The ledger is
+ * updated here, once per appended event, so it survives the trim.
+ */
+function appendCombatLog(state: CombatState, events: readonly CombatEvent[]): void {
+    for (const event of events) {
+        if (event.type !== 'attack_resolved') continue;
+        const { attackerId, finalDamage } = event.resolution;
+        if (!Number.isFinite(finalDamage) || finalDamage <= 0) continue;
+        state.damageDealt ??= {};
+        state.damageDealt[attackerId] = (state.damageDealt[attackerId] ?? 0) + finalDamage;
+    }
+
+    state.log.push(...events);
+    trimLog(state.log, MAX_LOG_ENTRIES);
+}
+
 interface CombatSession {
     state: CombatState;
     elementIndex: CombatElementIndex;
@@ -807,6 +827,7 @@ export async function startCombat(
         phase: 'active',
         outcome: null,
         log: [],
+        damageDealt: {},
     };
 
     // `battle_start` abilities can summon or transform, so the turn queue is
@@ -825,8 +846,7 @@ export async function startCombat(
     state.turnIndex = first.index;
     opening.push(...first.events);
     if (first.unit) opening.push({ type: 'turn_started', unitId: first.unit.id, round: 1 });
-    state.log.push(...opening);
-    trimLog(state.log, MAX_LOG_ENTRIES);
+    appendCombatLog(state, opening);
 
     sessions.set(sessionId, {
         state,
@@ -1073,8 +1093,7 @@ export function submitWeaponSwitch(
         previousWeaponId,
     }];
 
-    state.log.push(...events);
-    trimLog(state.log, MAX_LOG_ENTRIES);
+    appendCombatLog(state, events);
 
     return combatOk({ state, events, outcome: state.outcome });
 }
@@ -1239,8 +1258,7 @@ export function submitCombatAction(
             events.push(...advance.events);
             if (advance.unit) events.push({ type: 'turn_started', unitId: advance.unit.id, round: state.round });
         }
-        state.log.push(...events);
-        trimLog(state.log, MAX_LOG_ENTRIES);
+        appendCombatLog(state, events);
         return combatOk({ state, events, outcome: state.outcome });
     }
 
@@ -1263,8 +1281,7 @@ export function submitCombatAction(
             elementIndex,
             random,
         });
-        state.log.push(...resolved.events);
-        trimLog(state.log, MAX_LOG_ENTRIES);
+        appendCombatLog(state, resolved.events);
         return combatOk({
             state,
             events: resolved.events,
@@ -1356,8 +1373,7 @@ export function submitCombatAction(
         }
     }
 
-    state.log.push(...events);
-    trimLog(state.log, MAX_LOG_ENTRIES);
+    appendCombatLog(state, events);
 
     return combatOk({ state, events, outcome: state.outcome });
 }
@@ -1434,8 +1450,7 @@ function submitInventoryAction(
         }
     }
 
-    state.log.push(...events);
-    trimLog(state.log, MAX_LOG_ENTRIES);
+    appendCombatLog(state, events);
 
     return combatOk({ state, events, outcome: state.outcome });
 }

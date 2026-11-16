@@ -1444,6 +1444,15 @@ export interface CombatState {
     outcome: CombatOutcome | null;
     /** Most recent feedback, oldest first, capped while the fight runs. */
     log: CombatEvent[];
+    /**
+     * Cumulative damage dealt this fight, keyed by attacker unit id.
+     *
+     * The visible {@link log} is trimmed to the newest 200 events, so a long
+     * fight forgets its own opening. The AI's sustained-damage preference
+     * (`damage`) needs the whole fight, so the ledger is kept separately and
+     * never trimmed. Missing on hand-built states and older fixtures.
+     */
+    damageDealt?: Record<string, number>;
 }
 
 /** Result of advancing the fight by one action. */

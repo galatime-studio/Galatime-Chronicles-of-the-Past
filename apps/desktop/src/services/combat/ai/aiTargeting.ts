@@ -22,6 +22,7 @@ import { asRecord, clamp } from '../../../utils/combatUtils';
 import { attackStat, defenseStat } from '../damageCalculator';
 import { effectiveStats } from '../effectResolver';
 import { candidateTargetUnits } from './aiCandidates';
+import { damageShareOfSide } from './aiDamage';
 import { impactFor } from './aiImpacts';
 import { threatFrom } from './aiThreat';
 
@@ -298,6 +299,12 @@ function preferenceScore(
             const maxHp = Math.max(1, effectiveStats(target).maxHp);
             return clamp(threat / (threat + maxHp), 0, 1);
         }
+        case 'damage':
+            // Only an offensive choice reads this: a mend is chosen by
+            // `weakest`, not by which ally has hit hardest.
+            return actionIntent(action) === 'offensive'
+                ? damageShareOfSide(context, target)
+                : 0;
         default:
             return 0;
     }

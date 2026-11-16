@@ -34,7 +34,13 @@ import { asRecord, clamp, readNumber, readString } from '../../../utils/combatUt
 
 const CONSIDERATION_IDS = Object.keys(DEFAULT_AI_WEIGHTS) as AiConsiderationId[];
 const STYLE_IDS: AiStyleId[] = ['balanced', 'brute', 'caster', 'support', 'coward'];
-const TARGET_PREFERENCES: AiTargetPreference[] = ['weakest', 'squishiest', 'healers', 'threat'];
+const TARGET_PREFERENCES: AiTargetPreference[] = [
+    'weakest',
+    'squishiest',
+    'healers',
+    'threat',
+    'damage',
+];
 const TARGET_AVOIDANCES: AiTargetAvoidance[] = ['immune', 'reflect'];
 const QUIRK_IDS: AiQuirkId[] = ['fearless_death'];
 /**

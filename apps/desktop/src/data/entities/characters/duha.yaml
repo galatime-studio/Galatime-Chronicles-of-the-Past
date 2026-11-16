@@ -68,3 +68,12 @@ weapon:
   ammo: { item_type: arrow }
   display:
     summary: "Arrows of compressed air: longer reach, stronger against the rear line."
+
+ai:
+  targeting:
+    prefer: [damage]
+
+# The skyhunter bow's ammo type is `arrow`; without a quiver the weapon is
+# honestly out of ammo and Duha loses her only neutral reach into the rear line.
+inventory:
+  arrow: 24
