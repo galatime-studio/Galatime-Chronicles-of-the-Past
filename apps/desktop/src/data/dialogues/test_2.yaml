@@ -7,15 +7,19 @@ nodes:
   entra:
     type: character_enter
     character_id: arthur
-    position: center
+    position: left
+    animation_id: step_in_from_left
     emotion: neutral
+    hold_ms: 500
     next: entra_2
 
   entra_2:
     type: character_enter
     character_id: pacci
-    position: center
+    position: right
+    animation_id: step_in_from_right
     emotion: neutral
+    hold_ms: 500
     next: fala
 
   fala:
@@ -24,7 +28,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: So... What kind of person is Raphael?
+        value: So... what kind of person is Raphael?
     next: fala_2
 
   fala_2:
@@ -60,10 +64,10 @@ nodes:
       emotion: happy
       text:
         - type: text
-          value: He raised me and my brother when we where just kids trying to survive on the woods. Gave us a home, taught us how to fight. He's kinda like family to us.
+          value: He raised me and my brother when we were just kids trying to survive in the woods. He gave us a home and taught us how to fight. He's kind of like family to us.
     choices:
       - choice_id: opcao
-        text: Concur with him
+        text: Agree with him
         next: fala_4
       - choice_id: opcao_2
         text: Question their past
@@ -84,7 +88,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: He is. I don't know what would be of us if it wasn't for him.
+        value: He is. I don't know what would've become of us if it weren't for him.
     next: fim
     effects_after:
       - type: add_relationship
@@ -113,7 +117,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: Neven and I are orphans. Our parents... They died when we were kids.
+        value: Neven and I are orphans. Our parents... they died when we were kids.
     next: fala_8
 
   fala_8:
@@ -122,7 +126,7 @@ nodes:
     emotion: surprised
     text:
       - type: text
-        value: Oh. Oh god. I'm so sorry.
+        value: Oh. Oh, God. I'm so sorry.
     next: fala_9
 
   fala_9:
@@ -149,7 +153,7 @@ nodes:
     emotion: suspicious
     text:
       - type: text
-        value: How weird are we talking about?
+        value: How weird are we talking?
     next: clicavel_1
 
   clicavel_1:
@@ -158,7 +162,7 @@ nodes:
     emotion: unsure
     text:
       - type: text
-        value: He's... kinda odd. He often talks like someone is watching. And has bad taste in jokes.
+        value: He's... kind of odd. He often talks like someone is watching, and he has terrible taste in jokes.
     next: clicavel_2
 
   clicavel_2:
@@ -167,7 +171,7 @@ nodes:
     emotion: unsure
     text:
       - type: text
-        value: I don't think I want to meet him anymore. He sounds crazy
+        value: I don't think I want to meet him anymore. He sounds crazy.
     next: clicavel_3
 
   clicavel_3:
@@ -176,7 +180,7 @@ nodes:
     emotion: unsure
     text:
       - type: text
-        value: That's a bit harsh. Although he is a bit of an odd ball
+        value: That's a bit harsh. Though he is a bit of an oddball.
     next: clicavel_4
     effects_after:
       - type: add_relationship
@@ -190,7 +194,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: But trust me. He's a good person. You can rely on him.
+        value: But trust me, he's a good person. You can rely on him.
     next: clicavel_5
 
   clicavel_5:

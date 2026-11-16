@@ -7,6 +7,8 @@ nodes:
     character_id: duha
     position: center_left
     pose: sit
+    animation_id: fade_in
+    hold_ms: 400
     next: entra_2
 
   entra_2:
@@ -14,6 +16,8 @@ nodes:
     character_id: nicima
     position: center_right
     pose: sit
+    animation_id: fade_in
+    hold_ms: 400
     next: fala
 
   fala:
@@ -63,7 +67,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I thought I told him to met him at 5. It's...
+        value: I thought I told him to meet us at 5. It's...
     next: fala_6
 
   fala_6:
@@ -143,7 +147,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: We've been on this adventuring thing for a while, and we've barely been able to scrape by.
+        value: We've been at this adventuring thing for a while, and we've barely been able to scrape by.
     next: fala_14
 
   fala_14:
@@ -153,7 +157,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: There were nights where we didn't even had money to feed ourselves. There just wasn't anything for us to do.
+        value: There were nights when we didn't even have money to feed ourselves. There just wasn't anything for us to do.
     next: fala_15
 
   fala_15:
@@ -163,7 +167,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I try to plan things out and keep the group afloat. But, I'm not sure for how long I can keep this up.
+        value: I try to plan things out and keep the group afloat. But I'm not sure for how long I can keep this up.
     next: fala_16
 
   fala_16:
@@ -183,7 +187,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: So, I've been wondering, if-
+        value: So, I've been wondering if—
     next: acao
 
   acao:
@@ -192,6 +196,7 @@ nodes:
     position: center_right
     pose: sit
     depth: back
+    hold_ms: 400
     next: fala_18
 
   fala_18:
@@ -231,6 +236,7 @@ nodes:
     pose: sit
     depth: front
     emotion: happy
+    hold_ms: 400
     next: fala_21
 
   fala_21:
@@ -290,7 +296,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Hah, yeah. I still remember the day we ran of Sedra.
+        value: Hah, yeah. I still remember the day we ran away from Sedra.
     next: fala_27
 
   fala_27:
@@ -310,7 +316,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: S-s-sure, there's some bump-p-ps in the road, but I would-d-dn't change anything.
+        value: S-s-sure, there are some bump-p-ps in the road, but I would-d-dn't change anything.
     next: fala_29
 
   fala_29:
@@ -321,7 +327,7 @@ nodes:
     auto_advance: true
     text:
       - type: text
-        value: Nicima... I-
+        value: Nicima... I—
     next: fala_30
 
   fala_30:
@@ -331,7 +337,7 @@ nodes:
     animation_id: idle
     text:
       - type: shout
-        value: Hey guys!
+        value: Hey, guys!
     next: fala_31
 
   fala_31:
@@ -341,7 +347,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Aeeii!
+        value: Aah!
     next: fala_32
 
   fala_32:
@@ -360,6 +366,7 @@ nodes:
     position: left
     animation_id: run_in_from_left
     emotion: nervous
+    hold_ms: 500
     next: fala_33
 
   fala_33:
@@ -370,7 +377,7 @@ nodes:
     auto_advance: true
     text:
       - type: text
-        value: Gods, sorry I'm late, but I-
+        value: Gods, sorry I'm late, but I—
     next: fala_34
 
   fala_34:
@@ -380,7 +387,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Uh... What are you two doing.
+        value: Uh... what are you two doing?
     next: fala_35
 
   fala_35:
@@ -410,7 +417,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: More importantly. You're late! Where the heck were you!?
+        value: More importantly, you're late! Where the heck were you!?
     next: fala_38
 
   fala_38:
@@ -451,6 +458,30 @@ nodes:
     text:
       - type: text
         value: What's it about?
+    next: sai
+
+  sai:
+    type: character_exit
+    character_id: barasturon
+    animation_id: step_out
+    direction: left
+    hold_ms: 500
+    next: sai_2
+
+  sai_2:
+    type: character_exit
+    character_id: duha
+    animation_id: step_out
+    direction: right
+    hold_ms: 500
+    next: sai_3
+
+  sai_3:
+    type: character_exit
+    character_id: nicima
+    animation_id: step_out
+    direction: right
+    hold_ms: 700
     next: fim
 
   fim:

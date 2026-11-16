@@ -8,14 +8,18 @@ nodes:
     type: character_enter
     character_id: noelia
     position: center_left
+    animation_id: step_in_from_left
     emotion: neutral
+    hold_ms: 500
     next: entra_2
 
   entra_2:
     type: character_enter
     character_id: kelly
     position: center_right
+    animation_id: step_in_from_right
     emotion: neutral
+    hold_ms: 500
     next: fala
 
   fala:
@@ -26,7 +30,7 @@ nodes:
     text:
       - type: text
         value: |
-          So I was going to the plaza to gather some info. And then I-
+          So I was going to the plaza to gather some info. And then I—
       - type: pause
         duration_ms: 2500
     next: fala_2
@@ -52,20 +56,27 @@ nodes:
   sai:
     type: character_exit
     character_id: noelia
+    animation_id: step_out
+    direction: right
+    hold_ms: 400
     next: entra_3
 
   entra_3:
     type: character_enter
     character_id: noelia
     position: center
+    animation_id: step_in_from_right
     emotion: neutral
+    hold_ms: 400
     next: entra_4
 
   entra_4:
     type: character_enter
     character_id: raphael
-    position: center_left
+    position: left
+    animation_id: step_in_from_left
     emotion: neutral
+    hold_ms: 500
     next: fala_4
 
   fala_4:
@@ -74,9 +85,9 @@ nodes:
     emotion: annoyed
     text:
       - type: text
-        value: "Oh... It's "
+        value: "Oh... it's "
       - type: styled_text
-        value: bird brain
+        value: birdbrain
         style:
           italic: true
       - type: text
@@ -91,7 +102,7 @@ nodes:
       - type: text
         value: "Hello, "
       - type: styled_text
-        value: dumb 'n dumber
+        value: dumb and dumber
         style:
           italic: true
       - type: text
@@ -110,7 +121,7 @@ nodes:
         style:
           bold: true
       - type: text
-        value: "!? Can't you see we're having a talk here!?"
+        value: "!? Can't you see we're having a conversation here!?"
     next: fala_7
 
   fala_7:
@@ -119,14 +130,14 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: "Well "
+        value: "Well, "
       - type: styled_text
-        value: excuuuuuuuse me princess
+        value: excuuuuuuuse me, princess
         style:
           wave: normal
           wave_speed: 0.8
       - type: text
-        value: . Your conversation was dully noted.
+        value: . Your conversation was duly noted.
     next: fala_8
 
   fala_8:
@@ -153,7 +164,7 @@ nodes:
     emotion: thinking
     text:
       - type: text
-        value: Pacci? What did he wanted to give me?
+        value: Pacci? What did he want to give me?
     next: ramificacao
 
   ramificacao:
@@ -175,7 +186,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: I don't know. He put it in a box and I didn't open it. Here you go.
+        value: I don't know. He put it in a box, and I didn't open it. Here you go.
     next: fala_12
     effects_after:
       - type: remove_item
@@ -188,7 +199,7 @@ nodes:
     emotion: thinking
     text:
       - type: text
-        value: "A box? You think it's a "
+        value: "A box? Do you think it's a "
       - type: interactive_text
         interaction_id: id
         value: gift
@@ -218,7 +229,7 @@ nodes:
         style:
           italic: true
       - type: text
-        value: ", did my brother said anything about this?"
+        value: ", did my brother say anything about this?"
     next: fala_15
 
   fala_15:
@@ -227,13 +238,13 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: "He said nothing "
+        value: "He said nothing, "
       - type: styled_text
-        value: miss microbe
+        value: Miss Microbe
         style:
           italic: true
       - type: text
-        value: . Just asked me to go to town and give you the box.
+        value: . He just asked me to go to town and give you the box.
     next: fala_16
 
   fala_16:
@@ -266,7 +277,7 @@ nodes:
         style:
           italic: true
       - type: text
-        value: "? Tough luck! Not opening in front you."
+        value: "? Tough luck! I'm not opening it in front of you."
     next: fala_19
 
   fala_19:
@@ -275,7 +286,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: "Yeah. You already made the delivery, "
+        value: "Yeah. You've already made the delivery, "
       - type: styled_text
         value: delivery boy
         style:
@@ -290,7 +301,7 @@ nodes:
     emotion: annoyed
     text:
       - type: text
-        value: Talking like I didn't knocked you out with one punch.
+        value: You talk like I didn't knock you out with one punch.
     next: fala_21
 
   fala_21:
@@ -332,15 +343,15 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: "Well. I'll go tell Pacci that the box was delivered. Bye "
+        value: "Well, I'll go tell Pacci that the box was delivered. Bye, "
       - type: styled_text
-        value: Geek girl
+        value: geek girl
         style:
           italic: true
       - type: text
-        value: ". Bye "
+        value: ". Bye, "
       - type: styled_text
-        value: Daddy issues
+        value: daddy issues
         style:
           italic: true
       - type: text
@@ -353,9 +364,9 @@ nodes:
     emotion: annoyed
     text:
       - type: text
-        value: "Get lost "
+        value: "Get lost, "
       - type: styled_text
-        value: feather chocker
+        value: feather choker
         style:
           italic: true
       - type: text
@@ -368,7 +379,7 @@ nodes:
     emotion: angry
     text:
       - type: text
-        value: "Yeah! Get F#@!%d, "
+        value: "Yeah! Get f#@!%d, "
       - type: styled_text
         value: mega virgin
         style:
@@ -381,18 +392,26 @@ nodes:
   sai_2:
     type: character_exit
     character_id: raphael
+    animation_id: step_out
+    direction: left
+    hold_ms: 500
     next: sai_3
 
   sai_3:
     type: character_exit
     character_id: noelia
+    animation_id: step_out
+    direction: right
+    hold_ms: 400
     next: entra_5
 
   entra_5:
     type: character_enter
     character_id: noelia
     position: center_left
+    animation_id: step_in_from_right
     emotion: neutral
+    hold_ms: 400
     next: fala_27
 
   fala_27:
@@ -401,7 +420,7 @@ nodes:
     emotion: annoyed
     text:
       - type: text
-        value: Finally, he's out.
+        value: Finally, he's gone.
     next: fala_28
 
   fala_28:
@@ -442,8 +461,10 @@ nodes:
       - type: styled_text
         value: |-
           Dear Noelia,
-          Today was the day the two of us lost you years ago. And today is the day were you came back. For years, me and Neven have been wondering where you were. What had happened to you. But now that you're back, we don't have to worry anymore. When we ran away from home, I managed to grab this. I want you to have it.
-          Your brother always, Pacci.
+          Today is the anniversary of the day we lost you all those years ago, and today is the day you came back. For years, Neven and I wondered where you were and what had happened to you. But now that you're back, we don't have to worry anymore. When we ran away from home, I managed to grab this. I want you to have it.
+
+          Your brother, always,
+          Pacci
         style:
           italic: true
           color: "#D88CFF"
@@ -456,7 +477,7 @@ nodes:
     emotion: surprised
     text:
       - type: text
-        value: It's... It's a locket with a photo of all 5 of us.
+        value: It's... it's a locket with a photo of all five of us.
     next: fala_33
 
   fala_33:
@@ -465,7 +486,7 @@ nodes:
     emotion: surprised
     text:
       - type: text
-        value: Oh damn.
+        value: Oh, damn.
     next: fala_34
 
   fala_34:
@@ -501,7 +522,7 @@ nodes:
     emotion: stressed
     text:
       - type: text
-        value: ... Where is the box?
+        value: ...Where's the box?
     next: fala_38
 
   fala_38:
@@ -547,7 +568,7 @@ nodes:
       - type: text
         value: ", Raphael. "
       - type: styled_text
-        value: YOU ABSOLUTE IDIOT!!
+        value: You absolute idiot!!
         style:
           bold: true
           shake: light
@@ -566,18 +587,26 @@ nodes:
   sai_4:
     type: character_exit
     character_id: raphael
+    animation_id: run_out
+    direction: left
+    hold_ms: 700
     next: sai_5
 
   sai_5:
     type: character_exit
     character_id: noelia
+    animation_id: step_out
+    direction: right
+    hold_ms: 400
     next: entra_6
 
   entra_6:
     type: character_enter
     character_id: noelia
     position: center_left
+    animation_id: step_in_from_right
     emotion: neutral
+    hold_ms: 400
     next: fala_43
 
   fala_43:
@@ -586,7 +615,7 @@ nodes:
     emotion: happy
     text:
       - type: styled_text
-        value: AHAHAHAHAH! OH MY F#$%@?G GOD! *cough cough*
+        value: "AHAHAHAHAH! Oh my f#$%@?g God! *cough, cough*"
         style:
           shake: light
     next: fala_44
@@ -611,7 +640,7 @@ nodes:
     auto_advance: true
     text:
       - type: styled_text
-        value: I-I think I'm gonna pass out.
+        value: I—I think I'm gonna pass out.
         style:
           jitter: normal
     next: fala_46
@@ -622,7 +651,7 @@ nodes:
     emotion: angry
     text:
       - type: styled_text
-        value: SHUT UP!!
+        value: Shut up!!
         style:
           bold: true
     next: fim_bad
@@ -633,7 +662,7 @@ nodes:
     emotion: surprised
     text:
       - type: text
-        value: Oh yeah. Before he asked to give this to you, he was saying something about today being an important day and finally being able to see you.
+        value: Oh, yeah. Before he asked me to give this to you, he was saying something about today being an important day and finally being able to see you.
     next: clicavel_1
 
   clicavel_1:
@@ -660,7 +689,7 @@ nodes:
     emotion: thinking
     text:
       - type: text
-        value: "I have a feeling of what it might be. But I'm not gonna spoil the "
+        value: "I have a feeling I know what it might be. But I'm not gonna spoil the "
       - type: styled_text
         value: surpriiiiiise
         style:
@@ -692,5 +721,5 @@ nodes:
     emotion: annoyed
     text:
       - type: text
-        value: There's an error in here. Might want to program your game better.
+        value: There's an error here. You might want to program your game better.
     next: fim_bad

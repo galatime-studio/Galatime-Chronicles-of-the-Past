@@ -6,7 +6,8 @@ nodes:
     type: character_enter
     character_id: raphael
     position: center_left
-    animation_id: step_in
+    pose: sit
+    animation_id: fade_in
     emotion: unsure
     next: entra_2
     effects_after:
@@ -20,6 +21,8 @@ nodes:
     type: character_enter
     character_id: neven
     position: center_right
+    pose: sit
+    animation_id: fade_in
     emotion: neutral
     next: fala
 
@@ -54,7 +57,9 @@ nodes:
     type: character_enter
     character_id: arthur
     position: right
+    animation_id: run_in_from_right
     emotion: neutral
+    hold_ms: 600
     next: fala_4
 
   fala_4:
@@ -136,7 +141,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: "I wouldn't worry to much about it. He's not only a respected guard in the city, but I also trained that boy myself. I'm sure he can handle "
+        value: "I wouldn't worry too much about it. He's not only a respected guard in the city, but I also trained that boy myself. I'm sure he can handle "
       - type: interactive_text
         interaction_id: id
         value: whoever wants a piece of him
@@ -242,6 +247,15 @@ nodes:
     text:
       - type: text
         value: ...
+    next: levanta_raphael
+
+  levanta_raphael:
+    type: character_action
+    character_id: raphael
+    pose: stand
+    emotion: annoyed
+    animation_id: stand_up
+    hold_ms: 500
     next: fala_22
 
   fala_22:
@@ -266,15 +280,6 @@ nodes:
         value: Hm?
     next: fala_24
 
-  fala_25:
-    type: line
-    speaker_id: neven
-    emotion: surprised
-    text:
-      - type: text
-        value: "*Gets up*"
-    next: sai
-
   fala_24:
     type: line
     speaker_id: raphael
@@ -288,11 +293,23 @@ nodes:
           bold: true
       - type: text
         value: .
-    next: fala_25
+    next: levanta_neven
 
-  sai:
+  levanta_neven:
+    type: character_action
+    character_id: neven
+    pose: stand
+    emotion: surprised
+    animation_id: stand_up
+    hold_ms: 600
+    next: sai_neven
+
+  sai_neven:
     type: character_exit
     character_id: neven
+    animation_id: leave_running
+    direction: right
+    hold_ms: 600
     next: fala_26
 
   fala_26:
@@ -327,7 +344,7 @@ nodes:
     emotion: stressed
     text:
       - type: text
-        value: So I was returning with Pacci from grocery shopping. We were talking about Nevens birthday. And then suddenly, this mummy and this nun appeared in front of us.
+        value: So I was returning with Pacci from grocery shopping. We were talking about Neven's birthday. And then suddenly, this mummy and this nun appeared in front of us.
     next: fala_29
 
   fala_29:
@@ -446,7 +463,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I appreciate the sentiment, but I can't let you get into harms way.
+        value: I appreciate the sentiment, but I can't let you get into harm's way.
     next: fala_37
     effects_after:
       - type: add_relationship
@@ -501,7 +518,7 @@ nodes:
     emotion: frustrated
     text:
       - type: text
-        value: "I... I'm sorry Arthur. But this is bigger that you. "
+        value: "I... I'm sorry, Arthur. But this is bigger than you."
     next: fala_42
 
   fala_42:
@@ -545,6 +562,25 @@ nodes:
         style:
           wave: normal
           wave_speed: 0.8
+    next: check_groceries
+
+  check_groceries:
+    type: conditional
+    branches:
+      - branch_id: has_groceries
+        if:
+          all:
+            - condition: not_equals
+              left: inventory.Groceries
+              right: 0
+        next: remove_groceries
+      - branch_id: no_groceries
+        next: fala_46
+
+  remove_groceries:
+    type: character_action
+    character_id: arthur
+    animation_id: idle
     next: fala_46
     effects_after:
       - type: remove_item
@@ -671,7 +707,7 @@ nodes:
     emotion: suspicious
     text:
       - type: text
-        value: What? I thought that that was Kelly and that Ttelion girl.
+        value: What? I thought that was Kelly.
     next: fala_50
 
   fala_50:
@@ -680,7 +716,7 @@ nodes:
     emotion: frustrated
     text:
       - type: text
-        value: I'm afraid that it's not only them. Those two were also making amalgams. Though why are they doing it separately from Kelly, we don't know it yet.
+        value: I'm afraid it's not only them. Those two were also making amalgams. Though why they're doing it separately from Kelly, we don't know yet.
     next: ramificacao_2
 
   fala_51:
@@ -698,7 +734,7 @@ nodes:
     emotion: annoyed
     text:
       - type: text
-        value: He's one the greatest alchemists of the nation. His work is as great as those of the alchemists of SISO, if not more.
+        value: He's one of the greatest alchemists in the nation. His work is as great as that of the alchemists of SISO, if not greater.
     next: fala_53
 
   fala_53:
@@ -743,7 +779,7 @@ nodes:
     emotion: suspicious
     text:
       - type: text
-        value: So, who's Dhalia? I never took you as a religious person.
+        value: So, who's Dhalia? I never took you for a religious person.
     next: fala_58
 
   fala_58:
@@ -761,7 +797,7 @@ nodes:
     emotion: unsure
     text:
       - type: text
-        value: Dhalia is... An interesting woman. I've never met ever myself.
+        value: Dhalia is... an interesting woman. I've never met her myself.
     next: fala_60
 
   fala_60:
@@ -832,7 +868,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: Say Raphael, how did you met Neven and Pacci?
+        value: Say, Raphael, how did you meet Neven and Pacci?
     next: fala_67
 
   fala_67:
@@ -877,7 +913,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: Whoever, during one of many slow days that plagued my business, two young boys entered into my store wearing dirty rags and with a rare ingredient. The oldest was around 14 years old, while the youngest was around 11.
+        value: However, during one of the many slow days that plagued my business, two young boys came into my store wearing dirty rags and carrying a rare ingredient. The older one was around 14 years old, while the younger one was around 11.
     next: fala_72
 
   fala_72:
@@ -895,7 +931,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: Yes. When they came into my store, those two were orphans who've been surviving in the forest for years. So, feeling pity for them, I gave them a home and a job in my store. Ever since that day, we've been together ever since.
+        value: Yes. When they came into my store, those two were impoverished orphans who had been struggling to get by for years. So, feeling pity for them, I gave them a home and a job in my store. Ever since that day, we've been together.
     next: fala_74
 
   fala_74:
@@ -913,7 +949,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: "Ohoh, I would go as far as calling me "
+        value: "Oh, I wouldn't go as far as calling myself "
       - type: styled_text
         value: their father.
         style:

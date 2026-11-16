@@ -8,7 +8,9 @@ nodes:
     type: character_enter
     character_id: barasturon
     position: center_left
+    animation_id: step_in_from_left
     emotion: neutral
+    hold_ms: 500
     next: entra_2
     effects_after:
       - type: add_relationship
@@ -19,8 +21,10 @@ nodes:
   entra_2:
     type: character_enter
     character_id: duha
-    position: center_right
+    position: center
+    animation_id: fade_in
     emotion: neutral
+    hold_ms: 450
     next: entra_3
     effects_after:
       - type: add_relationship
@@ -32,7 +36,9 @@ nodes:
     type: character_enter
     character_id: nicima
     position: right
+    animation_id: step_in_from_right
     emotion: neutral
+    hold_ms: 500
     next: fala
     effects_after:
       - type: add_relationship
@@ -46,7 +52,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: Are you sure that it's a good idea to ask Arthur to join us?
+        value: Are you sure it's a good idea to ask Arthur to join us?
     next: fala_2
 
   fala_2:
@@ -64,7 +70,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: Appearances can be deceiving. Besides, have you seen how he fought yesterday? He's more a liability than a fighter.
+        value: Appearances can be deceiving. Besides, did you see how he fought yesterday? He's more of a liability than a fighter.
     next: fala_4
 
   fala_4:
@@ -82,7 +88,7 @@ nodes:
     emotion: unsure
     text:
       - type: text
-        value: Look guys. I know that we just met him yesterday.
+        value: Look, guys. I know we only met him yesterday.
     next: fala_6
 
   fala_6:
@@ -90,8 +96,8 @@ nodes:
     speaker_id: nicima
     emotion: unsure
     text:
-      - type: text
-        value: (That's true)
+      - type: thought
+        value: That's true.
     next: fala_7
 
   fala_7:
@@ -114,8 +120,8 @@ nodes:
     speaker_id: duha
     emotion: neutral
     text:
-      - type: text
-        value: (You can say that again.)
+      - type: thought
+        value: You can say that again.
     next: fala_9
 
   fala_9:
@@ -124,13 +130,13 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: "But, thanks to him and Alice, we managed to not only make an "
+        value: "But thanks to him and Alice, we not only made an "
       - type: styled_text
         value: actual
         style:
           bold: true
       - type: text
-        value: " discovery, but to destroy that huge golem."
+        value: " discovery, but we also destroyed that huge golem."
     next: fala_10
 
   fala_10:
@@ -154,7 +160,7 @@ nodes:
         style:
           italic: true
       - type: text
-        value: ", not someone a dead weight."
+        value: ", not dead weight."
     next: fala_12
 
   fala_12:
@@ -163,7 +169,7 @@ nodes:
     emotion: unsure
     text:
       - type: text
-        value: It did lo-looked like h-h-he was sur-p-p-prised with everythi-thing.
+        value: It d-did look like h-he was sur-p-p-prised by everythi-thing.
     next: fala_13
 
   fala_13:
@@ -179,7 +185,7 @@ nodes:
         style:
           italic: true
       - type: text
-        value: "? We've been looking for work for a week before you found that rumor. How do you think it'll take befo-"
+        value: "? We'd been looking for work for a week before you found that rumour. How long do you think it'll be befo—"
     next: fala_14
 
   fala_14:
@@ -188,7 +194,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: HEY GUYS!
+        value: HEY, GUYS!
     next: fala_15
 
   fala_15:
@@ -213,7 +219,9 @@ nodes:
     type: character_enter
     character_id: arthur
     position: left
+    animation_id: run_in_from_left
     emotion: stressed
+    hold_ms: 600
     next: fala_17
     effects_after:
       - type: add_item
@@ -235,7 +243,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: "Hey, don't sweat it. We weren't waiting for long. "
+        value: "Hey, don't sweat it. We haven't been waiting long. "
       - type: styled_text
         value: Right, guys?
         style:
@@ -258,7 +266,7 @@ nodes:
       emotion: annoyed
       text:
         - type: styled_text
-          value: You look at the group and feel a tension in the air. You start to wonder if you appeared in a bad time.
+          value: You look at the group and feel the tension in the air. You start to wonder if you've shown up at a bad time.
           style:
             italic: true
             color: "#D88CFF"
@@ -286,7 +294,7 @@ nodes:
     emotion: annoyed
     text:
       - type: styled_text
-        value: "*glare*"
+        value: "*glares*"
         style:
           bold: true
           italic: true
@@ -299,7 +307,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: W-we were j-j-just talk-k-king about wha-what to do next-t.
+        value: W-we were j-just t-t-talking about w-what to do n-next.
     next: fala_23
 
   fala_23:
@@ -307,8 +315,8 @@ nodes:
     speaker_id: arthur
     emotion: suspicious
     text:
-      - type: text
-        value: (They're definitively hiding something from me. Maybe I should ask Barasturon about it later.)
+      - type: thought
+        value: They're definitely hiding something from me. Maybe I should ask Barasturon about it later.
     next: fala_24
     effects_after:
       - type: add_relationship
@@ -325,8 +333,8 @@ nodes:
     speaker_id: arthur
     emotion: thinking
     text:
-      - type: text
-        value: (Maybe I shouldn't press it. It could make things worse.)
+      - type: thought
+        value: Maybe I shouldn't press it. It could make things worse.
     next: fala_25
 
   fala_25:
@@ -335,7 +343,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: So... Do you guys have a another job to do?
+        value: So... do you guys have another job lined up?
     next: fala_26
 
   fala_26:
@@ -344,7 +352,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: ahahaha...
+        value: Ahahaha...
     next: fala_27
 
   fala_27:
@@ -389,7 +397,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: Actually. I have job I would like to do with you.
+        value: Actually, I have a job I'd like to do with you.
     next: fala_32
 
   fala_32:
@@ -425,7 +433,7 @@ nodes:
     emotion: stressed
     text:
       - type: text
-        value: Ye-yeah? A friend of mine wants me to hunt some... things in Kelpton forest. I don't know my way around it so I thought of asking you guys for help.
+        value: Y-yeah? A friend of mine wants me to hunt some... things in Kelpton Forest. I don't know my way around it, so I thought I'd ask you guys for help.
     next: fala_36
 
   fala_36:
@@ -440,7 +448,7 @@ nodes:
         style:
           bold: true
       - type: text
-        value: " are we hunting? "
+        value: " are we hunting?"
     next: fala_37
 
   fala_37:
@@ -449,7 +457,7 @@ nodes:
     emotion: thinking
     text:
       - type: text
-        value: Actually... I don't know... He said that these things look "melted" and that they were "freaking the villagers out"
+        value: Actually... I don't know. He said they looked "melted" and that they were "freaking the villagers out."
     next: fala_38
 
   fala_38:
@@ -458,7 +466,7 @@ nodes:
     emotion: unsure
     text:
       - type: text
-        value: Tha-that's not re-reasuring-ing.
+        value: Th-that's not r-reassuring.
     next: fala_39
 
   fala_39:
@@ -509,7 +517,7 @@ nodes:
     emotion: thinking
     text:
       - type: text
-        value: "... We are running out of "
+        value: "...We're running out of "
       - type: interactive_text
         interaction_id: id
         value: supplies
@@ -566,7 +574,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: No problem pal! Now let's go!
+        value: No problem, pal! Now let's go!
     next: fim_bad
 
   fim_bad:
@@ -580,7 +588,7 @@ nodes:
       emotion: thinking
       text:
         - type: styled_text
-          value: You remember the 4 potions that Raphael gave you earlier. You wonder if you should share with them.
+          value: You remember the four potions that Raphael gave you earlier. You wonder if you should share them.
           style:
             italic: true
             color: "#D88CFF"
@@ -608,7 +616,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: Free potion? Don't mind if I do!
+        value: A free potion? Don't mind if I do!
     next: fala_51
     effects_after:
       - type: add_relationship
@@ -642,7 +650,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: ... Thanks.
+        value: ...Thanks.
     next: fala_53
     effects_after:
       - type: add_relationship
@@ -659,7 +667,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: So... Can you guys help me?
+        value: So... can you guys help me?
     next: ramificacao
 
   ramificacao:
@@ -676,7 +684,7 @@ nodes:
         if:
           all:
             - condition: less_than
-              left: relationship.duhan.friendship
+              left: relationship.duha.friendship
               right: 1
             - condition: not_equals
               left: inventory.hp_potion
@@ -691,7 +699,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: ... Alright, we'll help you.
+        value: ...Alright, we'll help you.
     next: fala_55
 
   fala_55:
@@ -718,7 +726,9 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: Right... For the supplies. (Thanks, Duha.)
+        value: "Right... for the supplies. "
+      - type: thought
+        value: Thanks, Duha.
     next: fim_good
 
   fim_good:
@@ -731,7 +741,7 @@ nodes:
     emotion: thinking
     text:
       - type: text
-        value: ... Fine.
+        value: ...Fine.
     next: fala_59
 
   fala_59:
@@ -741,7 +751,7 @@ nodes:
     auto_advance: true
     text:
       - type: text
-        value: Duha... Does that-
+        value: Duha... does that—
     next: fala_60
 
   fala_60:
@@ -750,11 +760,11 @@ nodes:
     emotion: annoyed
     text:
       - type: styled_text
-        value: "No"
+        value: "No."
         style:
           bold: true
       - type: text
-        value: . He's not officially in the team.
+        value: " He's not officially on the team."
     next: fala_61
 
   fala_61:
@@ -772,7 +782,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: Look Arthur. I know that Barasturon invited you into our team last time.
+        value: Look, Arthur. I know Barasturon invited you to join our team last time.
     next: fala_63
 
   fala_63:
@@ -781,7 +791,7 @@ nodes:
     emotion: unsure
     text:
       - type: text
-        value: But I'm gonna be frank here. I don't think that you've got what it takes.
+        value: But I'm going to be frank with you. I don't think you've got what it takes.
     next: fala_64
 
   fala_64:
@@ -812,7 +822,7 @@ nodes:
     emotion: angry
     text:
       - type: styled_text
-        value: WHAT THE HECK GUYS!!
+        value: WHAT THE HECK, GUYS!?
         style:
           bold: true
     next: fala_67
@@ -850,7 +860,7 @@ nodes:
     emotion: neutral
     text:
       - type: text
-        value: Sure. We were all new to adventuring. Still are. But we've learned some things during our time together, that can share with you.
+        value: Sure. We were all new to adventuring once. We still are. But we've learned a few things during our time together that we can share with you.
     next: fala_71
 
   fala_71:
@@ -859,7 +869,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: Isn't that right guys?
+        value: Isn't that right, guys?
     next: fala_72
 
   fala_72:
@@ -877,7 +887,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: I wou-ould love t-t-to help you.
+        value: I w-would love t-to help you.
     next: fala_74
 
   fala_74:
@@ -886,7 +896,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: So what do you say Arthur? Do you want us to teach you about adventuring?
+        value: So what do you say, Arthur? Do you want us to teach you about adventuring?
     next: fala_75
 
   fala_75:
@@ -895,7 +905,7 @@ nodes:
     emotion: happy
     text:
       - type: text
-        value: ... Yeah... Yeah, I would love that!
+        value: ...Yeah. Yeah, I'd love that!
     next: fala_76
 
   fala_76:

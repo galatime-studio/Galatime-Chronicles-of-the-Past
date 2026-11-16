@@ -8,6 +8,7 @@ nodes:
     position: center
     animation_id: step_in_from_left
     emotion: neutral
+    hold_ms: 500
     next: entra_2
 
   entra_2:
@@ -16,6 +17,7 @@ nodes:
     position: center_left
     animation_id: step_in_from_left
     emotion: neutral
+    hold_ms: 500
     next: entra_2_acao
 
   entra_2_acao:
@@ -24,6 +26,7 @@ nodes:
     pose: sit
     depth: back
     animation_id: sit_down
+    hold_ms: 450
     next: entra_3
 
   entra_3:
@@ -32,6 +35,7 @@ nodes:
     position: left
     animation_id: step_in_from_left
     emotion: neutral
+    hold_ms: 500
     next: fala
 
   fala:
@@ -41,7 +45,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Why does that bird face live in the woods?
+        value: Why does that bird-face live in the woods?
     next: fala_2
 
   fala_2:
@@ -51,7 +55,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I asked him that same question once. Apparently it's because that way, he doesn't have to go far in order to gather ingredients.
+        value: I asked him that same question once. Apparently, it's because that way he doesn't have to go far to gather ingredients.
     next: fala_3
 
   fala_3:
@@ -87,7 +91,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Who knows? Maybe he also likes nature.
+        value: Who knows? Maybe he likes nature too.
     next: fala_6
 
   fala_6:
@@ -97,7 +101,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I don't know. That nerd has to have a secret reason.
+        value: I don't know. That nerd must have a secret reason.
     next: fala_7
 
   fala_7:
@@ -127,7 +131,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "Because he is annoying, as heck. "
+        value: Because he's annoying as heck.
     next: fala_10
 
   fala_10:
@@ -137,7 +141,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I mean, don't get me wrong. I'm grateful that he took care of you, truly.
+        value: I mean, don't get me wrong. I'm truly grateful that he took care of you.
     next: fala_11
 
   fala_11:
@@ -167,7 +171,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Well for one, his jokes aren't funny... At all!
+        value: Well, for one, his jokes aren't funny... at all!
     next: fala_14
 
   fala_14:
@@ -187,7 +191,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: He is somehow strong and weak at the same time.
+        value: He's somehow strong and weak at the same time.
     next: fala_16
 
   fala_16:
@@ -214,7 +218,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: He's always wearing a doctors outfit, even though he isn't a doctor.
+        value: He's always wearing a doctor's outfit, even though he isn't a doctor.
     next: fala_18
 
   fala_18:
@@ -224,7 +228,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Come to think about it... Neven, have you ever seen Raphael wearing anything else?
+        value: Come to think of it... Neven, have you ever seen Raphael wearing anything else?
     next: fala_19
 
   fala_19:
@@ -254,7 +258,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: But the weirdest thing of all, is the fact that he speaks like he talks like someone is watching us!
+        value: But the weirdest thing of all is that he talks as if someone is watching us!
     next: fala_22
 
   fala_22:
@@ -285,7 +289,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Anyway. I could go on and on, but you get my point. I just can't feel at ease with someone so... bizarre.
+        value: Anyway, I could go on and on, but you get my point. I just can't feel at ease with someone so... bizarre.
     next: fala_25
 
   fala_25:
@@ -295,7 +299,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Yeah. He's a tad odd. They say most alchemists have some... odd traits with them.
+        value: Yeah, he's a tad odd. They say most alchemists have some... odd traits.
     next: fala_26
 
   fala_26:
@@ -365,7 +369,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Hey guys, I have a question.
+        value: Hey, guys, I have a question.
     next: fala_33
 
   fala_33:
@@ -395,7 +399,7 @@ nodes:
     animation_id: idle
     text:
       - type: styled_text
-        value: "\"So, have you a girlfriend yet?\""
+        value: "\"So, have you got a girlfriend yet?\""
         style:
           wave: normal
           wave_speed: 0.8
@@ -418,7 +422,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "Oh my gods, yes! Sometimes he goes up to me and says:"
+        value: "Oh my gods, yes! Sometimes he comes up to me and says:"
     next: fala_38
 
   fala_38:
@@ -428,7 +432,7 @@ nodes:
     animation_id: idle
     text:
       - type: styled_text
-        value: "\"So, has the love bird written a letter to his girlfriend yet?\""
+        value: "\"So, has the lovebird written a letter to his girlfriend yet?\""
         style:
           wave: normal
           wave_speed: 0.8
@@ -441,9 +445,9 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "It's not like I'm dating Ana or anything, we're just friends! "
+        value: "It's not like I'm dating Ana or anything — we're just friends! "
       - type: thought
-        value: Wish I was though.
+        value: I wish I were, though.
     next: fala_40
 
   fala_40:
@@ -523,7 +527,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: She has spent a lot of time with him.
+        value: She has been spending a lot of time with him.
     next: fala_48
 
   fala_48:
@@ -543,7 +547,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: So my idea is, why don't we tease him the same way he does to you?
+        value: So, my idea is: why don't we tease him the same way he teases you?
     next: fala_50
 
   fala_50:
@@ -573,7 +577,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Come on! It will be fun!
+        value: Come on! It'll be fun!
     next: fala_53
 
   fala_53:
@@ -593,7 +597,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Oh ok. We'll do it.
+        value: Oh, okay. We'll do it.
     next: fala_55
 
   fala_55:
@@ -613,7 +617,31 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Wonderful. And his house is just over there. Just follow my lead.
+        value: Wonderful. His house is just over there. Just follow my lead.
+    next: sai_neven
+
+  sai_neven:
+    type: character_exit
+    character_id: neven
+    animation_id: step_out
+    direction: right
+    hold_ms: 450
+    next: sai_pacci
+
+  sai_pacci:
+    type: character_exit
+    character_id: pacci
+    animation_id: step_out
+    direction: right
+    hold_ms: 450
+    next: sai_noelia
+
+  sai_noelia:
+    type: character_exit
+    character_id: noelia
+    animation_id: run_out
+    direction: right
+    hold_ms: 600
     next: fim
 
   fim:

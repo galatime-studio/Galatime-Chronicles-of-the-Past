@@ -6,8 +6,10 @@ nodes:
     type: character_enter
     character_id: kelly
     position: center_right
+    animation_id: fade_in
     pose: sit
     emotion: thinking
+    hold_ms: 500
     next: fala
 
   fala:
@@ -36,6 +38,7 @@ nodes:
     position: center_left
     animation_id: step_in_from_left
     emotion: unsure
+    hold_ms: 500
     next: fala_3
 
   fala_3:
@@ -65,7 +68,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Oh, ok! No problem!
+        value: Oh, okay! No problem!
     next: escolha
 
   escolha:
@@ -126,6 +129,7 @@ nodes:
     pose: stand
     emotion: neutral
     animation_id: stand_up_from_right
+    hold_ms: 450
     next: fala_9
 
   fala_9:
@@ -135,7 +139,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Alright. I guess I can take a break.
+        value: All right. I guess I can take a break.
     next: fala_10
 
   fala_10:
@@ -155,7 +159,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I said that we can talk. Now, what do you want?
+        value: I said we can talk. Now, what do you want?
     next: fala_12
 
   fala_12:
@@ -186,7 +190,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Yourself? You were one of the many slimes that I was testing on and you escaped. What's more to know?
+        value: Yourself? You were one of the many slimes I tested on, and you escaped. What more is there to know?
     next: fala_15
 
   fala_15:
@@ -196,7 +200,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I want to know about how I was as a slime? Where did I came from? Did I have a family?
+        value: I want to know what I was like as a slime. Where did I come from? Did I have a family?
     next: fala_16
 
   fala_16:
@@ -227,7 +231,7 @@ nodes:
     auto_advance: true
     text:
       - type: text
-        value: Huh!? Well-
+        value: Huh!? Well—
     next: fala_19
 
   fala_19:
@@ -254,13 +258,13 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "You stopped me in my thoughts to ask for "
+        value: "You stopped me in the middle of my thoughts to ask for "
       - type: styled_text
         value: that
         style:
           bold: true
       - type: text
-        value: "!? Why the hell would you even care for that!?"
+        value: "!? Why the hell would you even care about that!?"
     next: fala_21
 
   fala_21:
@@ -270,7 +274,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Because I want to know the kind of person I was!
+        value: Because I want to know what kind of person I was!
     next: fala_22
 
   fala_22:
@@ -290,7 +294,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Yes! Ever since I was found by Pacci, I've had these constant headaches and the feeling of being lost!
+        value: Yes! Ever since Pacci found me, I've had these constant headaches and this feeling of being lost!
     next: fala_24
 
   fala_24:
@@ -300,7 +304,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I've been wondering who I was, where I came from, and if I had a family. But now I don't need to wonder. You're here and have all the answers!
+        value: I've been wondering who I was, where I came from, and if I had a family. But now I don't need to wonder anymore. You're here, and you have all the answers!
     next: fala_25
 
   fala_25:
@@ -320,7 +324,7 @@ nodes:
     animation_id: idle
     text:
       - type: whisper
-        value: Oh for crying out loud...
+        value: Oh, for crying out loud...
     next: fala_27
 
   fala_27:
@@ -330,7 +334,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Look, A4.0. It seems that you don't get it, so I'll just spell it out to you.
+        value: Look, A4.0. You clearly don't get it, so I'll spell it out for you.
     next: fala_28
 
   fala_28:
@@ -340,7 +344,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "I don't know nor care about anything that's related to your "
+        value: "I don't know, nor do I care, about anything related to your "
       - type: styled_text
         value: "\"past life\""
         style:
@@ -356,7 +360,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: When I said that you were one of the many slimes that I tested I was serious. I didn't care about the kind of slime you were. I didn't care if you had a family or not. And I didn't even capture you.
+        value: When I said that you were one of the many slimes I tested on, I meant it. I didn't care what kind of slime you were. I didn't care if you had a family or not. And I didn't even capture you.
     next: fala_30
 
   fala_30:
@@ -376,7 +380,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: No way! I just asked some random guys to catch some slimes for me, because I couldn't be bothered to do it myself.
+        value: No way! I just asked some random guys to catch some slimes for me because I couldn't be bothered to do it myself.
     next: fala_32
 
   fala_32:
@@ -386,13 +390,13 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "The only reason as to why I even "
+        value: "The only reason I even "
       - type: styled_text
         value: suspected
         style:
           bold: true
       - type: text
-        value: " that you were one of those slimes, was because you had the same reaction as you had back then. Besides that, I really don't know anything about you."
+        value: " that you were one of those slimes was because you had the same reaction as you did back then. Besides that, I really don't know anything about you."
     next: fala_33
 
   fala_33:
@@ -412,7 +416,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: So, that's it. The only lead that I had to uncover more of my past never existed.
+        value: So that's it. The only lead I had to uncover more about my past never existed.
     next: fala_35
 
   fala_35:
@@ -432,7 +436,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: ... Can't you really remember anything else? What about the people that captured me?
+        value: ... Can't you really remember anything else? What about the people who captured me?
     next: fala_37
 
   fala_37:
@@ -442,7 +446,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Sorry, but I couldn't tell who they were. However, if I do a couple of test on you, I might just figure out something or other about yourself.
+        value: Sorry, but I couldn't tell you who they were. However, if I run a couple of tests on you, I might be able to figure something out about you.
     next: fala_38
 
   fala_38:
@@ -453,7 +457,7 @@ nodes:
     auto_advance: true
     text:
       - type: text
-        value: So, why don't you come here and-
+        value: So, why don't you come here and—
     next: fala_39
 
   fala_39:
@@ -473,6 +477,7 @@ nodes:
     depth_of: kelly
     emotion: surprised
     animation_id: step_across
+    hold_ms: 450
     next: entra_4
 
   entra_4:
@@ -481,6 +486,7 @@ nodes:
     position: center_left
     animation_id: step_in_from_left
     emotion: neutral
+    hold_ms: 500
     next: fala_40
 
   fala_40:
@@ -500,7 +506,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Oh great. The doctor's here.
+        value: Oh, great. The doctor's here.
     next: fala_42
 
   fala_42:
@@ -541,7 +547,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "Second of all. You were "
+        value: "Second of all, you were "
       - type: interactive_text
         interaction_id: id
         value: stabbed
@@ -575,7 +581,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: And third of all. I have couple of questions I need to ask.
+        value: And third of all, I have a couple of questions I need to ask.
     next: fala_48
 
   fala_48:
@@ -585,7 +591,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Pft. And if I refuse?
+        value: Pfft. And if I refuse?
     next: fala_49
 
   fala_49:
@@ -690,7 +696,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "Arthur, I know that you have questions, but this is official SISO business. I'm afraid that I must ask you to leave. "
+        value: "Arthur, I know that you have questions, but this is official SISO business. I'm afraid I must ask you to leave."
     next: fala_r1_2
 
   fala_r1_2:
@@ -701,7 +707,7 @@ nodes:
     auto_advance: true
     text:
       - type: text
-        value: But-
+        value: But—
     next: fala_r1_3
 
   fala_r1_3:
@@ -711,7 +717,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Don't worry about her. After I'm done with my work, you can ask her as many questions as you want. Just be patient, ok?
+        value: Don't worry about her. After I'm done with my work, you can ask her as many questions as you want. Just be patient, okay?
     next: fala_r1_4
 
   fala_r1_4:
@@ -721,7 +727,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: ... Ok.
+        value: ... Okay.
     next: fala_r1_5
 
   fala_r1_5:
@@ -739,6 +745,7 @@ nodes:
     character_id: arthur
     animation_id: step_out
     direction: left
+    hold_ms: 450
     next: fala_r1_6
 
   fala_r1_6:
@@ -758,7 +765,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Arthur, I know that you have questions, but let's be honest here, she clearly couldn't have the answers.
+        value: Arthur, I know that you have questions, but let's be honest here — she clearly doesn't have the answers.
     next: fala_r2_2
 
   fala_r2_2:
@@ -778,7 +785,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: She didn't care about your condition when you were a slime, and she doesn't care about your condition now. And even if she did, she would only care about it to further her research, not because of some sense of altruism.
+        value: She didn't care about your condition when you were a slime, and she doesn't care about your condition now. And even if she did, she would only care about it to further her research, not out of any sense of altruism.
     next: fala_r2_4
 
   fala_r2_4:
@@ -788,7 +795,7 @@ nodes:
     animation_id: idle
     text:
       - type: styled_text
-        value: Whaaaaaat!? Me!?
+        value: Whaaaaat!? Me!?
         style:
           wave: normal
           wave_speed: 0.8
@@ -821,7 +828,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: ... Ok. I will.
+        value: ... Okay. I will.
     next: fala_r2_8
 
   fala_r2_8:
@@ -831,7 +838,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Thank you, Arthur. Now, wait upstairs please.
+        value: Thank you, Arthur. Now, wait upstairs, please.
     next: fala_r2_9
 
   fala_r2_9:
@@ -841,7 +848,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Alright. Good luck.
+        value: All right. Good luck.
     next: fala_r2_10
 
   fala_r2_10:
@@ -865,7 +872,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Arthur, let me ask you a question. What do you plan on doing once you've gotten all of your answers?
+        value: Arthur, let me ask you a question. What do you plan to do once you've gotten all your answers?
     next: fala_r3_2
 
   fala_r3_2:
@@ -895,7 +902,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Are you going back to the same place you've once came? Are you going back to your slime family?
+        value: Are you going back to the same place you once came from? Are you going back to your slime family?
     next: fala_r3_5
 
   fala_r3_5:
@@ -915,7 +922,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Pft.
+        value: Pfft.
     next: fala_r3_7
 
   fala_r3_7:
@@ -935,7 +942,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Arthur, I'm not going to beat around the bush. You'll never be able to go back again.
+        value: Arthur, I'm not going to beat around the bush. You'll never be able to go back.
     next: fala_r3_9
 
   fala_r3_9:
@@ -955,7 +962,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Let me spell it out for you. You're stupid and your idea is stupid. You're not a slime anymore, you're a human, a man.
+        value: Let me spell it out for you. You're stupid, and your idea is stupid. You're not a slime anymore — you're a human, a man.
     next: fala_r3_11
 
   fala_r3_11:
@@ -975,7 +982,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Yeah, so? You recognized me? Why wouldn't they recognize me too?
+        value: Yeah, so? You recognized me. Why wouldn't they recognize me too?
     next: fala_r3_13
 
   fala_r3_13:
@@ -986,7 +993,7 @@ nodes:
     auto_advance: true
     text:
       - type: text
-        value: ... Are you calling me as stupid as a slime? Are you reta-
+        value: ... Are you saying I'm as stupid as a slime? Are you reta—
     next: fala_r3_14
 
   fala_r3_14:
@@ -1002,7 +1009,7 @@ nodes:
         style:
           bold: true
       - type: text
-        value: " to say is that that wouldn't work."
+        value: " to say is that it wouldn't work."
     next: fala_r3_15
 
   fala_r3_15:
@@ -1012,7 +1019,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "Think about it. She found out you were a slime because she ran tests on you. Not because of your appearance. "
+        value: "Think about it. She found out you were a slime because she ran tests on you, not because of your appearance."
     next: fala_r3_16
 
   fala_r3_16:
@@ -1022,7 +1029,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: You can't be certain about it! Maybe they'll recognize me by instinct!
+        value: You can't be certain of that! Maybe they'll recognize me by instinct!
     next: fala_r3_17
 
   fala_r3_17:
@@ -1058,7 +1065,7 @@ nodes:
         style:
           italic: true
       - type: text
-        value: " slime attacked you?"
+        value: " slime ever attacked you?"
     next: fala_r3_20
 
   fala_r3_20:
@@ -1068,7 +1075,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: ... Yeah, every single one...
+        value: ... Yeah. Every single one...
     next: fala_r3_21
 
   fala_r3_21:
@@ -1078,7 +1085,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Exactly. But if slimes recognized each other by instinct, which they probably do, why would they attack you?
+        value: Exactly. But if slimes recognized each other by instinct — which they probably do — why would they attack you?
     next: fala_r3_22
 
   fala_r3_22:
@@ -1098,7 +1105,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: They don't recognize you as their own, idiot. Never would. So stop denying it, and accept what happened.
+        value: They don't recognize you as one of their own, idiot. They never would. So stop denying it and accept what happened.
     next: fala_r3_24
 
   fala_r3_24:
@@ -1108,7 +1115,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: It's getting way to sad seeing you trying to cling to the past.
+        value: It's getting way too sad, watching you cling to the past.
     next: fala_r3_25
 
   fala_r3_25:
@@ -1128,7 +1135,7 @@ nodes:
     animation_id: idle
     text:
       - type: shout
-        value: NOTHING, YOU HEAR ME!!
+        value: NOTHING, YOU HEAR ME!?
     next: fala_r3_27
 
   fala_r3_27:
@@ -1158,7 +1165,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: When Pacci took you in, he offered you to stay for as long as you needed.
+        value: When Pacci took you in, he offered you a place to stay for as long as you needed.
     next: fala_r3_30
 
   fala_r3_30:
@@ -1168,7 +1175,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: In the few days that you've been with us, not only have you made friends with Duha and the others, but you also helped us save the city.
+        value: In the few days you've been with us, not only have you made friends with Duha and the others, but you also helped us save the city.
     next: acao_3
 
   acao_3:
@@ -1177,6 +1184,7 @@ nodes:
     position: right
     depth: back
     animation_id: step_across
+    hold_ms: 450
     next: fala_r3_31
 
   fala_r3_31:
@@ -1186,7 +1194,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "*Puts hand on shoulder*"
+        value: "*puts a hand on Arthur's shoulder*"
     next: fala_r3_32
 
   fala_r3_32:
@@ -1196,13 +1204,13 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "Maybe you don't have much a past, but you "
+        value: "Maybe you don't have much of a past, but you "
       - type: styled_text
         value: do
         style:
           bold: true
       - type: text
-        value: " have a present. And if you work on it, you'll have a bright future ahead."
+        value: " have a present. And if you work on it, you'll have a bright future ahead of you."
     next: fala_r3_33
 
   fala_r3_33:
@@ -1232,7 +1240,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Thanks Raphael.
+        value: Thanks, Raphael.
     next: fala_r3_36
 
   fala_r3_36:
@@ -1242,7 +1250,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: You're welcome. Now, why don't you go upstairs and let me ask Kelly a few questions.
+        value: You're welcome. Now, why don't you go upstairs and let me ask Kelly a few questions?
     next: fala_r3_37
 
   fala_r3_37:
@@ -1280,6 +1288,7 @@ nodes:
     character_id: arthur
     position: center_left
     animation_id: step_across
+    hold_ms: 450
     next: fala_55
 
   fala_55:
@@ -1299,7 +1308,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Ahaha. You already did.
+        value: Haha. You already did.
     next: fala_57
 
   fala_57:
@@ -1319,7 +1328,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Anyway. What was that thing about Kelly getting stabbed?
+        value: Anyway... what was that thing about Kelly getting stabbed?
     next: fala_59
 
   fala_59:
@@ -1329,7 +1338,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Uh... Well.
+        value: Uh... well.
     next: fala_60
 
   fala_60:
@@ -1339,7 +1348,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "This absolute buffoon stabbed me before handing me to the authorities, "
+        value: "This absolute buffoon stabbed me before handing me over to the authorities — "
       - type: shout
         value: that's what happened!
     next: fala_61
@@ -1352,7 +1361,7 @@ nodes:
     auto_advance: true
     text:
       - type: text
-        value: What the-
+        value: What the—
     next: fala_62
 
   fala_62:
@@ -1382,7 +1391,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: But, it was all part of the plan!
+        value: But it was all part of the plan!
     next: fala_65
 
   fala_65:
@@ -1402,7 +1411,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: The plan that is finding out what those files were about.
+        value: The plan to find out what those files were about.
     next: fala_67
 
   fala_67:
@@ -1412,7 +1421,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "... You stabbed me, just so you could "
+        value: "... You stabbed me just so you could "
       - type: styled_text
         value: interrogate me!
         style:
@@ -1436,7 +1445,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Wasn't the whole "poison the mana in the air" illegal too?
+        value: Wasn't the whole "poison the mana in the air" thing illegal too?
     next: fala_70
 
   fala_70:
@@ -1457,7 +1466,7 @@ nodes:
     delivery: thought
     text:
       - type: text
-        value: He kinda has a point though.
+        value: He kinda has a point, though.
     next: fala_72
 
   fala_72:
@@ -1467,7 +1476,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Right, whatever you say, Kelly. Arthur, please keep this whole "stabbing" thing between us. I want to be a good example to Pacci and Neven.
+        value: Right, whatever you say, Kelly. Arthur, please keep this whole "stabbing" thing between us. I want to be a good example for Pacci and Neven.
     next: fala_73
 
   fala_73:

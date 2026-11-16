@@ -6,14 +6,16 @@ nodes:
     type: character_enter
     character_id: alice
     position: center_left
-    animation_id: step_in
+    animation_id: step_in_from_left
+    hold_ms: 500
     next: entra_2
 
   entra_2:
     type: character_enter
     character_id: pacci
     position: left
-    animation_id: step_in
+    animation_id: step_in_from_left
+    hold_ms: 500
     next: fala
 
   fala:
@@ -23,7 +25,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: And, before Raphael could take Kelly in, she was stabbed in the gut.
+        value: And before Raphael could take Kelly in, she was stabbed in the gut.
     next: fala_2
 
   fala_2:
@@ -33,7 +35,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: She was stabbed!? By who?
+        value: She was stabbed!? By whom?
     next: fala_3
 
   fala_3:
@@ -43,7 +45,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Raphael couldn't identify. Said that, while he was distracted with a sudden mutation of one of his catalysts, someone with incredible speed, stabbed her in the gut and then ran off. However, we suspect that it was someone who was hired by her superior.
+        value: Raphael couldn't identify the attacker. He said that, while he was distracted by a sudden mutation of one of his catalysts, someone incredibly fast stabbed her in the gut and ran off. However, we suspect it was someone hired by her superior.
     next: fala_4
 
   fala_4:
@@ -73,7 +75,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "Now what? Is she in the infirmary? "
+        value: "Now what? Is she in the infirmary?"
     next: fala_7
 
   fala_7:
@@ -103,7 +105,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Originally, the guards wanted to take her into HQ, but Raphael said that that it would be the first place the attacker would look. So he said that he would take care of her in his house.
+        value: Originally, the guards wanted to take her to HQ, but Raphael said that it would be the first place the attacker would look. So he said he would take care of her at his house.
     next: fala_10
 
   fala_10:
@@ -113,7 +115,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: As much as I believe that It would be for the best for her to be on HQ, Raphael has a point.
+        value: As much as I believe it would be best for her to be at HQ, Raphael has a point.
     next: fala_11
 
   fala_11:
@@ -133,7 +135,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Raphael is one of the most competent alchemists we have. He should be able to take care of her with no issue.
+        value: Raphael is one of the most competent alchemists we have. He should be able to take care of her without any issue.
     next: fala_13
 
   fala_13:
@@ -143,7 +145,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Although, if you ask me, he's not utilizing his capabilities to his full potential. I've asked him if he wanted to raise in the ranks multiple times, but he always refuses.
+        value: Although, if you ask me, he's not utilizing his capabilities to their full potential. I've asked him multiple times if he wanted to rise through the ranks, but he always refuses.
     next: fala_14
 
   fala_14:
@@ -153,7 +155,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Yeah, I don't get it myself. I've heard the rumors that he has a ton of young alchemists trying to become his apprentices, but he just refuses all of them.
+        value: Yeah, I don't get it myself. I've heard rumours that he has a ton of young alchemists trying to become his apprentices, but he just refuses all of them.
     next: fala_15
 
   fala_15:
@@ -173,7 +175,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I don't know. Never asked him about it.
+        value: I don't know. I've never asked him about it.
     next: fala_17
 
   fala_17:
@@ -183,7 +185,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I see... Pacci, could you do me a small favor?
+        value: I see... Pacci, could you do me a small favour?
     next: fala_18
 
   fala_18:
@@ -203,7 +205,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I'm concerned with the current state of affairs. Monster population rises as we speak. We found crystals in a temple that, by all means and purposes, should've been completely explored but wasn't. And now the mana in the air was being poisoned for of reasons we don't know.
+        value: I'm concerned about the current state of affairs. The monster population is rising as we speak. We found crystals in a temple that, by all accounts, should have been fully explored but wasn't. And now the mana in the air is being poisoned for reasons we don't know.
     next: fala_20
 
   fala_20:
@@ -213,7 +215,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I agree. Things have been too hectic and dangerous lately.
+        value: I agree. Things have been far too hectic and dangerous lately.
     next: fala_21
 
   fala_21:
@@ -223,7 +225,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: And because things have been like this, I want to ask you to do a couple of things for me.
+        value: And because of that, I want to ask you to do a couple of things for me.
     next: fala_22
 
   fala_22:
@@ -233,7 +235,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: One, keep this incident with the city's crystals a secret. We don't want people to get panicked.
+        value: First, keep this incident with the city's crystals a secret. We don't want to cause a panic.
     next: fala_23
 
   fala_23:
@@ -279,7 +281,7 @@ nodes:
         style:
           italic: true
       - type: text
-        value: . Make sure that there are no more hidden passages or surprises.
+        value: . Make sure there are no more hidden passages or surprises.
     next: fala_27
 
   fala_27:
@@ -299,7 +301,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Uhm... Why do you want me investigate the ruins again?
+        value: Um... why do you want me to investigate the ruins again?
     next: fala_29
 
   fala_29:
@@ -309,7 +311,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Don't you think that it's weird that the temple, a place that was explored multiple times and even charted, had a secret entrance?
+        value: Don't you think it's odd that the temple, a place that has been explored multiple times and even charted, had a secret entrance?
     next: fala_30
 
   fala_30:
@@ -319,7 +321,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: ... Now that you mention it. It is odd.
+        value: ...Now that you mention it, it is odd.
     next: fala_31
 
   fala_31:
@@ -329,7 +331,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Exactly, so I want you to investigate it again and make sure that there are no more "surprises". Do you think you can handle all of this?
+        value: Exactly. So I want you to investigate it again and make sure there are no more "surprises". Do you think you can handle all of this?
     next: fala_32
 
   fala_32:
@@ -359,7 +361,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: No problem. Do you want me to visit Raphael and check the situation there too?
+        value: No problem. Do you want me to visit Raphael and check on the situation there too?
     next: fala_35
 
   fala_35:
@@ -369,7 +371,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: That's nice of you but there's no need.
+        value: That's nice of you, but there's no need.
     next: fala_36
 
   fala_36:
@@ -380,6 +382,22 @@ nodes:
     text:
       - type: text
         value: I have a good feeling about Raphael's situation.
+    next: sai
+
+  sai:
+    type: character_exit
+    character_id: pacci
+    animation_id: step_out
+    direction: left
+    hold_ms: 500
+    next: sai_2
+
+  sai_2:
+    type: character_exit
+    character_id: alice
+    animation_id: step_out
+    direction: right
+    hold_ms: 700
     next: fim
 
   fim:
