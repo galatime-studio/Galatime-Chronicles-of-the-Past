@@ -200,7 +200,9 @@ export const GameDialogue = forwardRef<GameDialogueHandle, GameDialogueProps>(fu
                     <span
                         className={`text-2xl font-bold uppercase tracking-widest text-white/60 ${nameClassName}`}
                     >
-                        {speakerName}
+                        {/* The plate keeps its line box while the box is empty, so a
+                            held beat cannot shrink the box and resize the cast. */}
+                        {speakerName || '\u00A0'}
                     </span>
                 </div>
 

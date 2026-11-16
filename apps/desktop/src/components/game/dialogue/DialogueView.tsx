@@ -144,14 +144,21 @@ export function DialogueView({
     const inputRequest = node?.type === 'player_input' ? node.input_request : null;
 
     /**
-     * Whether the box has anything to show.
+     * Whether the box is drawn.
      *
      * A held staging node has no line and no speaker: it is the beat that lets an
-     * entrance or an exit be watched. Drawing the box for it would flash an empty
-     * name plate over the very movement the beat exists for, so it stays closed
-     * until the walk reaches something to read.
+     * entrance or an exit be watched. The box stays mounted and empty through it
+     * rather than closing and giving its height back to the stage. Unmounting it
+     * would grow the stage by the box's height and shrink it again on the next
+     * line, and the cast would visibly resize on every beat.
+     *
+     * The error and result panels take the box's place, so a failed step never
+     * leaves the last line sitting above its own error.
      */
-    const showBox = node !== null && inputRequest === null && node.hold_ms <= 0;
+    const showBox = status !== 'error'
+        && status !== 'completed'
+        && node !== null
+        && inputRequest === null;
 
     const worldStateRef = useRef(worldState);
     worldStateRef.current = worldState;
