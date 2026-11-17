@@ -970,10 +970,15 @@ function resolveAttack(context: ActionResolutionContext): CombatEvent[] {
             const condition = readConditionRecord((asRecord(effect) ?? {}).condition);
             if (!effectConditionSatisfied(state, scopeTarget, condition)) continue;
 
-            // A charge-bearing landing only marks a hit: a target the ice
-            // skill missed stays dry of charges.
+            // A swing that missed leaves nothing behind: no status, no charges,
+            // no rider (drain, heal, seal). Only units the action rolled against
+            // can miss, and the caster's own clauses (`apply_to: self`) do not
+            // depend on the swing, so the actor keeps them.
             const landedResolution = resolutions.get(scopeTarget.id);
-            if (asRecord(effect)?.charges && action.dealsDamage && (!landedResolution || !landedResolution.isHit)) {
+            if (action.dealsDamage
+                && landedResolution
+                && !landedResolution.isHit
+                && scopeTarget.id !== actor.id) {
                 continue;
             }
             // `require_all_hits`: a two-strike combo only pays its tail when
