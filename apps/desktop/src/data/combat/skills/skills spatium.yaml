@@ -1170,7 +1170,7 @@ skills:
 
   - id: restorative_fold
     name: Restorative Fold
-    description: "The caster folds a wounded ally back into a healthier shape; Restores 20% of the target's maximum health and removes one negative status."
+    description: "The caster folds a wounded ally back into a healthier shape; Restores 6% of the target's maximum health per turn for 3 turns and removes one negative status."
     element_id: spatium
     sfx: spatium
     learning_cost:
@@ -1188,9 +1188,9 @@ skills:
       - effect_id: restorative_fold_effect
         status_effect: Restorative Fold
         apply_to: target
-        turns: 1
+        turns: 3
         polarity: positive
-        heal_percent_of_max: 20
+        regen_per_turn_percent: { hp: 6 }
         cleanse: 1
 
   - id: rigid_skin
@@ -1246,7 +1246,7 @@ skills:
 
   - id: repair_matrix
     name: Repair Matrix
-    description: "The caster reshapes an ally's body-space into a restored, resilient form; Restores 25% of maximum health, removes one negative status, and grants +12 PDEF for 3 turns."
+    description: "The caster reshapes an ally's body-space into a restored, resilient form; Restores 8% of maximum health per turn for 3 turns, removes one negative status, and grants +12 PDEF for 3 turns."
     element_id: spatium
     sfx: spatium
     learning_cost:
@@ -1265,9 +1265,9 @@ skills:
       - effect_id: repair_matrix_heal
         status_effect: Repair Matrix
         apply_to: target
-        turns: 1
+        turns: 3
         polarity: positive
-        heal_percent_of_max: 25
+        regen_per_turn_percent: { hp: 8 }
         cleanse: 1
       - effect_id: repair_matrix_armor
         status_effect: Repair Matrix Armor

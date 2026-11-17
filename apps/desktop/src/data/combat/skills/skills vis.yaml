@@ -26,7 +26,7 @@ skills:
       cooldown: 0
   - id: deep_mending
     name: Deep Mending
-    description: "The caster directs a deep current of mana through the target's wounds; restores 22% of the target's max HP."
+    description: "The caster directs a deep current of mana through the target's wounds; restores 7% of the target's max HP per turn for 3 turns."
     element_id: vis
     sfx: vis
     learning_cost:
@@ -44,9 +44,9 @@ skills:
       - effect_id: deep_mending_effect
         status_effect: Deep Mending
         apply_to: target
-        turns: 1
+        turns: 3
         polarity: positive
-        heal_percent_of_max: 22
+        regen_per_turn_percent: { hp: 7 }
   - id: efficient_recall
     name: Efficient Recall
     description: "The caster guides mana back with less waste; spends 18 MN and restores exactly 18 MN, up to the target's maximum."

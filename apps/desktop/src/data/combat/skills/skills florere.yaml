@@ -814,7 +814,7 @@ skills:
   # Blight — Drain
   - id: life_drain
     name: Life Drain
-    description: "Deals 18 magical damage and drains 8% of the target's max HP, healing the caster for the same amount."
+    description: "Deals 18 magical damage and heals the caster for 45% of the damage dealt."
     element_id: florere
     sfx: florere
     kind: attack
@@ -834,11 +834,11 @@ skills:
         apply_to: target
         turns: 1
         polarity: negative
-        drain_percent_of_max_hp: { percent: 8, resource: hp, to: caster }
+        drain_percent_of_damage: 0.45
 
   - id: greater_life_drain
     name: Greater Life Drain
-    description: "Deals 30 magical damage and drains 16% of the target's max HP, healing the caster for the same amount."
+    description: "Deals 30 magical damage and heals the caster for half of the damage dealt."
     element_id: florere
     sfx: florere
     kind: attack
@@ -858,7 +858,7 @@ skills:
         apply_to: target
         turns: 1
         polarity: negative
-        drain_percent_of_max_hp: { percent: 16, resource: hp, to: caster }
+        drain_percent_of_damage: 0.5
 
   - id: blood_seed
     name: Blood Seed
