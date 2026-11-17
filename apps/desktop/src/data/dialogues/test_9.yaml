@@ -53,7 +53,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: "I'm calling bullshit on that! The city isn't "
+        value: "I'm calling bull on that! The city isn't "
       - type: styled_text
         value: that
         style:

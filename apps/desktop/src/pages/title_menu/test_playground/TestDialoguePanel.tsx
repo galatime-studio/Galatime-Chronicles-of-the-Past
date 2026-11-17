@@ -559,7 +559,7 @@ export function TestDialoguePanel() {
                       and the session readout — float over it rather than standing
                       beside it, so nothing here has to be shared out.
                     */}
-                    <div className="relative flex min-h-[16rem] flex-1">
+                    <div className="relative flex min-h-64 flex-1">
                         <section
                             className="flex min-w-0 flex-1 flex-col"
                             style={{
@@ -631,7 +631,7 @@ export function TestDialoguePanel() {
                                       over and which outcome it produced.
                                     */}
                                     {snapshot?.status === 'completed' && (
-                                        <p className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-l-game border-galatime-accent bg-white/5 px-2 py-1.5 text-xs uppercase tracking-[0.1em] text-white">
+                                        <p className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-l-game border-galatime-accent bg-white/5 px-2 py-1.5 text-xs uppercase tracking-widest text-white">
                                             <span>{t('dialogue.result.title')}</span>
                                             <span className="text-galatime-accent">
                                                 {t(resolveResultLabelKey(response?.result ?? null))}
@@ -662,12 +662,12 @@ export function TestDialoguePanel() {
                                     */}
                                     {missingExpressions.length > 0 && (
                                         <div className="mt-3 border-t-game border-white/10 pt-2">
-                                            <p className="text-xs uppercase tracking-[0.1em] text-galatime-error">
+                                            <p className="text-xs uppercase tracking-widest text-galatime-error">
                                                 {t('playground.dialogue.missingExpressions')}
                                             </p>
                                             <ul className="mt-1 flex flex-col gap-0.5 font-mono text-xs text-galatime-error">
                                                 {missingExpressions.map((expression) => (
-                                                    <li key={expression} className="break-words">
+                                                    <li key={expression} className="wrap-break-word">
                                                         {expression}
                                                     </li>
                                                 ))}

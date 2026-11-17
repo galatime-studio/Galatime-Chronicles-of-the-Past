@@ -134,8 +134,9 @@ export function useDialogueSession({ reduceMotion = false }: DialogueSessionOpti
      *
      * The surface can be unmounted mid-conversation — the host navigates away, the
      * tool switches tab — and nothing would ever call `finish()`. Closing it here
-     * means the engine only ever holds conversations that are still on screen; the
-     * idle timeout is then a backstop rather than the mechanism.
+     * means the engine only ever holds conversations that are still on screen.
+     * Nothing else closes a session: a player who walks away from the screen must
+     * find the conversation untouched when they come back, however long it took.
      */
     const sessionIdRef = useRef<string | null>(null);
     sessionIdRef.current = sessionId;

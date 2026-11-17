@@ -40,9 +40,6 @@ import { validateDialogue } from './validatorService';
  * option without the world having shifted underneath them.
  */
 
-/** How long an untouched session stays resumable. */
-export const SESSION_TTL_MS = 30 * 60 * 1000;
-
 /** How many recent action ids are remembered for duplicate detection. */
 export const MAX_TRACKED_ACTION_IDS = 64;
 
@@ -58,6 +55,7 @@ export interface DialogueSession {
     nodeType: DialogueNodeType | null;
     completed: boolean;
     result: string | null;
+    /** When the conversation began. Informational; nothing times out on it. */
     startedAt: number;
     /** Action ids already processed, newest last, bounded in size. */
     processedActionIds: Set<string>;
@@ -461,21 +459,21 @@ function recordActionId(session: DialogueSession, actionId: string): void {
     }
 }
 
-/** Looks up a live session, enforcing the idle timeout. */
+/**
+ * Looks up a live session.
+ *
+ * There is deliberately no idle timeout. A player may walk away mid-sentence —
+ * for a phone call, for the night — and the conversation has to be exactly
+ * where they left it when they come back. A session lives until the surface
+ * that owns it ends it (`endSession`) or the app tears every session down
+ * (`clearDialogueSessions`), because the only clock a conversation answers to
+ * is the player's.
+ */
 function requireSession(sessionId: string): DialogueResult<DialogueSession> {
     const session = sessions.get(sessionId);
 
     if (!session) {
         return failure('session_not_found', `Session "${sessionId}" does not exist.`, {
-            session_id: sessionId,
-        });
-    }
-
-    if (Date.now() - session.startedAt > SESSION_TTL_MS) {
-        sessions.delete(sessionId);
-        persistence.clearCheckpoint(sessionId);
-
-        return failure('session_expired', `Session "${sessionId}" expired.`, {
             session_id: sessionId,
         });
     }

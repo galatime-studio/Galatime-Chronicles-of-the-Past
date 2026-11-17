@@ -33,7 +33,6 @@
 			"input_invalid": "That answer is not one of the options offered.",
 			"insufficient_item": "The player does not have what that option costs.",
 			"session_not_found": "The conversation is no longer running.",
-			"session_expired": "The conversation was left idle for too long.",
 			"session_completed": "The conversation has already ended.",
 			"duplicate_action": "That action was already applied.",
 			"unknown": "Something went wrong."

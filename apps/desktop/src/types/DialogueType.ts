@@ -781,7 +781,6 @@ export type DialogueErrorCode =
     | 'unknown_relationship'
     | 'unknown_objective'
     | 'session_not_found'
-    | 'session_expired'
     | 'session_completed'
     | 'duplicate_action'
     | 'incompatible_state';
