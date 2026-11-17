@@ -9,6 +9,10 @@
  * `flee` is a normal candidate when the unit carries it. The action is only
  * attached to units that may actually run, and its preview stays unusable while
  * the unit is above its panic gate, so most enemies never see it.
+ *
+ * An aim on the wrong side (a blow at an ally, a mend at an enemy) is dropped
+ * here rather than merely discounted: friendly fire stays legal for the player,
+ * but the AI never spends a turn on it, at any difficulty.
  */
 
 import type { AiCandidate, AiDecisionContext } from '../../../types/AiType';
@@ -20,6 +24,7 @@ import {
     legalItemTargetIds,
     resolveItemTargets,
 } from '../../inventory/itemTargetResolver';
+import { actionIntent, isWrongSideTarget, type ActionIntent } from './aiIntent';
 
 /** Actions the AI must never pick, because they cannot resolve. */
 const EXCLUDED_KINDS: ReadonlySet<string> = new Set();
@@ -56,7 +61,9 @@ export function buildAiCandidates(context: AiDecisionContext): AiCandidate[] {
         if (EXCLUDED_KINDS.has(action.kind) || action.kind === 'inventory') continue;
 
         if (actionRequiresExplicitTarget(action)) {
+            const intent = actionIntent(action);
             for (const targetId of preview.targetIds) {
+                if (isOwnSideAim(context, intent, targetId)) continue;
                 const targetIds = action.targeting === 'enemies_lane'
                     ? laneTargetIds(context, preview.targetIds, targetId)
                     : [targetId];
@@ -130,6 +137,25 @@ function buildItemCandidates(
     }
 
     return candidates;
+}
+
+/**
+ * Whether an explicit aim sits on the side the action does not serve.
+ *
+ * Friendly fire is legal in the engine (and stays legal for the player), but it
+ * is never a plan an opponent should choose: a difficulty level may make a unit
+ * blunder with the wrong skill or the wrong enemy, never with its own team. The
+ * aim is dropped here, before scoring, so neither the score noise nor the
+ * uniform `targetNoise` pick can land on it.
+ */
+function isOwnSideAim(
+    context: AiDecisionContext,
+    intent: ActionIntent,
+    targetId: string,
+): boolean {
+    const target = context.state.units.find((unit) => unit.id === targetId);
+    if (!target) return false;
+    return isWrongSideTarget(context.actor, intent, target);
 }
 
 /** Every distinct targeting rule an item can resolve to. */
