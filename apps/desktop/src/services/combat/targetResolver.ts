@@ -95,10 +95,12 @@ export function reachableTargets(
 
     if (!isRangeAllowedFromLine(action.range, actor.line)) return [];
 
-    // A taunting defender pulls hostile single-target attacks onto itself.
+    // A taunting defender pulls hostile single-target attacks onto itself —
+    // but only when the taunt is actually in reach. A rear-line taunter cannot
+    // sponge a short-reach swing that could never touch it.
     if (action.targeting === 'any_one' && action.dealsDamage) {
         const taunter = liveTaunter(units, actor.side === 'allies' ? 'enemies' : 'allies');
-        if (taunter) return [taunter];
+        if (taunter && rangeReachesLine(action.range, taunter.line)) return [taunter];
     }
 
     return candidateTargets(units, actor, action).filter((unit) => {

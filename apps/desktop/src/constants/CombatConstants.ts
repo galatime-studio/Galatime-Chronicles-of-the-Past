@@ -103,6 +103,16 @@ export const POSITION_DAMAGE_MODIFIERS: Record<CombatLine, Record<CombatLine, nu
     rear: { front: 0.85, rear: 0.8 },
 };
 
+/**
+ * Accuracy points a rear-line unit costs the attack, in either direction.
+ *
+ * A rear-line defender is a smaller target behind the front line, and a unit
+ * firing from the rear has the front rank in the way; both pay once. The
+ * penalty never stacks (rear into rear is still one penalty) and never applies
+ * to same-side targets, mirroring {@link POSITION_DAMAGE_MODIFIERS}.
+ */
+export const BACKLINE_ACCURACY_PENALTY = 20;
+
 /** Lines a range can be fired from. Short reach is impossible from the rear. */
 export const RANGE_ALLOWED_FROM_LINE: Record<CombatRange, CombatLine[]> = {
     short: ['front'],

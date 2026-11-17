@@ -7,6 +7,7 @@
  */
 
 import {
+    BACKLINE_ACCURACY_PENALTY,
     MAX_UNITS_PER_LINE,
     POSITION_DAMAGE_MODIFIERS,
     RANGE_ALLOWED_FROM_LINE,
@@ -27,6 +28,22 @@ export function positionDamageModifier(
 ): number {
     if (sameSide) return 1;
     return POSITION_DAMAGE_MODIFIERS[attackerLine][targetLine];
+}
+
+/**
+ * Accuracy points a hit loses for involving the rear line.
+ *
+ * One penalty when either the attacker or the target stands in the rear; it
+ * never stacks and never touches same-side targets. Same numbers for real hits,
+ * previews and the AI, all through this helper.
+ */
+export function positionAccuracyPenalty(
+    attackerLine: CombatLine,
+    targetLine: CombatLine,
+    sameSide: boolean,
+): number {
+    if (sameSide) return 0;
+    return attackerLine === 'rear' || targetLine === 'rear' ? BACKLINE_ACCURACY_PENALTY : 0;
 }
 
 /** Whether a unit standing in `line` is allowed to use an action of this reach. */

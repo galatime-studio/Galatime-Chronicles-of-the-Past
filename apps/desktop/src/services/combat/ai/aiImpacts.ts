@@ -87,7 +87,17 @@ export function expectedDamageFor(
     const hits = expectedHitsOn(action, context.actor, context.state.units);
     // The attacker's aim modifier counts: a buffed attacker lands more of what
     // it aims, and the AI has to see that. The live stats are read, so a buff
-    // or a debuff is worth what it is worth.
-    const accuracy = effectiveAccuracy(action, effectiveStats(context.actor), effectiveStats(target));
+    // or a debuff is worth what it is worth. The lines go in as well, so the
+    // rear-line penalty is priced exactly like the real hit.
+    const accuracy = effectiveAccuracy(
+        action,
+        effectiveStats(context.actor),
+        effectiveStats(target),
+        {
+            attackerLine: context.actor.line,
+            defenderLine: target.line,
+            sameSide: context.actor.side === target.side,
+        },
+    );
     return impact.finalDamage * hits * (normalizeAccuracy(accuracy) / 100);
 }

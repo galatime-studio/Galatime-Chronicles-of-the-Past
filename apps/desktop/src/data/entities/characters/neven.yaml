@@ -34,14 +34,15 @@ skills:
 abilities:
   - id: spatial_instinct
     name: Spatial Instinct
-    description: "Long-range attacks against Neven have a 35% chance to miss; every blow he slips away from costs him his next turn."
+    description: "Medium- and long-range attacks against Neven have a 35% chance to miss; every blow he slips away from costs him his next turn."
     trigger:
       event: before_damage
       scope: self
     condition:
       all:
-        - range:
-            value: long
+        - not:
+            range:
+              value: short
         - chance: 0.35
     action:
       type: force_miss

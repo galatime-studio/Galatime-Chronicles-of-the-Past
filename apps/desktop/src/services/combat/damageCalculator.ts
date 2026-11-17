@@ -37,7 +37,8 @@
  * - `crit_chance` / `guaranteed_crit_vs_status` — the critical hit (x1.75).
  * - `accuracy` / `evasion` — the attacker's aim and the defender's dodge.
  * - `ignore_accuracy` — the hit lands whatever the roll says.
- * - `ignore_position_penalty` — the lane (front/rear) multiplier is skipped.
+ * - `ignore_position_penalty` — the lane (front/rear) damage multiplier and
+ *   rear-line accuracy penalty are both skipped.
  *
  * Every consumer — the turn resolver and the HUD preview — goes through
  * {@link resolveDamage}, so this chain exists exactly once.
@@ -80,7 +81,7 @@ import {
     hasStatusEffect,
     isImmuneToDamageType,
 } from './effectResolver';
-import { positionDamageModifier } from './positionRules';
+import { positionAccuracyPenalty, positionDamageModifier } from './positionRules';
 import { weatherElementMultiplierFor } from './weather';
 
 /**
@@ -239,6 +240,17 @@ function projectileAccuracy(
         + (request.attackerStats.accuracy ?? 0)
         - evasion;
 
+    // The rear line is harder to shoot from and harder to shoot into: one flat
+    // penalty for either role, never both (`positionAccuracyPenalty`). Traits
+    // that ignore the lane (`ignore_position_penalty`) skip it as well.
+    if (!action.ignorePositionPenalty) {
+        value -= positionAccuracyPenalty(
+            request.attackerLine,
+            request.defenderLine,
+            request.sameSide,
+        );
+    }
+
     if (isProjectileAction(action)) {
         // The caster's sight: the strongest lane-matching bonus wins.
         let sight = 0;
@@ -276,20 +288,27 @@ function projectileAccuracy(
  * The authored chance of the action, plus the attacker's `accuracy` modifier,
  * minus the defender's `evasion` modifier. The defender's *accuracy* is
  * irrelevant here: it governs the defender's own attacks, not how well it is
- * hit.
+ * hit. The rear-line penalty is folded in when the caller knows both lines.
  *
  * An action that ignores accuracy always lands.
  */
 export function effectiveAccuracy(
-    action: Pick<CombatAction, 'accuracy' | 'ignoreAccuracy'> & { ignoreEvasion?: boolean },
+    action: Pick<CombatAction, 'accuracy' | 'ignoreAccuracy'> & {
+        ignoreEvasion?: boolean;
+        ignorePositionPenalty?: boolean;
+    },
     attackerStats: CombatStats,
     defenderStats: CombatStats,
+    position?: { attackerLine: CombatLine; defenderLine: CombatLine; sameSide?: boolean },
 ): number {
     if (action.ignoreAccuracy) return 100;
 
     const authored = normalizeAccuracy(action.accuracy);
     const evasion = action.ignoreEvasion ? 0 : (defenderStats.evasion ?? 0);
-    const value = authored + (attackerStats.accuracy ?? 0) - evasion;
+    const lanePenalty = position && !action.ignorePositionPenalty
+        ? positionAccuracyPenalty(position.attackerLine, position.defenderLine, position.sameSide ?? false)
+        : 0;
+    const value = authored + (attackerStats.accuracy ?? 0) - evasion - lanePenalty;
 
     return clamp(value, MIN_EFFECTIVE_ACCURACY, 100);
 }
