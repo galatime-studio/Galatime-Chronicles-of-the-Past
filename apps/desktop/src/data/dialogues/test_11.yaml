@@ -7,7 +7,6 @@ nodes:
     character_id: alice
     position: center_left
     animation_id: step_in_from_left
-    hold_ms: 500
     next: entra_2
 
   entra_2:
@@ -15,7 +14,6 @@ nodes:
     character_id: pacci
     position: left
     animation_id: step_in_from_left
-    hold_ms: 500
     next: fala
 
   fala:
@@ -389,7 +387,6 @@ nodes:
     character_id: pacci
     animation_id: step_out
     direction: left
-    hold_ms: 500
     next: sai_2
 
   sai_2:
@@ -397,7 +394,6 @@ nodes:
     character_id: alice
     animation_id: step_out
     direction: right
-    hold_ms: 700
     next: fim
 
   fim:

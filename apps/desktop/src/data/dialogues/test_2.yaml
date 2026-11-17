@@ -10,7 +10,6 @@ nodes:
     position: left
     animation_id: step_in_from_left
     emotion: neutral
-    hold_ms: 500
     next: entra_2
 
   entra_2:
@@ -19,7 +18,6 @@ nodes:
     position: right
     animation_id: step_in_from_right
     emotion: neutral
-    hold_ms: 500
     next: fala
 
   fala:

@@ -9,7 +9,6 @@ nodes:
     pose: sit
     animation_id: fade_in
     emotion: thinking
-    hold_ms: 500
     next: entra_2
 
   entra_2:
@@ -19,7 +18,6 @@ nodes:
     pose: sit
     animation_id: fade_in
     emotion: thinking
-    hold_ms: 500
     next: fala
 
   fala:
@@ -88,7 +86,6 @@ nodes:
     character_id: raphael
     animation_id: step_out
     direction: right
-    hold_ms: 450
     next: entra_3
 
   entra_3:
@@ -98,7 +95,6 @@ nodes:
     pose: sit
     animation_id: step_in_from_right
     emotion: happy
-    hold_ms: 500
     next: entra_4
 
   entra_4:
@@ -107,7 +103,6 @@ nodes:
     position: center_left
     animation_id: step_in_from_left
     emotion: neutral
-    hold_ms: 500
     next: entra_5
 
   entra_5:
@@ -116,7 +111,6 @@ nodes:
     position: left
     animation_id: step_in_from_left
     emotion: happy
-    hold_ms: 500
     next: fala_7
 
   fala_7:
@@ -528,8 +522,10 @@ nodes:
     animation_id: idle
     auto_advance: true
     text:
-      - type: text
-        value: "{speed=0.8|So, if Kelly is my mom—}"
+      - type: styled_text
+        value: So, if Kelly is my mom—
+        style:
+          speed_multiplier: 0.8
     next: fala_47
 
   fala_47:
@@ -548,8 +544,10 @@ nodes:
     emotion: thinking
     animation_id: idle
     text:
-      - type: text
-        value: "{speed=0.8|And Raphael is with her...}"
+      - type: styled_text
+        value: And Raphael is with her...
+        style:
+          speed_multiplier: 0.8
     next: fala_49
 
   fala_49:
@@ -660,7 +658,6 @@ nodes:
     depth: back
     emotion: happy
     animation_id: step_across
-    hold_ms: 450
     next: fala_59
 
   fala_59:
@@ -679,8 +676,8 @@ nodes:
     emotion: angry
     animation_id: idle
     text:
-      - type: text
-        value: "{shout style jitter|CAN IT!}"
+      - type: shout
+        value: CAN IT!
     next: fim
 
   fim:

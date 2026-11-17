@@ -38,7 +38,6 @@ nodes:
     position: center_left
     animation_id: step_in_from_left
     emotion: unsure
-    hold_ms: 500
     next: fala_3
 
   fala_3:

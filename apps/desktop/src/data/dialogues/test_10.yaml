@@ -8,7 +8,6 @@ nodes:
     position: center_left
     pose: sit
     animation_id: fade_in
-    hold_ms: 400
     next: entra_2
 
   entra_2:
@@ -17,7 +16,6 @@ nodes:
     position: center_right
     pose: sit
     animation_id: fade_in
-    hold_ms: 400
     next: fala
 
   fala:
@@ -196,7 +194,6 @@ nodes:
     position: center_right
     pose: sit
     depth: back
-    hold_ms: 400
     next: fala_18
 
   fala_18:
@@ -236,7 +233,6 @@ nodes:
     pose: sit
     depth: front
     emotion: happy
-    hold_ms: 400
     next: fala_21
 
   fala_21:
@@ -366,7 +362,6 @@ nodes:
     position: left
     animation_id: run_in_from_left
     emotion: nervous
-    hold_ms: 500
     next: fala_33
 
   fala_33:
@@ -465,7 +460,6 @@ nodes:
     character_id: barasturon
     animation_id: step_out
     direction: left
-    hold_ms: 500
     next: sai_2
 
   sai_2:
@@ -473,7 +467,6 @@ nodes:
     character_id: duha
     animation_id: step_out
     direction: right
-    hold_ms: 500
     next: sai_3
 
   sai_3:
@@ -481,7 +474,6 @@ nodes:
     character_id: nicima
     animation_id: step_out
     direction: right
-    hold_ms: 700
     next: fim
 
   fim:

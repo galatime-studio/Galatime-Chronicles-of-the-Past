@@ -8,7 +8,6 @@ nodes:
     position: center
     animation_id: step_in_from_left
     emotion: neutral
-    hold_ms: 500
     next: entra_2
 
   entra_2:
@@ -17,16 +16,6 @@ nodes:
     position: center_left
     animation_id: step_in_from_left
     emotion: neutral
-    hold_ms: 500
-    next: entra_2_acao
-
-  entra_2_acao:
-    type: character_action
-    character_id: pacci
-    pose: sit
-    depth: back
-    animation_id: sit_down
-    hold_ms: 450
     next: entra_3
 
   entra_3:
@@ -35,7 +24,6 @@ nodes:
     position: left
     animation_id: step_in_from_left
     emotion: neutral
-    hold_ms: 500
     next: fala
 
   fala:
@@ -625,7 +613,6 @@ nodes:
     character_id: neven
     animation_id: step_out
     direction: right
-    hold_ms: 450
     next: sai_pacci
 
   sai_pacci:
@@ -633,7 +620,6 @@ nodes:
     character_id: pacci
     animation_id: step_out
     direction: right
-    hold_ms: 450
     next: sai_noelia
 
   sai_noelia:
@@ -641,7 +627,6 @@ nodes:
     character_id: noelia
     animation_id: run_out
     direction: right
-    hold_ms: 600
     next: fim
 
   fim:
