@@ -621,7 +621,7 @@ nodes:
   fala_33:
     type: line
     speaker_id: raphael
-    emotion: annoyed
+    emotion: frustrated
     animation_id: idle
     text:
       - type: whisper
@@ -917,7 +917,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: Keep your eyes peeled. The girl that attacked me and Keely is in this city.
+        value: Keep your eyes peeled. The girl that attacked me and Kelly is in this city.
     next: fala_61
 
   fala_61:

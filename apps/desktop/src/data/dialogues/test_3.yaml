@@ -10,16 +10,14 @@ nodes:
     position: center_left
     animation_id: step_in_from_left
     emotion: neutral
-    hold_ms: 500
     next: entra_2
 
   entra_2:
     type: character_enter
     character_id: kelly
-    position: center_right
+    position: center
     animation_id: step_in_from_right
     emotion: neutral
-    hold_ms: 500
     next: fala
 
   fala:
@@ -51,23 +49,6 @@ nodes:
     text:
       - type: text
         value: Hm?
-    next: sai
-
-  sai:
-    type: character_exit
-    character_id: noelia
-    animation_id: step_out
-    direction: right
-    hold_ms: 400
-    next: entra_3
-
-  entra_3:
-    type: character_enter
-    character_id: noelia
-    position: center
-    animation_id: step_in_from_right
-    emotion: neutral
-    hold_ms: 400
     next: entra_4
 
   entra_4:
@@ -76,7 +57,6 @@ nodes:
     position: left
     animation_id: step_in_from_left
     emotion: neutral
-    hold_ms: 500
     next: fala_4
 
   fala_4:
@@ -298,7 +278,7 @@ nodes:
   fala_20:
     type: line
     speaker_id: raphael
-    emotion: annoyed
+    emotion: frustrated
     text:
       - type: text
         value: You talk like I didn't knock you out with one punch.
@@ -395,23 +375,6 @@ nodes:
     animation_id: step_out
     direction: left
     hold_ms: 500
-    next: sai_3
-
-  sai_3:
-    type: character_exit
-    character_id: noelia
-    animation_id: step_out
-    direction: right
-    hold_ms: 400
-    next: entra_5
-
-  entra_5:
-    type: character_enter
-    character_id: noelia
-    position: center_left
-    animation_id: step_in_from_right
-    emotion: neutral
-    hold_ms: 400
     next: fala_27
 
   fala_27:
@@ -492,7 +455,7 @@ nodes:
   fala_34:
     type: line
     speaker_id: noelia
-    emotion: happy
+    emotion: crying
     text:
       - type: text
         value: ...
@@ -590,23 +553,6 @@ nodes:
     animation_id: run_out
     direction: left
     hold_ms: 700
-    next: sai_5
-
-  sai_5:
-    type: character_exit
-    character_id: noelia
-    animation_id: step_out
-    direction: right
-    hold_ms: 400
-    next: entra_6
-
-  entra_6:
-    type: character_enter
-    character_id: noelia
-    position: center_left
-    animation_id: step_in_from_right
-    emotion: neutral
-    hold_ms: 400
     next: fala_43
 
   fala_43:
@@ -718,7 +664,7 @@ nodes:
   erro:
     type: line
     speaker_id: raphael
-    emotion: annoyed
+    emotion: frustrated
     text:
       - type: text
         value: There's an error here. You might want to program your game better.

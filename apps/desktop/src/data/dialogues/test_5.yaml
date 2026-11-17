@@ -252,16 +252,14 @@ nodes:
   levanta_raphael:
     type: character_action
     character_id: raphael
-    pose: stand
-    emotion: annoyed
-    animation_id: stand_up
+    emotion: frustrated
     hold_ms: 500
     next: fala_22
 
   fala_22:
     type: line
     speaker_id: raphael
-    emotion: annoyed
+    emotion: frustrated
     text:
       - type: styled_text
         value: What?
@@ -350,7 +348,7 @@ nodes:
   fala_29:
     type: line
     speaker_id: raphael
-    emotion: annoyed
+    emotion: frustrated
     text:
       - type: text
         value: Right. And?
@@ -368,7 +366,7 @@ nodes:
   fala_31:
     type: line
     speaker_id: raphael
-    emotion: annoyed
+    emotion: frustrated
     text:
       - type: text
         value: ... Go on.
@@ -731,7 +729,7 @@ nodes:
   fala_52:
     type: line
     speaker_id: raphael
-    emotion: annoyed
+    emotion: frustrated
     text:
       - type: text
         value: He's one of the greatest alchemists in the nation. His work is as great as that of the alchemists of SISO, if not greater.

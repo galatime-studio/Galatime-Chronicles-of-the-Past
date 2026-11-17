@@ -301,7 +301,7 @@ nodes:
   fala_26:
     type: line
     speaker_id: raphael
-    emotion: annoyed
+    emotion: frustrated
     animation_id: idle
     text:
       - type: text
@@ -361,7 +361,7 @@ nodes:
   fala_32:
     type: line
     speaker_id: raphael
-    emotion: annoyed
+    emotion: frustrated
     animation_id: idle
     text:
       - type: text

@@ -538,7 +538,7 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: So here's my idea: why don't we tease him the same way he teases you?
+        value: "So here's my idea: why don't we tease him the same way he teases you?"
     next: fala_50
 
   fala_50:
