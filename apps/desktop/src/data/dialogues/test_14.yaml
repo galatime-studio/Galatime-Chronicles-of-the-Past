@@ -1,0 +1,727 @@
+# Gerado pelo Dialogue Forger. Comentários do ficheiro original não são preservados.
+
+start_node: entra
+nodes:
+  entra:
+    type: character_enter
+    character_id: neven
+    position: center_left
+    pose: sit
+    emotion: neutral
+    next: entra_2
+
+  entra_2:
+    type: character_enter
+    character_id: pacci
+    position: center_right
+    next: fala
+
+  fala:
+    type: line
+    speaker_id: pacci
+    emotion: annoyed
+    animation_id: idle
+    text:
+      - type: text
+        value: So, if any of them tries to start anything with you, tell me, ok?
+    next: fala_2
+
+  fala_2:
+    type: line
+    speaker_id: neven
+    emotion: sad
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_3
+
+  fala_3:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: I know that you don't want to worry us. But you shouldn't have to suffer their abuse either, you know.?
+    next: fala_4
+
+  fala_4:
+    type: line
+    speaker_id: neven
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_5
+
+  fala_5:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: I guess were settled then....
+    next: entra_3
+
+  entra_3:
+    type: character_enter
+    character_id: tritania
+    position: right
+    animation_id: step_in_from_right
+    emotion: neutral
+    next: fala_6
+
+  fala_6:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: By the way, Raphael invited us to dinner. It's roasted drill pecker. Want to go with me?
+    next: acao
+
+  acao:
+    type: character_action
+    character_id: tritania
+    position: center_left
+    pose: sit
+    emotion: thinking
+    animation_id: sit_down
+    next: fala_7
+
+  fala_7:
+    type: line
+    speaker_id: neven
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_8
+
+  fala_8:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: I'll take that as a yes.
+    next: fala_9
+
+  fala_9:
+    type: line
+    speaker_id: tritania
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: Why, Neven, aren't you getting popular?
+    next: fala_10
+
+  fala_10:
+    type: line
+    speaker_id: pacci
+    emotion: surprised
+    animation_id: idle
+    text:
+      - type: text
+        value: Huh!?
+    next: acao_2
+
+  acao_2:
+    type: character_action
+    character_id: pacci
+    position: left
+    emotion: neutral
+    animation_id: step_across_from_left
+    next: fala_11
+
+  fala_11:
+    type: line
+    speaker_id: neven
+    emotion: nervous
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_12
+
+  fala_12:
+    type: line
+    speaker_id: pacci
+    emotion: unsure
+    animation_id: idle
+    text:
+      - type: text
+        value: I'm sorry, but do I know you?
+    next: fala_13
+
+  fala_13:
+    type: line
+    speaker_id: tritania
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Oh no. We've never met before.
+    next: fala_14
+
+  fala_14:
+    type: line
+    speaker_id: tritania
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: However, I've know Neven for a while now. And I must say, it's nice seeing someone who isn't mocking the poor boy.
+    next: fala_15
+
+  fala_15:
+    type: line
+    speaker_id: pacci
+    emotion: suspicious
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: Wait.
+    next: fala_16
+
+  fala_16:
+    type: line
+    speaker_id: pacci
+    emotion: thinking
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: Long red and silver hair, tanned skin, odd clothes.
+    next: fala_17
+
+  fala_17:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: She must be the girl that Raphael talked about.
+    next: fala_18
+
+  fala_18:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: Well, I guess I'll introduce myself.
+    next: fala_19
+
+  fala_19:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: My name is Pacci. Pacci Firdaus.
+    next: fala_20
+
+  fala_20:
+    type: line
+    speaker_id: tritania
+    emotion: trusting
+    animation_id: idle
+    text:
+      - type: text
+        value: Tritania. Charmed.
+    next: fala_21
+
+  fala_21:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: So, Tritania...
+    next: fala_22
+
+  fala_22:
+    type: line
+    speaker_id: tritania
+    emotion: unsure
+    animation_id: idle
+    text:
+      - type: text
+        value: Yes?
+    next: fala_23
+
+  fala_23:
+    type: line
+    speaker_id: pacci
+    emotion: serious
+    animation_id: idle
+    text:
+      - type: text
+        value: You said, that "it's nice seeing someone who isn't mocking the poor boy".
+    next: fala_24
+
+  fala_24:
+    type: line
+    speaker_id: tritania
+    emotion: sad
+    animation_id: idle
+    text:
+      - type: text
+        value: Oh, yes. Poor Neven is always getting picked on by nobles. No one really watches out for him.
+    next: fala_25
+
+  fala_25:
+    type: line
+    speaker_id: tritania
+    emotion: suspicious
+    animation_id: idle
+    text:
+      - type: text
+        value: Well... No one except for maybe that weird man.
+    next: fala_26
+
+  fala_26:
+    type: line
+    speaker_id: neven
+    emotion: nervous
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_27
+
+  fala_27:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: Weird guy?
+    next: fala_28
+
+  fala_28:
+    type: line
+    speaker_id: tritania
+    emotion: serious
+    animation_id: idle
+    text:
+      - type: text
+        value: Oh, yes. A very peculiar man. Tall, deep sickly voice, and always wears a bird like mask. He also acted like Neven talked too.
+    next: fala_29
+
+  fala_29:
+    type: line
+    speaker_id: tritania
+    emotion: mocking
+    animation_id: idle
+    text:
+      - type: text
+        value: Honestly, it was nice seeing him treat Neven nicely, but sweetie, you need to find more normal friends.
+    next: fala_30
+
+  fala_30:
+    type: line
+    speaker_id: tritania
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Like this hand...
+    next: fala_31
+
+  fala_31:
+    type: line
+    speaker_id: tritania
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Some...
+    next: fala_32
+
+  fala_32:
+    type: line
+    speaker_id: neven
+    emotion: annoyed
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_33
+
+  fala_33:
+    type: line
+    speaker_id: pacci
+    emotion: annoyed
+    animation_id: idle
+    text:
+      - type: text
+        value: You shouldn't judge people by their appearance.
+    next: fala_34
+
+  fala_34:
+    type: line
+    speaker_id: tritania
+    emotion: surprised
+    animation_id: idle
+    text:
+      - type: text
+        value: Oh, uhhh...
+    next: fala_35
+
+  fala_35:
+    type: line
+    speaker_id: tritania
+    emotion: concerned
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: Why are they looking at me like that? It's not like I was insulting that weirdo or anything.
+    next: fala_36
+
+  fala_36:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: Maybe you're right that he's a tad weird.
+    next: fala_37
+
+  fala_37:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: But he's the smartest guy that I know.
+    next: fala_38
+
+  fala_38:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: And I'm sure that, if you knew him better, you'd find out that he's actually a great man.
+    next: fala_39
+
+  fala_39:
+    type: line
+    speaker_id: neven
+    emotion: like
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_40
+
+  fala_40:
+    type: line
+    speaker_id: tritania
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: text
+        value: I see...
+    next: fala_41
+
+  fala_41:
+    type: line
+    speaker_id: tritania
+    emotion: thinking
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: These three must be really close if they have each others back like this.
+    next: fala_42
+
+  fala_42:
+    type: line
+    speaker_id: tritania
+    emotion: relaxed
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: Maybe this will be more interesting than I thought...
+    next: fala_43
+
+  fala_43:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Also, I'm actually Neven's brother. Not just his friend.
+    next: fala_44
+
+  fala_44:
+    type: line
+    speaker_id: tritania
+    emotion: unsure
+    animation_id: idle
+    text:
+      - type: text
+        value: His brother?
+    next: fala_45
+
+  fala_45:
+    type: line
+    speaker_id: tritania
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Sweetie, when were you gonna tell me you have a brother.
+    next: fala_46
+
+  fala_46:
+    type: line
+    speaker_id: neven
+    emotion: blushing
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_47
+
+  fala_47:
+    type: line
+    speaker_id: tritania
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: And a manly one to boot. Though I think you're the prettier one.
+    next: fala_48
+
+  fala_48:
+    type: line
+    speaker_id: neven
+    emotion: embarrassed
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_49
+
+  fala_49:
+    type: line
+    speaker_id: pacci
+    emotion: naughty
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: Neven, are you embarrassed by her?
+    next: fala_50
+
+  fala_50:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Well, I would love to stay and chat, but I need to return to my post.
+    next: fala_51
+
+  fala_51:
+    type: line
+    speaker_id: tritania
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: Shame. I wanted to talk with you some more.
+    next: fala_52
+
+  fala_52:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Oh, don't worry. If you're staying in the city, we'll probably see each other again.
+    next: fala_53
+
+  fala_53:
+    type: line
+    speaker_id: tritania
+    emotion: trusting
+    animation_id: idle
+    text:
+      - type: text
+        value: I'll definitively be looking forward to that.
+    next: fala_54
+
+  fala_54:
+    type: line
+    speaker_id: tritania
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: But until then, goodbye, Pacci.
+    next: fala_55
+
+  fala_55:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Goodbye, Tritania.
+    next: fala_56
+
+  fala_56:
+    type: line
+    speaker_id: tritania
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_57
+
+  fala_57:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Goodbye, Neven. Don't forget... to...
+    next: fala_58
+
+  fala_58:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: Uh... Tritania.
+    next: fala_59
+
+  fala_59:
+    type: line
+    speaker_id: tritania
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Hm?
+    next: fala_60
+
+  fala_60:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: You do realize that that book is upside down, right?
+    next: fala_61
+
+  fala_61:
+    type: line
+    speaker_id: neven
+    emotion: nervous
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_62
+
+  fala_62:
+    type: line
+    speaker_id: tritania
+    emotion: surprised
+    animation_id: idle
+    text:
+      - type: text
+        value: "OH! UHH... "
+      - type: thought
+        value: How was I supposed to know that these words were upside down.
+    next: fala_63
+
+  fala_63:
+    type: line
+    speaker_id: tritania
+    emotion: stressed
+    animation_id: idle
+    text:
+      - type: text
+        value: Silly me. I must've had my head on the clouds, haha...
+    next: fala_64
+
+  fala_64:
+    type: line
+    speaker_id: pacci
+    emotion: suspicious
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: I think Raphael's right. She doesn't know how to read.
+    next: fala_65
+
+  fala_65:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: Well, wait until my shift's over Neven. I'll come by and get you.
+    next: fala_66
+
+  fala_66:
+    type: line
+    speaker_id: neven
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: text
+        value: "*nods*"
+    next: fala_67
+
+  fala_67:
+    type: line
+    speaker_id: tritania
+    emotion: nervous
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: Phew. Nailed it.
+    next: fim
+
+  fim:
+    type: end
+    result: neutral
