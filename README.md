@@ -9,7 +9,7 @@ A cross-platform game powered by modern web tech and Rust.<br>
 Windows, macOS and Linux.</p>
 
 <p align="center">
-  <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/latest"><img src="https://img.shields.io/badge/Download-v0.1.1-6D72CA?style=for-the-badge" alt="Download GalaTime"></a>
+  <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/latest"><img src="https://img.shields.io/badge/Download-v0.1.2-6D72CA?style=for-the-badge" alt="Download GalaTime"></a>
   <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/stargazers"><img src="https://img.shields.io/github/stars/galatime-studio/Galatime-Chronicles-of-the-Past?style=for-the-badge&color=24292f" alt="GitHub stars"></a>
   <a href="https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past"><img src="https://img.shields.io/github/repo-size/galatime-studio/Galatime-Chronicles-of-the-Past?style=for-the-badge&color=24292f" alt="Repo size"></a>
 </p>
@@ -44,12 +44,12 @@ Windows, macOS and Linux.</p>
 ## Download
 
 > [!NOTE]
-> **v0.1.1 — early access.** The core loop is playable (story scenes, dialogue, turn-based combat, skill trees, inventory), but this is an early build: content is incomplete, balance is in flux and rough edges are expected.
+> **v0.1.2 — early access.** The core loop is playable (story scenes, dialogue, turn-based combat, skill trees, inventory), but this is an early build: content is incomplete, balance is in flux and rough edges are expected.
 
 ### Windows (10/11, x64)
 
-- **[Download the installer v0.1.1](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/download/v0.1.1/Galatime.-.Chronicles.of.the.Past_0.1.1_x64-setup.exe)** — NSIS `.exe`, 46.3 MB. No extra runtime required.
-- **[Download the MSI v0.1.1](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/download/v0.1.1/Galatime.-.Chronicles.of.the.Past_0.1.1_x64_en-US.msi)** — 47 MB, for those who prefer MSI packages.
+- **[Download the installer v0.1.2](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/download/v0.1.2/Galatime.-.Chronicles.of.the.Past_0.1.2_x64-setup.exe)** — NSIS `.exe`, 46.5 MB. No extra runtime required.
+- **[Download the MSI v0.1.2](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases/download/v0.1.2/Galatime.-.Chronicles.of.the.Past_0.1.2_x64_en-US.msi)** — 47.2 MB, for those who prefer MSI packages.
 - **[All releases](https://github.com/galatime-studio/Galatime-Chronicles-of-the-Past/releases)** — every published build, with notes.
 
 > [!WARNING]

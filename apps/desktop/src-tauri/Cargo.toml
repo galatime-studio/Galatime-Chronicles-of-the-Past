@@ -1,6 +1,6 @@
 [package]
 name = "galatime"
-version = "0.1.1"
+version = "0.1.2"
 description = "Galatime - Chronicles of the Past"
 authors = ["Sérgio Gabriel <106330016+Nihhiu@users.noreply.github.com>"]
 edition = "2021"
