@@ -449,6 +449,13 @@ export interface CharacterEnterNode {
     type: 'character_enter';
     character_id: string;
     position?: string;
+    /**
+     * Stand shoulder to shoulder with this character instead of in an own slot.
+     *
+     * The side still comes from `position`: `near` says the pair, the order says
+     * which of the two stands on the right.
+     */
+    near?: string;
     /** What the body does while standing there: `stand` or `sit`. */
     pose?: string;
     /** Which side of the cast the character is drawn on: `back` or `front`. */
@@ -474,6 +481,14 @@ export interface CharacterActionNode {
     type: 'character_action';
     character_id: string;
     position?: string;
+    /**
+     * Stand shoulder to shoulder with this character instead of in an own slot.
+     *
+     * Naming a `position` without a `near` releases the pair, exactly as naming
+     * a `depth` without its `depth_of` puts the character back against the whole
+     * cast.
+     */
+    near?: string;
     pose?: string;
     depth?: string;
     depth_of?: string;
@@ -617,6 +632,10 @@ export interface DialogueChoiceView {
  * what the body does while standing there, and which side of the cast the
  * character is drawn on. `depth_of` names the character the depth is relative
  * to; without it the depth holds against the whole cast.
+ *
+ * `near` names the character this one stands shoulder to shoulder with, which
+ * takes them out of the slot layout: the rest of the cast shares the slots and
+ * the pair keeps itself together.
  */
 export interface DialogueCastMemberView {
     character_id: string;
@@ -626,6 +645,7 @@ export interface DialogueCastMemberView {
     pose: string | null;
     depth: string | null;
     depth_of: string | null;
+    near: string | null;
 }
 
 /**
@@ -657,6 +677,8 @@ export interface DialogueCastEvent {
     depth?: string | null;
     /** The character the depth is relative to, when it names one. */
     depth_of?: string | null;
+    /** The character this one stands beside, when the change named one. */
+    near?: string | null;
     /**
      * The sound the movement makes, resolved from the animation.
      *

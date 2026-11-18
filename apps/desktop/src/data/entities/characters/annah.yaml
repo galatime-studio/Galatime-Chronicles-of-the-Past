@@ -19,8 +19,8 @@ base_stats:
   hp: 1010
   mana: 91
   stamina: 61
-  physical_attack: 42
-  magical_attack: 62
+  physical_attack: 70
+  magical_attack: 73
   physical_defense: 60
   magical_defense: 83
   speed: 59

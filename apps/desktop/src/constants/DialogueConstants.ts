@@ -173,6 +173,16 @@ export const DIALOGUE_SPRITE_LAYOUT: Record<number, { widthClass: string; widthF
 };
 
 /**
+ * How far beside a character a `near` pair stands, as a fraction of a sprite width.
+ *
+ * The sprites are a character on a transparent canvas, so a pair can share more
+ * than half a box before the drawn bodies touch: at `0.62` the margins overlap
+ * and the shoulders meet at every cast size, because the gap is scaled by the
+ * same width the slot layout gives the sprite.
+ */
+export const DIALOGUE_BESIDE_GAP_RATIO = 0.62;
+
+/**
  * Filter applied to every character who is not the one speaking.
  *
  * A dimmed sprite keeps its silhouette but stops competing with the line being

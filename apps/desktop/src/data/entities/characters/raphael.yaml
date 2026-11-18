@@ -18,11 +18,11 @@ base_stats:
   hp: 1080
   mana: 109
   stamina: 43
-  physical_attack: 46
-  magical_attack: 54
-  physical_defense: 109
-  magical_defense: 100
-  speed: 32
+  physical_attack: 51
+  magical_attack: 66
+  physical_defense: 119
+  magical_defense: 108
+  speed: 44
 
 skills: #todo
   - challenger_stance

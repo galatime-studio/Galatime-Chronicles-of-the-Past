@@ -107,6 +107,7 @@
      * twice — once for the click and once for the timeout nobody withdrew.
      */
     var previewTimer = null;
+    var previewShellCache = null;
 
     /**
      * The node list's drag state.
@@ -856,49 +857,184 @@
 
         continueButton.disabled = !session
             || session.completed
+            || Boolean(session.hold)
             || !session.node
             || session.node.type === 'player_input'
             || !Forger.model.supportsNext(session.node.type);
         resetButton.disabled = !session;
-        container.textContent = '';
         renderFlowGraph();
         renderFlowStatus(session);
 
+        var shell = previewShell(container);
+
+        renderPreviewStage(shell, session);
+        renderPreviewChips(shell, session);
+        renderPreviewSlot(shell, session);
+        renderPreviewLog(shell, session);
+
+        schedulePreviewHold(session);
+        schedulePreviewAutoAdvance(session);
+    }
+
+    /**
+     * The preview's persistent shell.
+     *
+     * Built once and then updated in place: the stage only animates a crossing
+     * because its figures keep their identity between renders. Clearing the
+     * panel instead would restart every transition, so a character that moved
+     * would simply appear in the new place.
+     */
+    function previewShell(container) {
+        if (previewShellCache && previewShellCache.stage.parentNode === container) {
+            return previewShellCache;
+        }
+
+        var stage = ui.el('div', { class: 'cast-stage' });
+        var chips = ui.el('div', { class: 'cast-chips' });
+        var slot = ui.el('div', { class: 'preview-slot' });
+        var log = ui.el('div', { class: 'log' });
+
+        ui.append(container, stage);
+        ui.append(container, chips);
+        ui.append(container, slot);
+        ui.append(container, log);
+
+        previewShellCache = {
+            stage: stage,
+            chips: chips,
+            slot: slot,
+            log: log,
+            figures: {},
+        };
+
+        return previewShellCache;
+    }
+
+    /**
+     * Draws the cast on the stage, moving the figures it already has.
+     *
+     * The place each one takes is the one the game resolves — including a pair
+     * that stands shoulder to shoulder — so a dialogue staged here is staged
+     * there. The movement itself is left to the CSS transition on `left`.
+     */
+    function renderPreviewStage(shell, session) {
+        var cast = session ? Forger.model.orderForStage(session.cast) : [];
+        var centres = Forger.model.resolveCastCentres(cast);
+        var width = Forger.model.stageWidthFor(cast);
+        var speakerId = session && session.node ? session.node.speaker_id : null;
+        var present = {};
+
+        cast.forEach(function (member, index) {
+            var id = member.character_id;
+            var figure = shell.figures[id];
+
+            present[id] = true;
+
+            if (!figure) {
+                figure = ui.el('div', { class: 'cast-figure' }, [
+                    ui.el('span', { class: 'cast-figure-name', text: id }),
+                ]);
+                shell.figures[id] = figure;
+                ui.append(shell.stage, figure);
+            }
+
+            figure.style.left = (centres[id] !== undefined ? centres[id] : 50) + '%';
+            figure.style.width = width + '%';
+            figure.style.zIndex = String(depthBand(member) * 100 + index + 1);
+            figure.classList.toggle('is-speaking', id === speakerId);
+        });
+
+        Object.keys(shell.figures).forEach(function (id) {
+            if (!present[id]) {
+                shell.figures[id].parentNode.removeChild(shell.figures[id]);
+                delete shell.figures[id];
+            }
+        });
+
+        shell.stage.classList.toggle('is-empty', cast.length === 0);
+    }
+
+    /**
+     * Which layer a figure is drawn on, `back` behind `front`.
+     *
+     * Positions are what the strip is for, so a `depth_of` chain is not resolved
+     * here: the strip shows whether somebody is behind or in front, not who is
+     * behind whom, and the chips already say «atrás de X».
+     */
+    function depthBand(member) {
+        if (member.depth === 'back') {
+            return 0;
+        }
+
+        if (member.depth === 'front') {
+            return 2;
+        }
+
+        return 1;
+    }
+
+    /** Who is on stage, where each of them stands and which of them is talking. */
+    function renderPreviewChips(shell, session) {
+        var speakerId = session && session.node ? session.node.speaker_id : null;
+
+        shell.chips.textContent = '';
+
         if (!session) {
-            ui.append(container, ui.el('div', { class: 'preview-empty' }, [
+            return;
+        }
+
+        // The staging is read through the same description the node list uses,
+        // so the chips and the list never disagree.
+        session.cast.forEach(function (member) {
+            var staging = Forger.model.describeStaging(member);
+
+            ui.append(shell.chips, ui.el('span', {
+                class: 'chip' + (member.character_id === speakerId ? ' chip-on' : ''),
+                text: member.character_id + (staging ? ' · ' + staging : ''),
+            }));
+        });
+    }
+
+    /** The node being read, the end of the run, or the beat the walk is holding. */
+    function renderPreviewSlot(shell, session) {
+        shell.slot.textContent = '';
+
+        if (!session) {
+            ui.append(shell.slot, ui.el('div', { class: 'preview-empty' }, [
                 ui.el('strong', { text: 'Pronto para começar' }),
                 ui.el('span', { text: 'Inicia o teste para acompanhar a conversa. As escolhas e os segmentos clicáveis são interativos.' }),
             ]));
             return;
         }
 
-        var speakerId = session.node ? session.node.speaker_id : null;
-
-        // Who the dialogue has in the conversation, where each of them stands
-        // and which of them is talking. The staging is read through the same
-        // description the node list uses, so the two never disagree.
-        ui.append(container, ui.el('div', { class: 'cast-chips' }, session.cast.map(function (member) {
-            var staging = Forger.model.describeStaging(member);
-
-            return ui.el('span', {
-                class: 'chip' + (member.character_id === speakerId ? ' chip-on' : ''),
-                text: member.character_id + (staging ? ' · ' + staging : ''),
-            });
-        })));
-
-        if (session.completed) {
-            ui.append(container, ui.el('div', { class: 'preview-node', text: 'Fim · ' + (session.result || '—') }));
-        } else if (session.node) {
-            ui.append(container, renderPreviewNode(session));
-        } else {
-            ui.append(container, ui.hint('Sem nó atual — vê o registo abaixo.'));
+        if (session.hold) {
+            ui.append(shell.slot, ui.el('div', {
+                class: 'preview-hold',
+                text: 'Espera em «' + session.hold.nodeId + '»: ' + session.hold.ms + ' ms.',
+            }));
+            return;
         }
 
-        ui.append(container, ui.el('div', { class: 'log' }, session.log.map(function (line) {
-            return ui.el('div', { text: line });
-        })));
+        if (session.completed) {
+            ui.append(shell.slot, ui.el('div', { class: 'preview-node', text: 'Fim · ' + (session.result || '—') }));
+        } else if (session.node) {
+            ui.append(shell.slot, renderPreviewNode(session));
+        } else {
+            ui.append(shell.slot, ui.hint('Sem nó atual — vê o registo abaixo.'));
+        }
+    }
 
-        schedulePreviewAutoAdvance(session);
+    /** What the walk has done so far, oldest first. */
+    function renderPreviewLog(shell, session) {
+        shell.log.textContent = '';
+
+        if (!session) {
+            return;
+        }
+
+        session.log.forEach(function (line) {
+            ui.append(shell.log, ui.el('div', { text: line }));
+        });
     }
 
     /** Updates the live graph and its current-node label from the preview session. */
@@ -1557,6 +1693,31 @@
             window.clearTimeout(previewTimer);
             previewTimer = null;
         }
+    }
+
+    /**
+     * Resumes a staging node that asked to be seen.
+     *
+     * The game stops the walk for `hold_ms` so the crossing or the entrance is
+     * drawn before the conversation moves on; the preview stops for the same
+     * time, which is what makes the movement visible instead of a jump between
+     * two casts.
+     */
+    function schedulePreviewHold(session) {
+        if (!session || !session.hold) {
+            return;
+        }
+
+        previewTimer = window.setTimeout(function () {
+            previewTimer = null;
+
+            if (state.session !== session) {
+                return;
+            }
+
+            Forger.preview.resume(session);
+            renderPreview();
+        }, session.hold.ms);
     }
 
     /**

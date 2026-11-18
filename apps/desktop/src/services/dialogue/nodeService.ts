@@ -202,6 +202,7 @@ export function advanceToNode(context: NodeContext, startNodeId: string): Advanc
                 castEvents.push(enterCharacter(context.castState, {
                     character_id: node.character_id,
                     position: node.position,
+                    near: node.near,
                     pose: node.pose,
                     depth: node.depth,
                     depth_of: node.depth_of,
@@ -257,6 +258,7 @@ export function advanceToNode(context: NodeContext, startNodeId: string): Advanc
                 const event = changeCharacter(context.castState, {
                     character_id: node.character_id,
                     position: node.position,
+                    near: node.near,
                     pose: node.pose,
                     depth: node.depth,
                     depth_of: node.depth_of,

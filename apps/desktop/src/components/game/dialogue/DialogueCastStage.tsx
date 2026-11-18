@@ -8,7 +8,7 @@ import { UnknownIcon } from '../../../assets/GalatimeIcon';
 import { playSfx } from '../../../controllers/audioController';
 import { resolveCharacter } from '../../../services/dialogue/characterRegistryService';
 import { resolveCharacterPortrait } from '../../../services/characterPortraitService';
-import { orderByDepth, resolveStageCast } from '../../../services/dialogueCastService';
+import { orderByDepth, resolveCastCentres, resolveStageCast } from '../../../services/dialogueCastService';
 import {
     DIALOGUE_CHARACTER_ACTIVE_CLASS,
     DIALOGUE_CHARACTER_DIM_CLASS,
@@ -253,6 +253,15 @@ export function DialogueCastStage({
     const spriteLayout = DIALOGUE_SPRITE_LAYOUT[cast.length]
         ?? DIALOGUE_SPRITE_LAYOUT[DIALOGUE_MAX_VISIBLE_CHARACTERS];
 
+    /**
+     * Where each character stands.
+     *
+     * `near` takes a character out of the slot layout, so the centres are per
+     * character rather than per rank: a pair is placed beside its reference and
+     * the rest keeps the slots it would have had.
+     */
+    const centres = useMemo(() => resolveCastCentres(cast), [cast]);
+
     return (
         // Decorative: clicks belong to the dialogue box in front of it. `isolate`
         // contains the per-character layers inside this subtree, so no cast layer
@@ -262,7 +271,7 @@ export function DialogueCastStage({
                 {cast.map((character, index) => {
                     const flavour = flavourByCharacter.get(character.character_id)
                         ?? DIALOGUE_DEFAULT_FLAVOUR;
-                    const centre = slotCentres[index];
+                    const centre = centres.get(character.character_id) ?? slotCentres[index];
                     const event = eventByCharacter.get(character.character_id);
                     const kind = resolveAnimationKind(event?.animation_id);
 

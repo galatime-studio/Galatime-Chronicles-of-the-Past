@@ -500,6 +500,28 @@ function validateStaging(
             );
         }
     }
+
+    // A pair is read from the two character ids and nothing else, so a reference
+    // the catalogue does not know is a pair the stage cannot draw.
+    if (node.near) {
+        if (!context.isKnownCharacter(node.near)) {
+            addWarning(
+                collector,
+                'unknown_character',
+                `Node "${nodeId}" stands "${node.character_id}" beside unknown character "${node.near}".`,
+                `${path}.near`,
+            );
+        }
+
+        if (node.near === node.character_id) {
+            addWarning(
+                collector,
+                'self_referencing_near',
+                `Node "${nodeId}" stands "${node.character_id}" beside themselves.`,
+                `${path}.near`,
+            );
+        }
+    }
 }
 
 /**

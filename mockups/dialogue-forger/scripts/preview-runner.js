@@ -329,19 +329,31 @@
 
                 case 'character_enter':
                     enterCast(session, node);
-                    applyEffects(session, node.effects_after, 'nodes.' + currentId + '.effects_after');
+
+                    if (!settleStaging(session, currentId, node)) {
+                        return;
+                    }
+
                     currentId = node.next;
                     break;
 
                 case 'character_action':
                     changeCast(session, node);
-                    applyEffects(session, node.effects_after, 'nodes.' + currentId + '.effects_after');
+
+                    if (!settleStaging(session, currentId, node)) {
+                        return;
+                    }
+
                     currentId = node.next;
                     break;
 
                 case 'character_exit':
                     exitCast(session, node);
-                    applyEffects(session, node.effects_after, 'nodes.' + currentId + '.effects_after');
+
+                    if (!settleStaging(session, currentId, node)) {
+                        return;
+                    }
+
                     currentId = node.next;
                     break;
 
@@ -382,6 +394,48 @@
     }
 
     /**
+     * Closes a staging node: applies what it left behind and either lets the
+     * walk continue or stops it for `hold_ms` so the change is seen.
+     *
+     * A hold is not a node the player answers — the walk simply stops, the
+     * stage draws the change, and `resume` carries on when the time is up.
+     */
+    function settleStaging(session, nodeId, node) {
+        applyEffects(session, node.effects_after, 'nodes.' + nodeId + '.effects_after');
+
+        if (node.hold_ms > 0) {
+            session.hold = { nodeId: nodeId, next: node.next || null, ms: node.hold_ms };
+            session.nodeId = nodeId;
+            session.node = null;
+            session.log.push('Espera em "' + nodeId + '": ' + node.hold_ms + ' ms');
+            return false;
+        }
+
+        return true;
+    }
+
+    /** Carries on after a held staging node, once its time is up. */
+    function resume(session) {
+        var hold = session.hold;
+
+        if (!hold) {
+            return session;
+        }
+
+        session.hold = null;
+
+        if (hold.next) {
+            walk(session, hold.next);
+        } else {
+            session.nodeId = null;
+            session.node = null;
+            session.log.push('O diálogo acabou sem chegar a um nó de fim.');
+        }
+
+        return session;
+    }
+
+    /**
      * Brings a character into the preview's cast, or refreshes one already there.
      *
      * A field the node omits keeps its current value, so an enter node only has
@@ -393,10 +447,14 @@
         var next = {
             character_id: node.character_id,
             position: node.position || (existing && existing.position) || 'center',
+            near: node.near || (existing && existing.near) || '',
             pose: node.pose || (existing && existing.pose) || '',
             depth: node.depth || (existing && existing.depth) || '',
             depth_of: node.depth_of || (existing && existing.depth_of) || '',
             emotion: node.emotion || (existing && existing.emotion) || '',
+            // Arrival order breaks ties between two characters sharing a place,
+            // so the stage draws the later arrival on the later slot.
+            layer: existing && typeof existing.layer === 'number' ? existing.layer : session.cast.length,
         };
 
         if (existing) {
@@ -428,6 +486,16 @@
 
         if (node.position) {
             existing.position = node.position;
+
+            // A new place releases the pair, the way naming a depth without a
+            // reference stops it being relative to someone.
+            if (!node.near) {
+                existing.near = '';
+            }
+        }
+
+        if (node.near) {
+            existing.near = node.near;
         }
 
         if (node.pose) {
@@ -825,6 +893,7 @@
         choose: choose,
         submitInput: submitInput,
         click: click,
+        resume: resume,
         evaluateCondition: evaluateCondition,
         readStatePath: readStatePath,
         resolveVariable: resolveVariable,

@@ -131,9 +131,14 @@ export function collectReferencedCharacterIds(definition: DialogueDefinition): s
             ids.add(node.character_id);
 
             // A depth may be relative to somebody, so that somebody is a
-            // character the dialogue mentions too.
+            // character the dialogue mentions too. A `near` pair is the same
+            // question asked about who stands beside whom.
             if (node.depth_of) {
                 ids.add(node.depth_of);
+            }
+
+            if (node.near) {
+                ids.add(node.near);
             }
         }
 

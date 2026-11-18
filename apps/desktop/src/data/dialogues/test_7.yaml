@@ -4,21 +4,13 @@ start_node: entra
 nodes:
   entra:
     type: character_enter
-    character_id: neven
-    position: center
+    character_id: arthur
+    position: center_left
     animation_id: step_in_from_left
     emotion: neutral
     next: entra_2
 
   entra_2:
-    type: character_enter
-    character_id: pacci
-    position: center_left
-    animation_id: step_in_from_left
-    emotion: neutral
-    next: entra_3
-
-  entra_3:
     type: character_enter
     character_id: noelia
     position: left
@@ -28,316 +20,310 @@ nodes:
 
   fala:
     type: line
-    speaker_id: noelia
-    emotion: suspicious
+    speaker_id: arthur
+    emotion: neutral
     animation_id: idle
     text:
       - type: text
-        value: Why does that bird-face live in the woods?
+        value: And while we were stopping her whole operation, Raphael was in another town with Kelly, dealing with another branch of the operation.
     next: fala_2
 
   fala_2:
-    type: line
-    speaker_id: pacci
-    emotion: neutral
-    animation_id: idle
-    text:
-      - type: text
-        value: I asked him that same question once. Apparently, it's because that way he doesn't have to go far to gather ingredients.
-    next: fala_3
-
-  fala_3:
-    type: line
-    speaker_id: noelia
-    emotion: annoyed
-    animation_id: idle
-    text:
-      - type: text
-        value: "I call bull on that! The city is not "
-      - type: styled_text
-        value: that
-        style:
-          bold: true
-      - type: text
-        value: " far from the forest!"
-    next: fala_4
-
-  fala_4:
-    type: line
-    speaker_id: neven
-    emotion: like
-    animation_id: idle
-    text:
-      - type: text
-        value: .
-    next: fala_5
-
-  fala_5:
-    type: line
-    speaker_id: pacci
-    emotion: neutral
-    animation_id: idle
-    text:
-      - type: text
-        value: Who knows? Maybe he likes nature too.
-    next: fala_6
-
-  fala_6:
-    type: line
-    speaker_id: noelia
-    emotion: unsure
-    animation_id: idle
-    text:
-      - type: text
-        value: I don't know. That nerd must have a secret reason.
-    next: fala_7
-
-  fala_7:
-    type: line
-    speaker_id: neven
-    emotion: concerned
-    animation_id: idle
-    text:
-      - type: text
-        value: ...
-    next: fala_8
-
-  fala_8:
-    type: line
-    speaker_id: pacci
-    emotion: concerned
-    animation_id: idle
-    text:
-      - type: text
-        value: Hey, Noelia. Why do you keep insulting Raphael?
-    next: fala_9
-
-  fala_9:
-    type: line
-    speaker_id: noelia
-    emotion: annoyed
-    animation_id: idle
-    text:
-      - type: text
-        value: Because he's annoying as heck.
-    next: fala_10
-
-  fala_10:
-    type: line
-    speaker_id: noelia
-    emotion: neutral
-    animation_id: idle
-    text:
-      - type: text
-        value: I mean, don't get me wrong. I'm truly grateful that he took care of you.
-    next: fala_11
-
-  fala_11:
-    type: line
-    speaker_id: noelia
-    emotion: suspicious
-    animation_id: idle
-    text:
-      - type: text
-        value: But he's just so... weird and annoying.
-    next: fala_12
-
-  fala_12:
-    type: line
-    speaker_id: pacci
-    emotion: unsure
-    animation_id: idle
-    text:
-      - type: text
-        value: Why?
-    next: fala_13
-
-  fala_13:
-    type: line
-    speaker_id: noelia
-    emotion: annoyed
-    animation_id: idle
-    text:
-      - type: text
-        value: Well, for one, his jokes aren't funny... at all!
-    next: fala_14
-
-  fala_14:
-    type: line
-    speaker_id: neven
-    emotion: nervous
-    animation_id: idle
-    text:
-      - type: text
-        value: ...
-    next: fala_15
-
-  fala_15:
-    type: line
-    speaker_id: noelia
-    emotion: annoyed
-    animation_id: idle
-    text:
-      - type: text
-        value: He's somehow strong and weak at the same time.
-    next: fala_16
-
-  fala_16:
-    type: line
-    speaker_id: pacci
-    emotion: unsure
-    animation_id: idle
-    delivery: thought
-    text:
-      - type: text
-        value: "It "
-      - type: styled_text
-        value: is
-        style:
-          bold: true
-      - type: text
-        value: " weird how he is strong enough to punch a door open but doesn't hurt much with a weapon..."
-    next: fala_17
-
-  fala_17:
     type: line
     speaker_id: noelia
     emotion: surprised
     animation_id: idle
     text:
       - type: text
-        value: He's always wearing a doctor's outfit, even though he isn't a doctor.
-    next: fala_18
+        value: Wow. I didn't know her operation expanded that far.
+    next: fala_3
 
-  fala_18:
+  fala_3:
     type: line
-    speaker_id: pacci
-    emotion: thinking
-    animation_id: idle
-    text:
-      - type: text
-        value: Come to think of it... Neven, have you ever seen Raphael wearing anything else?
-    next: fala_19
-
-  fala_19:
-    type: line
-    speaker_id: neven
-    emotion: nervous
-    animation_id: idle
-    text:
-      - type: text
-        value: "*Shakes head*"
-    next: fala_20
-
-  fala_20:
-    type: line
-    speaker_id: noelia
+    speaker_id: arthur
     emotion: suspicious
     animation_id: idle
     text:
       - type: text
-        value: See? Isn't that weird?
-    next: fala_21
+        value: Yeah. I wonder how she managed to get Raphael's teacher to join her.
+    next: fala_4
 
-  fala_21:
+  fala_4:
+    type: line
+    speaker_id: noelia
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: text
+        value: She probably promised him some sort of hidden knowledge or something.
+    next: fala_5
+
+  fala_5:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Hidden knowledge?
+    next: fala_6
+
+  fala_6:
+    type: line
+    speaker_id: noelia
+    emotion: tedious
+    animation_id: idle
+    text:
+      - type: text
+        value: Trust me, Arthur. I've met some nerds before in my life.
+    next: fala_7
+
+  fala_7:
     type: line
     speaker_id: noelia
     emotion: annoyed
     animation_id: idle
     text:
       - type: text
-        value: But the weirdest thing of all is that he talks as if someone is watching us!
-    next: fala_22
+        value: They're always talking, always have a condescending, and they always have that attitude that they're better than you. It's so annoying.
+    next: fala_8
 
-  fala_22:
+  fala_8:
     type: line
-    speaker_id: pacci
-    emotion: suspicious
+    speaker_id: arthur
+    emotion: nervous
+    animation_id: idle
+    text:
+      - type: text
+        value: |
+          Y-yeah...
+      - type: thought
+        value: Are you describing them, or yourself?
+    next: fala_9
+
+  fala_9:
+    type: line
+    speaker_id: noelia
+    emotion: tedious
+    animation_id: idle
+    text:
+      - type: text
+        value: So, if bird face's teacher is like the nerds I've met before, he probably was either looking for funds for his research.
+    next: fala_10
+
+  fala_10:
+    type: line
+    speaker_id: noelia
+    emotion: mocking
+    animation_id: idle
+    text:
+      - type: text
+        value: Heh, maybe he was even looking for those old scrolls.
+    next: fala_11
+
+  fala_11:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Scrolls?
+    next: fala_12
+
+  fala_12:
+    type: line
+    speaker_id: noelia
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Haven't you heard?
+    next: fala_13
+
+  fala_13:
+    type: line
+    speaker_id: noelia
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: There's been rumors that there are ancient scrolls that have a new kind of magic. One that's tied directly to the gods.
+    next: fala_14
+
+  fala_14:
+    type: line
+    speaker_id: noelia
+    emotion: laughting
+    animation_id: idle
+    text:
+      - type: text
+        value: Can you imagine that there are people that believe that crap. Ahahaha.
+    next: fala_15
+
+  fala_15:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
     animation_id: idle
     delivery: thought
     text:
       - type: text
-        value: She's right. Why does he do that?
+        value: God magic... Where have I heard that before?
+    next: fala_16
+
+  fala_16:
+    type: line
+    speaker_id: noelia
+    emotion: naughty
+    animation_id: idle
+    text:
+      - type: text
+        value: Honestly, some people can be so stupid sometimes.
+    next: fala_17
+
+  fala_17:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: text
+        value: I think I've found something like that before.
+    next: fala_18
+
+  fala_18:
+    type: line
+    speaker_id: noelia
+    emotion: surprised
+    animation_id: idle
+    text:
+      - type: whisper
+        value: ... What?
+    next: fala_19
+
+  fala_19:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Yeah. I think I found some of those things you're talking about. Though they were books, not scrolls.
+    next: fala_20
+
+  fala_20:
+    type: line
+    speaker_id: noelia
+    emotion: annoyed
+    animation_id: idle
+    auto_advance: true
+    text:
+      - type: text
+        value: Arthur, if you think I'm dumb enough to fall for that, you-
+    next: fala_21
+
+  fala_21:
+    type: line
+    speaker_id: arthur
+    emotion: nervous
+    animation_id: idle
+    text:
+      - type: text
+        value: Nono. I'm telling the truth. During my adventure with Duha and the others, we've found some books that taught us some weird kind of magic.
+    next: fala_22
+
+  fala_22:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: It was weird. We had to rely on glyphs and prayers, instead of just focusing on our magic.
     next: fala_23
 
   fala_23:
     type: line
-    speaker_id: neven
-    emotion: concerned
+    speaker_id: arthur
+    emotion: happy
     animation_id: idle
     text:
       - type: text
-        value: ...
+        value: But it was really useful. It helped us a lot on some fights.
     next: fala_24
 
   fala_24:
     type: line
     speaker_id: noelia
-    emotion: neutral
+    emotion: surprised
     animation_id: idle
     text:
       - type: text
-        value: Anyway, I could go on and on, but you get my point. I just can't feel at ease with someone so... bizarre.
+        value: Wait, so you're telling that those rumors are actually real?
     next: fala_25
 
   fala_25:
     type: line
-    speaker_id: pacci
-    emotion: neutral
-    animation_id: idle
-    text:
-      - type: text
-        value: Yeah, he's a tad odd. They say most alchemists have some... odd traits.
-    next: fala_26
-
-  fala_26:
-    type: line
-    speaker_id: pacci
+    speaker_id: arthur
     emotion: happy
     animation_id: idle
     text:
       - type: text
-        value: But trust me, he's a good guy. It's just a matter of getting used to his... quirks.
+        value: Yeah.
+    next: fala_26
+
+  fala_26:
+    type: line
+    speaker_id: noelia
+    emotion: thinking
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: That's weird, but considering that Arthur is also weird, I guess I shouldn't be surprised...
     next: fala_27
 
   fala_27:
     type: line
-    speaker_id: neven
-    emotion: like
+    speaker_id: noelia
+    emotion: thinking
     animation_id: idle
     text:
       - type: text
-        value: .
+        value: Say, Arthur. Do you still have those books?
     next: fala_28
 
   fala_28:
     type: line
-    speaker_id: noelia
-    emotion: unsure
+    speaker_id: arthur
+    emotion: neutral
     animation_id: idle
     text:
       - type: text
-        value: If you say so...
+        value: Oh, I don't have those. They're with Raphael.
     next: fala_29
 
   fala_29:
     type: line
-    speaker_id: neven
-    emotion: neutral
+    speaker_id: noelia
+    emotion: tedious
     animation_id: idle
+    delivery: thought
     text:
       - type: text
-        value: ...
+        value: Ugh. I guess I'll have to put up with him for a while.
     next: fala_30
 
   fala_30:
     type: line
-    speaker_id: pacci
-    emotion: neutral
+    speaker_id: noelia
+    emotion: thinking
     animation_id: idle
+    delivery: thought
     text:
       - type: text
-        value: ...
+        value: ... Unless...
     next: fala_31
 
   fala_31:
@@ -347,115 +333,165 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: ...
+        value: Arthur, do you think you can go with me to Raphael's house?
     next: fala_32
 
   fala_32:
     type: line
-    speaker_id: noelia
+    speaker_id: arthur
     emotion: neutral
     animation_id: idle
     text:
       - type: text
-        value: Hey, guys, I have a question.
+        value: Sure. But why? Can't you go by yourself?
     next: fala_33
 
   fala_33:
     type: line
-    speaker_id: pacci
-    emotion: neutral
+    speaker_id: noelia
+    emotion: sad
     animation_id: idle
     text:
       - type: text
-        value: What is it?
+        value: I could, but fear that if I go alone, Raphael won't hand the books to me.
+    next: acao
+
+  acao:
+    type: character_action
+    character_id: noelia
+    position: center_right
+    near: arthur
+    depth: back
+    emotion: naughty
+    animation_id: step_across
+    hold_ms: 700
     next: fala_34
 
   fala_34:
     type: line
     speaker_id: noelia
-    emotion: neutral
+    emotion: naughty
     animation_id: idle
     text:
       - type: text
-        value: "Does he also tease you guys with the whole:"
+        value: However, if you go with me and ask him for the books, surely he'll give them to you with no questions.
     next: fala_35
 
   fala_35:
     type: line
-    speaker_id: noelia
-    emotion: happy
+    speaker_id: arthur
+    emotion: suspicious
     animation_id: idle
     text:
-      - type: styled_text
-        value: "\"So, have you got a girlfriend yet?\""
-        style:
-          wave: normal
-          wave_speed: 0.8
+      - type: text
+        value: Hm... I dunno...
     next: fala_36
 
   fala_36:
     type: line
-    speaker_id: neven
-    emotion: annoyed
+    speaker_id: noelia
+    emotion: crying
     animation_id: idle
     text:
-      - type: text
-        value: "*nods*"
+      - type: styled_text
+        value: Pleeeeeaaaase. Can you do me this teeny tiny favor?
+        style:
+          wave: normal
+          wave_speed: 0.8
     next: fala_37
 
   fala_37:
     type: line
-    speaker_id: pacci
-    emotion: annoyed
+    speaker_id: arthur
+    emotion: stressed
     animation_id: idle
+    delivery: thought
     text:
       - type: text
-        value: "Oh my gods, yes! Sometimes he comes up to me and says:"
+        value: Those eyes... It's like baby hopper asking for food...
     next: fala_38
 
   fala_38:
     type: line
-    speaker_id: pacci
-    emotion: happy
+    speaker_id: arthur
+    emotion: nervous
     animation_id: idle
     text:
-      - type: styled_text
-        value: "\"So, has the lovebird written a letter to his girlfriend yet?\""
-        style:
-          wave: normal
-          wave_speed: 0.8
+      - type: text
+        value: S-sure...
+    next: acao_2
+
+  acao_2:
+    type: character_action
+    character_id: noelia
+    position: left
+    near: arthur
+    emotion: happy
+    animation_id: step_across
+    hold_ms: 700
     next: fala_39
 
   fala_39:
     type: line
-    speaker_id: pacci
-    emotion: annoyed
+    speaker_id: noelia
+    emotion: trusting
     animation_id: idle
     text:
       - type: text
-        value: "It's not like I'm dating Ana or anything — we're just friends! "
+        value: |
+          Oh, thank you Arthur.
       - type: thought
-        value: I wish I were, though.
+        value: It's so easy I almost feel bad. Almost.
     next: fala_40
 
   fala_40:
     type: line
-    speaker_id: neven
-    emotion: concerned
+    speaker_id: noelia
+    emotion: trusting
     animation_id: idle
     text:
       - type: text
-        value: ...
+        value: Well, then, let's go!
+    next: sai
+
+  sai:
+    type: character_exit
+    character_id: noelia
+    animation_id: step_out
+    direction: right
     next: fala_41
 
   fala_41:
     type: line
-    speaker_id: noelia
-    emotion: thinking
+    speaker_id: arthur
+    emotion: nervous
     animation_id: idle
     text:
       - type: text
-        value: ...
+        value: Sorry, Raphael...
+    next: sai_2
+
+  sai_2:
+    type: character_exit
+    character_id: arthur
+    animation_id: step_out
+    direction: right
+    next: entra_3
+
+  entra_3:
+    type: character_enter
+    character_id: noelia
+    position: left
+    animation_id: step_in_from_left
+    emotion: happy
+    next: entra_4
+
+  entra_4:
+    type: character_enter
+    character_id: arthur
+    position: center_left
+    animation_id: step_in_from_left
+    emotion: unsure
     next: fala_42
 
   fala_42:
@@ -465,67 +501,82 @@ nodes:
     animation_id: idle
     text:
       - type: text
-        value: I've got an idea. Why don't we tease him too?
+        value: Well, we're here. You know what to do, right?
     next: fala_43
 
   fala_43:
     type: line
-    speaker_id: pacci
-    emotion: suspicious
+    speaker_id: arthur
+    emotion: unsure
     animation_id: idle
     text:
       - type: text
-        value: How so?
+        value: Ask Raphael for the books while you deliver Kelly her things.
     next: fala_44
 
   fala_44:
     type: line
     speaker_id: noelia
-    emotion: happy
+    emotion: mocking
     animation_id: idle
     text:
       - type: text
-        value: You know, I've noticed that Kelly has been spending a lot of time with Raphael...
+        value: Precisely. Now knock on that door, slime boy!
     next: fala_45
 
   fala_45:
     type: line
-    speaker_id: neven
-    emotion: concerned
+    speaker_id: arthur
+    emotion: annoyed
     animation_id: idle
     text:
       - type: text
-        value: ...
+        value: My name is A4- I mean Arthur.
+    next: acao_3
+
+  acao_3:
+    type: character_action
+    character_id: arthur
+    animation_id: step_across
     next: fala_46
 
   fala_46:
     type: line
-    speaker_id: pacci
-    emotion: thinking
+    speaker_id: arthur
+    emotion: unsure
     animation_id: idle
     text:
       - type: text
-        value: ... Now that you mention it.
+        value: "*knock knock*"
+    next: acao_4
+
+  acao_4:
+    type: character_action
+    character_id: arthur
+    position: center_left
+    animation_id: step_across
     next: fala_47
 
   fala_47:
     type: line
-    speaker_id: pacci
-    emotion: concerned
+    speaker_id: raphael
+    emotion: neutral
     animation_id: idle
     text:
       - type: text
-        value: She has been spending a lot of time with him.
+        value: One moment!
     next: fala_48
 
   fala_48:
     type: line
-    speaker_id: noelia
-    emotion: happy
+    speaker_id: arthur
+    emotion: unsure
     animation_id: idle
     text:
-      - type: text
-        value: See!? It's suspicious!
+      - type: styled_text
+        value: ...
+        style:
+          speed_multiplier: 0.8
     next: fala_49
 
   fala_49:
@@ -534,101 +585,329 @@ nodes:
     emotion: happy
     animation_id: idle
     text:
-      - type: text
-        value: "So, my idea is: why don't we tease him the same way he teases you?"
+      - type: styled_text
+        value: ...
+        style:
+          speed_multiplier: 0.8
     next: fala_50
 
   fala_50:
     type: line
-    speaker_id: neven
-    emotion: neutral
+    speaker_id: noelia
+    emotion: thinking
     animation_id: idle
     text:
-      - type: text
+      - type: styled_text
         value: ...
+        style:
+          speed_multiplier: 0.8
     next: fala_51
 
   fala_51:
     type: line
-    speaker_id: pacci
-    emotion: unsure
+    speaker_id: noelia
+    emotion: thinking
     animation_id: idle
     text:
       - type: text
-        value: I don't know...
+        value: Say, isn't it odd that Kelly spends so much time at Raphael's place? What do you think their doing there?
     next: fala_52
 
   fala_52:
     type: line
-    speaker_id: noelia
-    emotion: neutral
+    speaker_id: arthur
+    emotion: suspicious
     animation_id: idle
     text:
       - type: text
-        value: Come on! It'll be fun!
+        value: Hm... Knowing him, they're probably doing some alchemy or something.
     next: fala_53
 
   fala_53:
     type: line
-    speaker_id: pacci
-    emotion: neutral
+    speaker_id: noelia
+    emotion: suspicious
     animation_id: idle
     text:
       - type: text
-        value: ...
+        value: Isn't it weird that they're doing alchemy in his house when there's plenty of labs at SISO headquarters?
     next: fala_54
 
   fala_54:
     type: line
-    speaker_id: pacci
-    emotion: happy
+    speaker_id: arthur
+    emotion: suspicious
     animation_id: idle
     text:
       - type: text
-        value: Oh, okay. We'll do it.
+        value: "... Now that you mention it... It is weird that they're working in "
+      - type: styled_text
+        value: his house
+        style:
+          bold: true
+      - type: text
+        value: " of all places..."
     next: fala_55
 
   fala_55:
     type: line
-    speaker_id: neven
-    emotion: like
+    speaker_id: noelia
+    emotion: thinking
     animation_id: idle
     text:
       - type: text
-        value: .
+        value: ...
     next: fala_56
 
   fala_56:
     type: line
     speaker_id: noelia
+    emotion: naughty
+    animation_id: idle
+    text:
+      - type: text
+        value: Hey, Arthur. Feeling like getting back at Raphael with all of his pranks?
+    next: fala_57
+
+  fala_57:
+    type: line
+    speaker_id: arthur
+    emotion: unsure
+    animation_id: idle
+    text:
+      - type: text
+        value: Maybe... What's on your mind?
+    next: acao_5
+
+  acao_5:
+    type: character_action
+    character_id: noelia
+    position: center_left
+    depth: back
+    emotion: happy
+    animation_id: step_across
+    next: fala_58
+
+  fala_58:
+    type: line
+    speaker_id: noelia
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: whisper
+        value: Ok, so here's the plan...
+    next: fala_59
+
+  fala_59:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_60
+
+  fala_60:
+    type: line
+    speaker_id: arthur
+    emotion: naughty
+    animation_id: idle
+    text:
+      - type: text
+        value: I'm in.
+    next: acao_6
+
+  acao_6:
+    type: character_action
+    character_id: noelia
+    position: left
+    emotion: happy
+    animation_id: step_across_from_left
+    next: entra_5
+
+  entra_5:
+    type: character_enter
+    character_id: raphael
+    position: center_right
+    animation_id: step_in
+    emotion: neutral
+    next: entra_6
+
+  entra_6:
+    type: character_enter
+    character_id: kelly
+    position: right
+    animation_id: step_in
+    emotion: neutral
+    next: fala_61
+
+  fala_61:
+    type: line
+    speaker_id: raphael
     emotion: happy
     animation_id: idle
     text:
       - type: text
-        value: Wonderful. His house is just over there. Just follow my lead.
-    next: sai_neven
+        value: Ah. Hello, you two! What brings you here?
+    next: fala_62
 
-  sai_neven:
+  fala_62:
+    type: line
+    speaker_id: noelia
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: whisper
+        value: One, two...
+    next: fala_63
+
+  fala_63:
+    type: line
+    speaker_id: noelia
+    emotion: naughty
+    animation_id: idle
+    text:
+      - type: styled_text
+        value: RAPHAEL AND KELLY, SITTIN' ON A TREE!!
+        style:
+          bold: true
+          wave: normal
+          wave_speed: 1
+    next: fala_64
+
+  fala_64:
+    type: line
+    speaker_id: arthur
+    emotion: naughty
+    animation_id: idle
+    text:
+      - type: styled_text
+        value: K-I-S-S-I-N-G!!
+        style:
+          bold: true
+          wave: normal
+          wave_speed: 1
+    next: fala_65
+
+  fala_65:
+    type: line
+    speaker_id: raphael
+    emotion: annoyed
+    animation_id: idle
+    text:
+      - type: text
+        value: ...
+    next: fala_66
+
+  fala_66:
+    type: line
+    speaker_id: kelly
+    emotion: annoyed
+    animation_id: idle
+    text:
+      - type: text
+        value: ... Raphael.
+    next: fala_67
+
+  fala_67:
+    type: line
+    speaker_id: raphael
+    emotion: annoyed
+    animation_id: idle
+    text:
+      - type: text
+        value: "\"Get the knives\", got it."
+    next: sai_3
+
+  sai_3:
     type: character_exit
-    character_id: neven
+    character_id: raphael
     animation_id: step_out
     direction: right
-    next: sai_pacci
+    next: fala_68
 
-  sai_pacci:
-    type: character_exit
-    character_id: pacci
-    animation_id: step_out
-    direction: right
-    next: sai_noelia
+  fala_68:
+    type: line
+    speaker_id: arthur
+    emotion: nervous
+    animation_id: idle
+    text:
+      - type: whisper
+        value: What do we do now?
+    next: fala_69
 
-  sai_noelia:
+  fala_69:
+    type: line
+    speaker_id: noelia
+    emotion: laughting
+    animation_id: idle
+    text:
+      - type: shout
+        value: RUN!
+    next: sai_4
+
+  sai_4:
     type: character_exit
     character_id: noelia
-    animation_id: run_out
-    direction: right
+    animation_id: step_out
+    direction: left
+    next: fala_70
+
+  fala_70:
+    type: line
+    speaker_id: arthur
+    emotion: surprised
+    animation_id: idle
+    auto_advance: true
+    text:
+      - type: styled_text
+        value: W-what about the-
+        style:
+          shake: light
+          shake_speed: 1.2
+    next: fala_71
+
+  fala_71:
+    type: line
+    speaker_id: arthur
+    emotion: surprised
+    animation_id: idle
+    text:
+      - type: styled_text
+        value: Hey, wait for me!!
+        style:
+          bold: true
+          shake: light
+          shake_speed: 1.2
+    next: fala_72
+
+  fala_72:
+    type: line
+    speaker_id: kelly
+    emotion: angry
+    animation_id: idle
+    text:
+      - type: text
+        value: Oh no, you don't you little s"#t!
+    next: acao_7
+
+  acao_7:
+    type: character_action
+    character_id: arthur
+    position: left
+    depth: back
+    emotion: afraid
+    animation_id: step_across_from_left
+    next: acao_8
+
+  acao_8:
+    type: character_action
+    character_id: kelly
+    position: left
+    emotion: angry
+    animation_id: step_across_from_left
     next: fim
 
   fim:
     type: end
-    result: comical

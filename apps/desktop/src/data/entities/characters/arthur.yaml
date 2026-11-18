@@ -15,12 +15,12 @@ elements:
 
 base_stats:
   hp: 700
-  mana: 65
-  stamina: 52
-  physical_attack: 94
-  magical_attack: 100
-  physical_defense: 65
-  magical_defense: 60
+  mana: 60
+  stamina: 47
+  physical_attack: 79
+  magical_attack: 84
+  physical_defense: 55
+  magical_defense: 50
   speed: 60
 
 skills:

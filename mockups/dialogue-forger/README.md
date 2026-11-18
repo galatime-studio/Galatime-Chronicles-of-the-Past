@@ -24,7 +24,7 @@ Abre o `index.html` no navegador. Não precisa de servidor nem de uma cópia da 
 - **Estrutura:** Escolhe um tipo de nó, adiciona-o e edita os campos no painel principal. A ordem da lista é a tua: arrasta um passo, ou usa Ctrl + setas com um passo focado, para a reorganizar.
 - **Editor:** Os campos do nó estão agrupados pelo papel que têm nele — «Quem», «Cena», «Conversa», «Como se move», «Percurso» e «Efeitos» — para a forma de um nó ler-se de uma vez. Todas as secções estão à vista; as que se abrem raramente (efeitos, marcação) é que estão recolhidas.
 - **Verificação:** Erros e avisos atualizados durante a edição, com ligação ao nó problemático. Cada problema diz o que está errado **e** o que fazer.
-- **Testar diálogo:** Percurso gráfico ligado à execução, teste interativo e estado inicial configurável. O elenco em cima do registo mostra onde cada personagem está na cena.
+- **Testar diálogo:** Percurso gráfico ligado à execução, teste interativo e estado inicial configurável. A faixa de palco em cima do registo desenha cada personagem no lugar que o motor lhe daria, e o registo diz o que aconteceu.
 - **Estado inicial do jogo:** Escreve-se uma entrada por linha — o caminho do estado, um ponto, e o valor — e não o YAML: `relationship.pacci.friendship.5`, `inventory.caixa.1`, `flags.conheceu_pacci.true`. O painel mostra por baixo o que entendeu de cada linha, e diz o que está errado quando uma linha não dá para ler. Um YAML colado de um ficheiro antigo continua a ser lido.
 - **Ajuda:** Onde havia comentários escritos há agora um «i» que abre um tooltip ao passar o rato (ou com o teclado), com a mesma explicação. O tooltip vira-se sozinho para não cair fora da janela.
 
@@ -33,6 +33,7 @@ Entrada de personagem, Ação do personagem, Fala, Escolha, Ramificação, Saíd
 
 **Elenco:**
 Os nós `character_enter` / `character_exit` dizem quem está na conversa. O palco mostra até 4 personagens, escurece quem não está a falar, e uma fala com `emotion` sobrepõe-se à emoção com que o personagem entrou. O fundo e a composição da cena não são do diálogo — isso é do sistema de cenas.
+No teste, o elenco aparece numa faixa de palco: cada personagem é um bloco com o nome, no lugar que o motor resolve, e mover alguém atravessa-o de um lado para o outro. A faixa não carrega sprites — continua a ser uma página que se abre sozinha.
 
 **Cena (posições, poses e profundidade):**
 Uma entrada declara onde o personagem aparece; uma alteração muda quem já está em cena. Os três campos são os mesmos nos dois nós:
@@ -44,11 +45,13 @@ Uma entrada declara onde o personagem aparece; uma alteração muda quem já est
   pose: sit                # stand · sit — o personagem entra sentado
   depth: back              # back · front — quem é desenhado à frente de quem
   depth_of: neven          # opcional: «atrás de neven». Sem isto, vale para todo o elenco.
+  near: arthur             # opcional: ombro a ombro com arthur, em vez de um lugar próprio
   animation_id: step_in
   emotion: relaxed
 ```
 
 - **Posição** é a ordem no palco, da esquerda para a direita. As distâncias são do palco, que se organiza pelo número de personagens em cena.
+- **Ao lado de** (`near`) encosta o personagem a outro em vez de lhe dar um lugar: o par fica a um ombro de distância, o resto do elenco mantém os lugares que tinha, e o lado continua a vir da posição — quem vem depois no elenco fica à direita. É isto que dá a distância curta de duas personagens a falar de perto; sem `near`, os dois ficam nos lugares do palco, que com dois em cena já é largura a mais. Um par que sairia do palco desliza para dentro como um todo, e uma posição nova sem `near` solta o par.
 - **Pose** é o que o corpo faz nesse lugar: de pé ou sentado.
 - **Profundidade** diz quem é desenhado à frente de quem. Com um personagem em «Em relação a» é relativo a ele; sozinha, vale para todo o elenco.
 - Uma **ação** (`character_action`) só declara o que mudou: o que deixas em branco fica como estaba. Levantar-se, sentar-se, dar um passo para o lado ou ficar atrás de alguém são todos o mesmo nó. A pose escolhida leva o movimento consigo — «sentado» implica «sentar-se» — até escolheres outro.
@@ -64,7 +67,7 @@ Uma entrada, ação ou saída é um nó automático: a conversa atravessa-o e de
   hold_ms: 700        # deixa-a entrar e ficar; sem isto a entrada era instantânea
 ```
 
-O campo é opcional e fica vazio por omissão: sem ele, o nó atravessa-se como sempre. Só vale a pena declará-lo onde a mudança precisa de tempo — não em todos os nós de uma cena, senão uma abertura com cinco entradas obriga a esperar por todas. O `animation_id` também diz de que lado a personagem vem (`from_left` / `from_right`), e esse lado ganha ao lado que a posição no palco sugeriria.
+O campo é opcional e fica vazio por omissão: sem ele, o nó atravessa-se como sempre. Só vale a pena declará-lo onde a mudança precisa de tempo — não em todos os nós de uma cena, senão uma abertura com cinco entradas obriga a esperar por todas. A pré-visualização respeita a espera: o palco desenha a mudança e só depois a conversa continua. O `animation_id` também diz de que lado a personagem vem (`from_left` / `from_right`), e esse lado ganha ao lado que a posição no palco sugeriria.
 
 **Animações:**
 Uma animação não é um nome para decorar: escolhes três coisas e o editor compõe o `animation_id` que o ficheiro leva.
@@ -135,7 +138,7 @@ Uma linha pode ser dita em voz alta ou apenas pensada. Há duas maneiras de o di
       value: Não digas nada.
 ```
 
-O motor ainda não conhece `delivery` nem o segmento `thought`: são a proposta desta versão para o que a caixa de texto passa a distinguir. Um ficheiro com estes campos continua a abrir e a exportar sem os perder.
+O motor lê `delivery` e o segmento `thought`: são o que a caixa de texto usa para distinguir uma fala de um pensamento. Um ficheiro que não os use continua a ser só fala, e um que os use abre e exporta sem os perder.
 
 **Perguntas ao jogador (entrada do jogador):**
 Um nó «Pergunta ao jogador» é uma chamada à ação: o diálogo para e pede um valor ao jogador antes de continuar. Há dois tipos de resposta — **texto livre** (o jogador escreve, por exemplo o nome da sua personagem) e **escolha de opções** (o jogador escolhe de uma lista, por exemplo um elemento). Dá-se um nome à variável, e o valor fica em `input.<nome>`.
@@ -153,7 +156,7 @@ Um nó «Pergunta ao jogador» é uma chamada à ação: o diálogo para e pede 
 - No forger o valor **só existe durante o teste**, no estado local. O objetivo é que, no jogo, o motor o guarde em `input.<nome>` e o mantenha entre diálogos.
 - Lê-se o valor em qualquer texto com `{input.<nome>}` (ver «Sintaxe do texto»). Até o jogador responder, a referência aparece na pré-visualização sem valor.
 - Uma condição pode comparar com ele — `input.elemento = "Fogo"` — a partir da raiz «Entrada do jogador» no editor de condições. Escrever `{input.algo}` que nenhuma pergunta preenche é um aviso, não um erro: o texto ficaria sem valor.
-- O motor ainda não conhece o nó `player_input` nem a raiz `input`: são a proposta desta versão, como `pose` e `delivery`. Um ficheiro com eles continua a abrir e a exportar sem os perder.
+- O motor lê o nó `player_input` e guarda o valor em `input.<nome>`. Um ficheiro com ele continua a abrir e a exportar sem o perder.
 
 **Onde mexer nas listas:**
 Todas as listas que os editores oferecem — personagens, itens, emoções, posições, poses, profundidades, movimentos, velocidades, tipos de relação, tipos de resposta do jogador, etiquetas de resultado, operadores e raízes das condições, catálogo de efeitos e raízes do estado — estão em `scripts/lists.js`. Acrescentar ou alterar um valor é editar esse ficheiro e mais nenhum: os dropdowns, as sugestões, a validação e a composição dos `animation_id` leem todos daí. Nenhum outro módulo guarda uma lista sua.
@@ -184,11 +187,11 @@ As listas de personagens usam estes IDs fixos: `alice`, `annah`, `arthur`, `bara
 ---
 
 ### Limites
-- A pré-visualização não reproduz sprites nem áudio.
+- A pré-visualização não reproduz sprites — o elenco é desenhado em blocos com o nome — nem áudio.
 - O diálogo trata do **elenco** (quem entra, quem sai, quem fala, onde está), mas não da **cena**: um ficheiro antigo com `scenes:` ou nós `scene` abre com um aviso, e esses nós são ignorados pelo jogo mas preservados no export.
 - Comentários no YAML não são preservados ao exportar.
 - O diálogo não escreve id próprio: o nome do ficheiro é o identificador. Um ficheiro com `dialogue_id` continua a abrir, mas o id não é escrito de volta — o efeito `unlock_dialogue` guarda o id que lhe deres.
-- O motor ainda não conhece `pose`, `depth`/`depth_of`, o nó `character_action`, `delivery`, o segmento `thought`, o nó `player_input` nem a raiz `input`: são a proposta desta versão para o que o palco, a caixa de texto e as perguntas ao jogador passam a ler. Uma entrada ou ação que o motor ignore continua a jogar — o personagem fica na posição que o motor calhar; um valor de `input.<nome>` vive só no teste até o motor o guardar.
+- O motor lê tudo o que esta versão escreve: `pose`, `depth`/`depth_of`, `near`, o nó `character_action`, `hold_ms`, `delivery`, o segmento `thought`, o nó `player_input` e a raiz `input`. Um ficheiro antigo continua a abrir, e o que o motor não conhecer é preservado no export.
 - O nó inicial é sempre o primeiro da lista: um ficheiro que declara outro em `start_node` começa no primeiro, e o aviso de importação diz qual era o declarado.
 
 ---
@@ -211,5 +214,6 @@ As listas de personagens usam estes IDs fixos: `alice`, `annah`, `arthur`, `bara
 15. Numa fala, escolhe «Como se move → Nenhum»: confirma que «Velocidade» fica desativada, que o nó deixa de escrever `animation_id`, e que continua «Nenhum» quando voltas a selecionar o nó. Numa saída, confirma que «Movimento» oferece Nenhum, Mover e Desaparecer.
 16. Numa entrada de personagem, confirma que «Posição» lista esquerda · centro-esquerda · centro · centro-direita · direita. Numa Ramificação, confirma que **Inventário** pede o item antes da condição e que só mostra «Quantidade» quando a condição compara números; confirma também que uma **Relação** mantém os seus cinco campos numa só linha, em cinco colunas, mesmo com a janela estreita.
 17. Adiciona uma «Pergunta ao jogador»: escreve a pergunta, dá o nome `name` à variável e liga-a a uma fala com o texto `Olá, {input.name}!`. Em «Testar diálogo», confirma que a pergunta aparece com uma caixa de texto, que escrever um nome e confirmar guarda `input.name` e que a fala seguinte o mostra no lugar do `{input.name}`. Muda o tipo para «Escolha de opções», acrescenta opções, e confirma que o teste passa a mostrá-las como botões. Exporta e confirma `type: player_input`, `variable:`, `input_type:` e as `options:`.
+18. Num nó de ação, escolhe em «Ao lado de» outro personagem que esteja em cena: confirma que a lista de nós passa a dizer «ao lado de X», que o export escreve `near:`, e que no teste os dois blocos ficam encostados. Com `hold_ms: 700` vê-se o movimento antes de a conversa continuar; uma ação seguinte com outra posição e sem `near` solta o par.
 
 ---

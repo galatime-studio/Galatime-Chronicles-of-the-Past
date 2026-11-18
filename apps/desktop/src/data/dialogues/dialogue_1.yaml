@@ -1,0 +1,276 @@
+# Gerado pelo Dialogue Forger. Comentários do ficheiro original não são preservados.
+
+start_node: entra
+nodes:
+  entra:
+    type: character_enter
+    character_id: arthur
+    position: right
+    pose: sit
+    emotion: neutral
+    next: entra_2
+
+  entra_2:
+    type: character_enter
+    character_id: pacci
+    position: left
+    animation_id: fade_in_from_left_slow
+    emotion: neutral
+    next: fala
+
+  fala:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: You're awake!
+    next: fala_2
+
+  fala_2:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Good. For a second, I thought that I was going to need to call a doctor.
+    next: fala_3
+
+  fala_3:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: text
+        value: Ah… my head… who are you? And where… am I?
+    next: acao
+
+  acao:
+    type: character_action
+    character_id: pacci
+    emotion: neutral
+    animation_id: step_across
+    next: fala_4
+
+  fala_4:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Right... I'm Pacci, Pacci Firdaus.
+    next: pergunta
+
+  pergunta:
+    type: player_input
+    question: I found you in the woods on my way to the city. Can you tell me your name?
+    variable: player_name
+    input_type: text
+    placeholder: Insert the name of your character
+    next: fala_5
+
+  fala_5:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: text
+        value: "... It's "
+      - type: variable
+        value: input.player_name
+      - type: text
+        value: … Uhm… Nice to meet you...
+    next: fala_6
+
+  fala_6:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: "Nice to meet you, "
+      - type: variable
+        value: input.player_name
+      - type: text
+        value: .
+    next: escolha
+
+  escolha:
+    type: choice
+    prompt:
+      speaker_id: arthur
+      emotion: thinking
+      text:
+        - type: thought
+          value: He seems nice. Maybe I can ask him some things.
+    choices:
+      - choice_id: ask_about_the_forest
+        text: Ask about the forest
+        visible_if:
+          all:
+            - condition: equals
+              left: flags.e1
+              right: false
+        enabled_if: {}
+        next: fala_e1
+      - choice_id: ask_about_the_city
+        text: Ask about the city
+        visible_if:
+          all:
+            - condition: equals
+              left: flags.e2
+              right: false
+        next: fala_e2
+      - choice_id: i_should_be_going
+        text: I should be going
+        next: fala_7
+
+  fala_e1:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: You found me in the woods?
+    next: fala_e1_2
+    effects_after:
+      - type: set_flag
+        flag: e1
+        value: true
+
+  fala_e1_2:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Yes, the big forest right next to the city. It has a lot of wild animals, and sometimes they can be… well… dangerous.
+    next: fala_e1_3
+
+  fala_e1_3:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: I’m guessing something must’ve hit you.
+    next: ramificacao
+
+  fala_e2:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: text
+        value: City? Which city?
+    next: fala_e2_2
+    effects_after:
+      - type: set_flag
+        flag: e2
+        value: true
+
+  fala_e2_2:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Cellordion.
+    next: fala_e2_3
+
+  fala_e2_3:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Cellordion.
+    next: fala_e2_4
+
+  fala_e2_4:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: Cellordion? That name... it doesn't sound familiar.
+    next: ramificacao
+
+  ramificacao:
+    type: conditional
+    branches:
+      - branch_id: ramo
+        if:
+          all:
+            - condition: equals
+              left: flags.e1
+              right: true
+            - condition: equals
+              left: flags.e2
+              right: true
+        next: fala_7
+      - branch_id: caso_padrao
+        next: escolha
+
+  fala_7:
+    type: line
+    speaker_id: arthur
+    emotion: nervous
+    animation_id: idle
+    text:
+      - type: text
+        value: I… I should be going…
+    next: fala_8
+
+  fala_8:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: There’s no need to rush, you still look pale. While you rest I’ll bring some tea for you. Wait here, I’ll go get it.
+    next: fala_9
+
+  fala_9:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: I’ll bring you some tea. Wait here, I’ll go get it.
+    next: acao_2
+
+  acao_2:
+    type: character_action
+    character_id: pacci
+    position: left
+    emotion: concerned
+    animation_id: step_across_from_left
+    next: sai
+
+  sai:
+    type: character_exit
+    character_id: pacci
+    animation_id: step_out
+    direction: left
+    next: fim
+
+  fim:
+    type: end
+    result: neutral

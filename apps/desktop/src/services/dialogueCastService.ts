@@ -5,7 +5,9 @@ import {
     type DialogueCharacterPosition,
 } from '../constants/DialogueVocabulary';
 import {
+    DIALOGUE_BESIDE_GAP_RATIO,
     DIALOGUE_MAX_VISIBLE_CHARACTERS,
+    DIALOGUE_SLOT_CENTRES,
     DIALOGUE_SPRITE_HEIGHT_TO_WIDTH,
     DIALOGUE_SPRITE_LAYOUT,
     DIALOGUE_SPRITE_MIN_HEIGHT_PX,
@@ -230,4 +232,205 @@ export function resolveStageCast(
     const shown = (speaker ? [speaker] : []).concat(rest);
 
     return orderForStage(shown.slice(0, cap));
+}
+
+/**
+ * Where each character stands, as a percentage from the left of the stage.
+ *
+ * Slot centres come from how many characters share the slots, so an authored
+ * `position` only ever decides who stands left of whom. `near` is the exception:
+ * a character standing shoulder to shoulder does not take a slot, which leaves
+ * the rest of the cast on the centres it would have had, and the pair is placed
+ * afterwards by measuring the group — a pair that would hang off the stage
+ * slides back inside as a whole instead of being clipped.
+ *
+ * A reference the stage cannot see is not a pair: a typo, someone dropped by the
+ * cap, or the character themselves leaves them in their own slot. So does a
+ * chain that loops, because a loop has no side to stand on.
+ */
+export function resolveCastCentres(characters: DialogueCastMemberView[]): Map<string, number> {
+    const centres = new Map<string, number>();
+
+    if (characters.length === 0) {
+        return centres;
+    }
+
+    const layout = DIALOGUE_SPRITE_LAYOUT[characters.length]
+        ?? DIALOGUE_SPRITE_LAYOUT[DIALOGUE_MAX_VISIBLE_CHARACTERS];
+    const gap = DIALOGUE_BESIDE_GAP_RATIO * layout.widthFraction * 100;
+    const halfWidth = layout.widthFraction * 50;
+
+    const rank = new Map<string, number>();
+    characters.forEach((character, index) => rank.set(character.character_id, index));
+
+    const referenceOf = new Map<string, string>();
+    characters.forEach((character) => {
+        const reference = character.near;
+
+        if (reference && reference !== character.character_id && rank.has(reference)) {
+            referenceOf.set(character.character_id, reference);
+        }
+    });
+
+    const slotted = characters.filter((character) => !referenceOf.has(character.character_id));
+    const slots = DIALOGUE_SLOT_CENTRES[slotted.length]
+        ?? DIALOGUE_SLOT_CENTRES[DIALOGUE_MAX_VISIBLE_CHARACTERS];
+
+    slotted.forEach((character, index) => {
+        centres.set(character.character_id, slots[index] ?? 50);
+    });
+
+    // A character that cannot be placed is remembered as failed, so a chain that
+    // runs into it fails as a whole instead of anchoring halfway: a loop has no
+    // side to stand on, and neither does somebody beside somebody who has none.
+    const failed = new Set<string>();
+
+    const place = (characterId: string): number | null => {
+        if (failed.has(characterId)) {
+            return null;
+        }
+
+        const known = centres.get(characterId);
+
+        if (known !== undefined) {
+            return known;
+        }
+
+        if (!referenceOf.has(characterId)) {
+            return null;
+        }
+
+        // Walk towards someone holding a slot, remembering the chain so every
+        // character on it is resolved — or failed — together.
+        const chain: string[] = [];
+        let cursor: string | undefined = characterId;
+
+        while (cursor !== undefined) {
+            if (failed.has(cursor)) {
+                chain.forEach((id) => failed.add(id));
+                return null;
+            }
+
+            if (centres.has(cursor)) {
+                break;
+            }
+
+            if (chain.includes(cursor)) {
+                chain.forEach((id) => failed.add(id));
+                return null;
+            }
+
+            chain.push(cursor);
+            cursor = referenceOf.get(cursor);
+        }
+
+        if (cursor === undefined) {
+            chain.forEach((id) => failed.add(id));
+            return null;
+        }
+
+        for (let index = chain.length - 1; index >= 0; index -= 1) {
+            const id = chain[index];
+            const reference = referenceOf.get(id) as string;
+
+            // The order decided the side, so the author keeps saying it with
+            // `position`: whoever comes later in the cast stands on the right.
+            const side = (rank.get(id) ?? 0) > (rank.get(reference) ?? 0) ? 1 : -1;
+            centres.set(id, (centres.get(reference) as number) + side * gap);
+        }
+
+        return centres.get(characterId) as number;
+    };
+
+    const fallbackSlots = DIALOGUE_SLOT_CENTRES[characters.length]
+        ?? DIALOGUE_SLOT_CENTRES[DIALOGUE_MAX_VISIBLE_CHARACTERS];
+    const stranded = new Set<string>();
+
+    characters.forEach((character, index) => {
+        const characterId = character.character_id;
+
+        if (referenceOf.has(characterId) && place(characterId) === null) {
+            stranded.add(characterId);
+            centres.set(characterId, fallbackSlots[index] ?? 50);
+        }
+    });
+
+    const neighbours = new Map<string, string[]>();
+    const link = (from: string, to: string) => {
+        neighbours.set(from, [...(neighbours.get(from) ?? []), to]);
+    };
+
+    referenceOf.forEach((reference, characterId) => {
+        if (stranded.has(characterId) || stranded.has(reference)) {
+            return;
+        }
+
+        link(characterId, reference);
+        link(reference, characterId);
+    });
+
+    const visited = new Set<string>();
+
+    neighbours.forEach((_links, characterId) => {
+        if (visited.has(characterId)) {
+            return;
+        }
+
+        const group: string[] = [];
+        const queue = [characterId];
+
+        while (queue.length > 0) {
+            const id = queue.pop() as string;
+
+            if (visited.has(id)) {
+                continue;
+            }
+
+            visited.add(id);
+            group.push(id);
+            (neighbours.get(id) ?? []).forEach((next) => queue.push(next));
+        }
+
+        slideInsideStage(centres, group, halfWidth);
+    });
+
+    return centres;
+}
+
+/**
+ * Moves a group of characters together by the least it takes to keep every
+ * sprite box on the stage.
+ *
+ * The group moves as one so the shoulders it was placed by do not come apart.
+ * A group wider than the stage cannot be fixed by sliding, so it is simply
+ * pushed as far as one edge allows.
+ */
+function slideInsideStage(centres: Map<string, number>, group: string[], halfWidth: number): void {
+    const groupCentres = group
+        .map((characterId) => centres.get(characterId))
+        .filter((centre): centre is number => centre !== undefined);
+
+    if (groupCentres.length < 2) {
+        return;
+    }
+
+    const leftmost = Math.min(...groupCentres);
+    const rightmost = Math.max(...groupCentres);
+    const shift = leftmost < halfWidth
+        ? halfWidth - leftmost
+        : rightmost > 100 - halfWidth
+            ? 100 - halfWidth - rightmost
+            : 0;
+
+    if (shift === 0) {
+        return;
+    }
+
+    group.forEach((characterId) => {
+        const centre = centres.get(characterId);
+
+        if (centre !== undefined) {
+            centres.set(characterId, centre + shift);
+        }
+    });
 }

@@ -13,13 +13,13 @@ elements:
   - corrupted_night
 
 base_stats:
-  hp: 850
+  hp: 910
   mana: 98
   stamina: 81
-  physical_attack: 71
-  magical_attack: 62
-  physical_defense: 55
-  magical_defense: 41
+  physical_attack: 81
+  magical_attack: 77
+  physical_defense: 59
+  magical_defense: 51
   speed: 71
 
 skills: #todo

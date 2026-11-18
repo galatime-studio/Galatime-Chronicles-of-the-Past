@@ -13,14 +13,14 @@ elements:
   - caeli
 
 base_stats:
-  hp: 700
-  mana: 87
-  stamina: 74
+  hp: 650
+  mana: 71
+  stamina: 66
   physical_attack: 52
-  magical_attack: 83
-  physical_defense: 45
-  magical_defense: 43
-  speed: 71
+  magical_attack: 78
+  physical_defense: 38
+  magical_defense: 41
+  speed: 68
 
 skills: #todo
   - gale_resonance

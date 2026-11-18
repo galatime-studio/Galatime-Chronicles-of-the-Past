@@ -189,6 +189,16 @@
                 if (node.depth_of) {
                     warnIfUnknownCharacter(node.depth_of, path + '.depth_of', warn);
                 }
+
+                // Standing beside someone is about a pair of characters, so the
+                // reference has to be someone — and someone else.
+                if (node.near) {
+                    if (node.near === node.character_id) {
+                        warn('self_referencing_near', 'O nó "' + nodeId + '" põe ' + node.character_id + ' ao lado de si próprio: escolhe outro personagem.', path + '.near');
+                    } else {
+                        warnIfUnknownCharacter(node.near, path + '.near', warn);
+                    }
+                }
                 break;
 
             case 'conditional':

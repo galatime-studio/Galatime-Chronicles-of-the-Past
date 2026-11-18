@@ -35,6 +35,8 @@ export interface CastMember {
     depth: string | null;
     /** The character the depth is relative to, when it names one. */
     depth_of: string | null;
+    /** The character this one stands shoulder to shoulder with, if any. */
+    near: string | null;
 }
 
 /** The cast of a running conversation. */
@@ -72,6 +74,7 @@ export function enterCharacter(
     placement: {
         character_id: string;
         position?: string;
+        near?: string;
         pose?: string;
         depth?: string;
         depth_of?: string;
@@ -90,6 +93,7 @@ export function enterCharacter(
         pose: placement.pose || existing?.pose || null,
         depth: placement.depth || existing?.depth || null,
         depth_of: placement.depth_of || existing?.depth_of || null,
+        near: placement.near || existing?.near || null,
     };
 
     state.members.set(member.character_id, member);
@@ -102,6 +106,7 @@ export function enterCharacter(
         pose: member.pose,
         depth: member.depth,
         depth_of: member.depth_of,
+        near: member.near,
         sfx_id: resolveAnimationSfx(placement.animation_id),
     };
 }
@@ -123,6 +128,7 @@ export function changeCharacter(
     placement: {
         character_id: string;
         position?: string;
+        near?: string;
         pose?: string;
         depth?: string;
         depth_of?: string;
@@ -138,6 +144,17 @@ export function changeCharacter(
 
     if (placement.position) {
         member.position = placement.position;
+    }
+
+    // A new place releases the pair: naming where to stand without naming who
+    // to stand beside sends the character back to their own slot, exactly as a
+    // depth without its `depth_of` puts them back against the whole cast.
+    if (placement.position && !placement.near) {
+        member.near = null;
+    }
+
+    if (placement.near) {
+        member.near = placement.near;
     }
 
     if (placement.pose) {
@@ -163,6 +180,7 @@ export function changeCharacter(
         pose: member.pose,
         depth: member.depth,
         depth_of: member.depth_of,
+        near: member.near,
         sfx_id: resolveAnimationSfx(placement.animation_id),
     };
 }

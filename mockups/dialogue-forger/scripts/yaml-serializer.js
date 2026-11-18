@@ -138,6 +138,7 @@
             case 'character_enter':
                 output.character_id = node.character_id || '';
                 addIf(output, 'position', node.position);
+                addIf(output, 'near', node.near);
                 addIf(output, 'pose', node.pose);
                 addIf(output, 'depth', node.depth);
                 addIf(output, 'depth_of', node.depth_of);
@@ -152,6 +153,7 @@
                 // field left out keeps whatever the character already has.
                 output.character_id = node.character_id || '';
                 addIf(output, 'position', node.position);
+                addIf(output, 'near', node.near);
                 addIf(output, 'pose', node.pose);
                 addIf(output, 'depth', node.depth);
                 addIf(output, 'depth_of', node.depth_of);

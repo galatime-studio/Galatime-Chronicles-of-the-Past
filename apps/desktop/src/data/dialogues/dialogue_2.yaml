@@ -1,0 +1,761 @@
+# Gerado pelo Dialogue Forger. Comentários do ficheiro original não são preservados.
+
+start_node: entra
+nodes:
+  entra:
+    type: character_enter
+    character_id: arthur
+    position: right
+    pose: sit
+    animation_id: step_in
+    emotion: neutral
+    next: entra_2
+
+  entra_2:
+    type: character_enter
+    character_id: pacci
+    position: left
+    animation_id: fade_in
+    emotion: neutral
+    next: escolha
+
+  escolha:
+    type: choice
+    prompt:
+      speaker_id: arthur
+      emotion: neutral
+      text:
+        - type: text
+          value: Was Arthur up or not before Pacci arived?
+    choices:
+      - choice_id: no_2
+        text: "no"
+        next: ramificacao
+      - choice_id: "yes"
+        text: "yes"
+        effects_before:
+          - type: set_flag
+            flag: up
+            value: true
+        next: ramificacao
+
+  ramificacao:
+    type: conditional
+    branches:
+      - branch_id: ramo
+        if:
+          all:
+            - condition: equals
+              left: flags.up
+              right: true
+        next: fala_r1
+      - branch_id: ramo_2
+        next: acao
+
+  fala_r1:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: I know how you feel but you really need to rest.
+    next: fala_r1_2
+
+  fala_r1_2:
+    type: line
+    speaker_id: arthur
+    emotion: nervous
+    animation_id: idle
+    text:
+      - type: text
+        value: Ah… Sorry, I was just… looking around.
+    next: acao
+
+  acao:
+    type: character_action
+    character_id: pacci
+    position: center_right
+    emotion: neutral
+    animation_id: step_across
+    next: fala
+
+  fala:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: I hope you don’t mind chamomile, I heard it helps you relax your head. I also brought cookies and some sugar for you to mix in, in case you want it.
+    next: escolha_2
+
+  escolha_2:
+    type: choice
+    prompt:
+      speaker_id: pacci
+      emotion: neutral
+      text:
+        - type: text
+          value: Do you want sugar on your tea?
+    choices:
+      - choice_id: "yes"
+        text: "Yes"
+        next: fala_e1
+      - choice_id: "no"
+        text: "No"
+        next: fala_e2
+
+  fala_e1:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: I also prefer to mix sugar with my tea. It really brings out the flavours, don’t you think?
+    next: fala_e1_2
+
+  fala_e1_2:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: "Y-yeah. "
+      - type: thought
+        value: I just like sweet things.
+    next: fala_2
+
+  fala_e2:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: I prefer my tea with sugar, it tastes like burnt plants otherwise. But I suppose it's just a matter of habit.
+    next: fala_e2_2
+
+  fala_e2_2:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: It does? I don't remember that.
+    next: fala_2
+
+  fala_2:
+    type: line
+    speaker_id: arthur
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Mmm. These are really good.
+    next: fala_3
+
+  fala_3:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: They’re my brother’s favorite. If I ever let him, he’d eat them until he couldn’t move.
+    next: ramificacao_2
+
+  ramificacao_2:
+    type: conditional
+    branches:
+      - branch_id: ramo
+        if:
+          all:
+            - condition: equals
+              left: flags.up
+              right: true
+        next: fala_r2
+      - branch_id: ramo_2
+        next: fala_4
+
+  fala_r2:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: I saw that picture of you and two other guys. Was one of them your brother?
+    next: fala_r2_2
+
+  fala_r2_2:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Yeah. That was a picture of me, my brother and my friend.
+    next: fala_r2_3
+
+  fala_r2_3:
+    type: line
+    speaker_id: arthur
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Oh, is your brother the doctor?
+    next: fala_r2_4
+
+  fala_r2_4:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: No, that’s my friend. My brother was the one wearing a scarf and a beanie.
+    next: fala_r2_5
+
+  fala_r2_5:
+    type: line
+    speaker_id: pacci
+    emotion: unsure
+    animation_id: idle
+    text:
+      - type: text
+        value: Actually, my friend isn't a doctor, nor he likes being called one. He just dresses like one for some reason.
+    next: fala_r2_6
+
+  fala_r2_6:
+    type: line
+    speaker_id: arthur
+    emotion: unsure
+    animation_id: idle
+    text:
+      - type: text
+        value: That's weird. Why would he dress like a doctor then?
+    next: fala_r2_7
+
+  fala_r2_7:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: To cover his body. He{speed=0.8|...} suffered an accident a long time ago.
+    next: fala_r2_8
+
+  fala_r2_8:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: "{speed=0.8|Oh...}"
+    next: fala_4
+    effects_after:
+      - type: add_relationship
+        character_id: pacci
+        relationship_kind: friendship
+        direction: increase
+        value: 1
+
+  fala_4:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: So… what's your brother called?
+    next: fala_5
+
+  fala_5:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: His name is Neven. He's a librarian.
+    next: fala_6
+
+  fala_6:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: That's nice.
+      - type: pause
+        duration_ms: 400
+    next: fala_7
+
+  fala_7:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: pause
+        duration_ms: 400
+      - type: text
+        value: He doesn’t talk much….
+    next: fala_8
+
+  fala_8:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: Heh… actually, he doesn’t at all.
+    next: fala_9
+
+  fala_9:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: But he listens. Better than anyone else.
+    next: fala_10
+
+  fala_10:
+    type: line
+    speaker_id: arthur
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: He seems like a nice guy.
+    next: fala_11
+
+  fala_11:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: He is.
+    next: escolha_3
+
+  escolha_3:
+    type: choice
+    prompt:
+      speaker_id: pacci
+      emotion: annoyed
+      text:
+        - type: text
+          value: I just wished that the nobles gave him a break. It's not like he refuses to talk to them, he just doesn't talk at all.
+    choices:
+      - choice_id: comfort
+        text: Comfort
+        next: fala_e3
+      - choice_id: question_muteness
+        text: Question muteness
+        next: fala_e4
+
+  fala_e3:
+    type: line
+    speaker_id: arthur
+    emotion: sad
+    animation_id: idle
+    text:
+      - type: text
+        value: I'm sorry about that.
+    next: fala_e3_2
+
+  fala_e3_2:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Thanks.
+    next: fala_e3_3
+
+  fala_e3_3:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: I think you'd like him.
+    next: fala_12
+    effects_after:
+      - type: add_relationship
+        character_id: pacci
+        relationship_kind: friendship
+        direction: increase
+        value: 1
+
+  fala_e4:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Why doesn't he talk though?
+    next: fala_e4_2
+
+  fala_e4_2:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: I don't know. He just doesn't talk. Ever.
+    next: fala_e4_3
+
+  fala_e4_3:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: text
+        value: What does he do when he wants to say something?
+    next: fala_e4_4
+
+  fala_e4_4:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: He just writes on a notebook he carries around.
+    next: fala_12
+
+  fala_12:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: pause
+        duration_ms: 800
+      - type: text
+        value: " Now that I think of it. You’re not from around here, are you?"
+    next: fala_13
+
+  fala_13:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: text
+        value: "{speed=0.8|texto…} I don't think so?"
+    next: fala_14
+
+  fala_14:
+    type: line
+    speaker_id: pacci
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Do you know anyone who could look after you? Friends, family, maybe a girlfriend or something?
+    next: fala_15
+
+  fala_15:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: styled_text
+        value: … No.
+        style:
+          speed_multiplier: 0.8
+      - type: text
+        value: " I don't think I have anyone."
+    next: fala_16
+
+  fala_16:
+    type: line
+    speaker_id: arthur
+    emotion: sad
+    animation_id: idle
+    text:
+      - type: styled_text
+        value: …
+        style:
+          speed_multiplier: 0.8
+    next: fala_17
+
+  fala_17:
+    type: line
+    speaker_id: arthur
+    emotion: sad
+    animation_id: idle
+    text:
+      - type: text
+        value: I'm sorry.
+    next: fala_18
+
+  fala_18:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: Hey, there's no need to apologize. You've done nothing wrong.
+    next: fala_19
+
+  fala_19:
+    type: line
+    speaker_id: arthur
+    emotion: sad
+    animation_id: idle
+    text:
+      - type: text
+        value: No… It’s just…
+    next: fala_20
+
+  fala_20:
+    type: line
+    speaker_id: arthur
+    emotion: frustrated
+    animation_id: idle
+    auto_advance: true
+    text:
+      - type: text
+        value: Everything is so foggy when I try to remember anything, and it hurts my head like crazy. And you’ve been nothing but kind to a stranger… and… it’s just-
+    next: fala_21
+
+  fala_21:
+    type: line
+    speaker_id: pacci
+    emotion: concerned
+    animation_id: idle
+    text:
+      - type: text
+        value: No need to stress yourself over that. Just relax. Look, you can stay here until you fully recover.
+    next: fala_22
+
+  fala_22:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: Look, you can stay here until you fully recover.
+    next: fala_23
+
+  fala_23:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Really?
+    next: fala_24
+
+  fala_24:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: Of course.
+    next: fala_25
+
+  fala_25:
+    type: line
+    speaker_id: arthur
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: ... Thanks, Pacci.
+    next: fala_26
+
+  fala_26:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: You're welcome, {input.player.name}.
+    next: fala_27
+
+  fala_27:
+    type: line
+    speaker_id: pacci
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: styled_text
+        value: …
+        style:
+          speed_multiplier: 0.8
+    next: fala_28
+
+  fala_28:
+    type: line
+    speaker_id: pacci
+    emotion: thinking
+    animation_id: idle
+    text:
+      - type: text
+        value: Actually. There’s someone I know that could probably help you. His name's Raphael. He’s an old friend of mine. A mentor, really.
+    next: fala_29
+
+  fala_29:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: He might have something that can help you. He’s only a short walk from here.
+    next: fala_30
+
+  fala_30:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: So, if you want to, we can go and meet him. He might be able to help you.
+    next: escolha_4
+
+  escolha_4:
+    type: choice
+    prompt:
+      speaker_id: arthur
+      emotion: thinking
+      text:
+        - type: thought
+          value: Someone, that might help. Feels like a good place to start but I dunno. Everything is still so new to me.
+    choices:
+      - choice_id: go_to_raphael
+        text: Go to Raphael
+        next: fala_e5
+      - choice_id: stay
+        text: Stay
+        next: fala_e6
+
+  fala_e5:
+    type: line
+    speaker_id: arthur
+    emotion: thinking
+    animation_id: idle
+    delivery: thought
+    text:
+      - type: text
+        value: I guess I have nothing to lose.
+    next: fala_e5_2
+
+  fala_e5_2:
+    type: line
+    speaker_id: arthur
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Yeah. We can give it a try.
+    next: fala_e5_3
+
+  fala_e5_3:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Great. I’ll be in the kitchen washing the dishes. Make yourself at home while you wait.
+    next: fala_e5_4
+
+  fala_e5_4:
+    type: line
+    speaker_id: arthur
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Sure.
+    next: acao_2
+
+  fala_e6:
+    type: line
+    speaker_id: arthur
+    emotion: neutral
+    animation_id: idle
+    text:
+      - type: text
+        value: Sorry, but I don't think I should met him yet. I'm still a bit tired.
+    next: fala_e6_2
+
+  fala_e6_2:
+    type: line
+    speaker_id: pacci
+    emotion: relaxed
+    animation_id: idle
+    text:
+      - type: text
+        value: That's fine. We can go and meet him later.
+    next: fala_e6_3
+
+  fala_e6_3:
+    type: line
+    speaker_id: pacci
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: In the meantime, rest some more. I'll be in the kitchen if you need anything, alright?
+    next: fala_e6_4
+
+  fala_e6_4:
+    type: line
+    speaker_id: arthur
+    emotion: happy
+    animation_id: idle
+    text:
+      - type: text
+        value: Ok.
+    next: acao_2
+
+  acao_2:
+    type: character_action
+    character_id: pacci
+    position: left
+    animation_id: step_across_from_left
+    next: sai
+
+  sai:
+    type: character_exit
+    character_id: pacci
+    animation_id: step_out
+    direction: left
+    next: fim
+
+  fim:
+    type: end
+    result: neutral

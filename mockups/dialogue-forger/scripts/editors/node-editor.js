@@ -557,6 +557,9 @@
                     depthOfField('Em relação a', node.depth_of, lists, function (value) {
                         options.patch({ depth_of: value });
                     }),
+                    nearField('Ao lado de', node.near, lists, function (value) {
+                        options.patch({ near: value });
+                    }),
                 ]),
             ]),
             ui.section('Como se move', [
@@ -633,6 +636,9 @@
                 ui.inline([
                     depthOfField('Em relação a', node.depth_of, lists, function (value) {
                         options.patch({ depth_of: value });
+                    }),
+                    nearField('Ao lado de', node.near, lists, function (value) {
+                        options.patch({ near: value });
                     }),
                 ]),
                 stagingHelp('O que este nó deixar em branco fica como estava.'),
@@ -948,6 +954,21 @@
             placeholder: 'personagem',
             onChange: onChange,
         }), 'Só usado em conjunto com a profundidade.');
+    }
+
+    /**
+     * The character someone stands shoulder to shoulder with.
+     *
+     * It is not a second slot: the pair keeps itself together, the rest of the
+     * cast keeps the places it had, and the side still comes from the place —
+     * whoever stands later in the cast is drawn on the right.
+     */
+    function nearField(label, value, lists, onChange) {
+        return ui.field(label, ui.characterSelect({
+            value: value,
+            placeholder: 'personagem',
+            onChange: onChange,
+        }), 'Fica ombro a ombro com este personagem em vez de ocupar um lugar. O lado vem da posição: quem vem depois fica à direita.');
     }
 
     /**

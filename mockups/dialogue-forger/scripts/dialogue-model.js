@@ -222,6 +222,7 @@
             case 'character_enter':
                 result.character_id = node.character_id || '';
                 result.position = node.position || 'center';
+                result.near = node.near || '';
                 result.pose = node.pose || '';
                 result.depth = node.depth || '';
                 result.depth_of = node.depth_of || '';
@@ -237,6 +238,7 @@
                 // entrance animation belongs to it — they never left.
                 result.character_id = node.character_id || '';
                 result.position = node.position || '';
+                result.near = node.near || '';
                 result.pose = node.pose || '';
                 result.depth = node.depth || '';
                 result.depth_of = node.depth_of || '';
@@ -635,6 +637,12 @@
             parts.push(vocabularyLabel('position', source.position));
         }
 
+        // Standing beside someone is about the pair, not about the slot: the
+        // side still comes from the place, so it is read right after it.
+        if (source.near) {
+            parts.push('ao lado de ' + source.near);
+        }
+
         if (source.pose) {
             parts.push(vocabularyLabel('pose', source.pose));
         }
@@ -754,8 +762,10 @@
                 || node.type === 'character_exit') {
                 add(node.character_id);
                 // A depth is relative to whoever is already on stage, so the
-                // reference is a character the document mentions too.
+                // reference is a character the document mentions too. So is the
+                // character someone stands beside.
                 add(node.depth_of);
+                add(node.near);
             }
         });
 
@@ -833,6 +843,251 @@
         };
     }
 
+    /**
+     * The stage's slot centres, by how many characters share them.
+     *
+     * The same table the game uses, so a dialogue staged here is staged there.
+     */
+    var SLOT_CENTRES = { 1: [50], 2: [27, 73], 3: [21, 50, 79], 4: [16, 39, 61, 84] };
+    var SPRITE_WIDTHS = { 1: 0.65, 2: 0.5, 3: 0.34, 4: 0.28 };
+    var BESIDE_GAP_RATIO = 0.62;
+    var MAX_STAGE_CAST = 4;
+
+    /** The place a free-form `position` means, the way the game reads it. */
+    function authoredSlot(value) {
+        var position = String(value || '');
+
+        if (POSITIONS.indexOf(position) !== -1) {
+            return position;
+        }
+
+        if (position.indexOf('left') !== -1) {
+            return 'left';
+        }
+
+        if (position.indexOf('right') !== -1) {
+            return 'right';
+        }
+
+        return 'center';
+    }
+
+    /** The cast in stage order: who stands left of whom, then who arrived first. */
+    function orderForStage(cast) {
+        return (cast || []).slice().sort(function (a, b) {
+            var byPlace = POSITIONS.indexOf(authoredSlot(a.position))
+                - POSITIONS.indexOf(authoredSlot(b.position));
+
+            if (byPlace !== 0) {
+                return byPlace;
+            }
+
+            return (a.layer || 0) - (b.layer || 0);
+        });
+    }
+
+    /** How wide a sprite is on a stage with this many characters, in percent. */
+    function stageWidthFor(cast) {
+        var count = Math.min((cast || []).length, MAX_STAGE_CAST);
+
+        return count ? SPRITE_WIDTHS[count] * 100 : 0;
+    }
+
+    /**
+     * Where each character stands, as a percentage from the left of the stage.
+     *
+     * Mirrors the game's `resolveCastCentres`: slot centres come from how many
+     * characters share the slots, so `position` only decides who stands left of
+     * whom. A character with `near` stands shoulder to shoulder instead of
+     * taking a slot, on the side the order gives, and a pair that would hang off
+     * the stage slides back inside as a whole.
+     */
+    function resolveCastCentres(cast) {
+        var centres = {};
+        var list = cast || [];
+
+        if (!list.length) {
+            return centres;
+        }
+
+        var count = Math.min(list.length, MAX_STAGE_CAST);
+        var width = SPRITE_WIDTHS[count];
+        var gap = BESIDE_GAP_RATIO * width * 100;
+        var halfWidth = width * 50;
+
+        var rank = {};
+
+        list.forEach(function (member, index) {
+            rank[member.character_id] = index;
+        });
+
+        var referenceOf = {};
+
+        list.forEach(function (member) {
+            var reference = member.near;
+
+            if (reference && reference !== member.character_id && rank[reference] !== undefined) {
+                referenceOf[member.character_id] = reference;
+            }
+        });
+
+        var slotted = list.filter(function (member) {
+            return !referenceOf[member.character_id];
+        });
+        var slots = SLOT_CENTRES[Math.min(slotted.length, MAX_STAGE_CAST)] || SLOT_CENTRES[MAX_STAGE_CAST];
+
+        slotted.forEach(function (member, index) {
+            centres[member.character_id] = slots[index] !== undefined ? slots[index] : 50;
+        });
+
+        // A character that cannot be placed is remembered as failed, so a chain
+        // that runs into it fails as a whole instead of anchoring halfway: a
+        // loop has no side to stand on, and neither does somebody beside
+        // somebody who has none.
+        var failed = {};
+
+        function fail(chain) {
+            chain.forEach(function (id) {
+                failed[id] = true;
+            });
+        }
+
+        function place(id) {
+            if (failed[id]) {
+                return null;
+            }
+
+            if (centres[id] !== undefined) {
+                return centres[id];
+            }
+
+            if (!referenceOf[id]) {
+                return null;
+            }
+
+            var chain = [];
+            var cursor = id;
+
+            while (cursor !== undefined) {
+                if (failed[cursor]) {
+                    fail(chain);
+                    return null;
+                }
+
+                if (centres[cursor] !== undefined) {
+                    break;
+                }
+
+                if (chain.indexOf(cursor) !== -1) {
+                    fail(chain);
+                    return null;
+                }
+
+                chain.push(cursor);
+                cursor = referenceOf[cursor];
+            }
+
+            if (cursor === undefined) {
+                fail(chain);
+                return null;
+            }
+
+            for (var index = chain.length - 1; index >= 0; index -= 1) {
+                var current = chain[index];
+                var reference = referenceOf[current];
+                var side = rank[current] > rank[reference] ? 1 : -1;
+
+                centres[current] = centres[reference] + side * gap;
+            }
+
+            return centres[id];
+        }
+
+        var fallback = SLOT_CENTRES[count] || SLOT_CENTRES[MAX_STAGE_CAST];
+        var stranded = {};
+
+        list.forEach(function (member, index) {
+            var id = member.character_id;
+
+            if (referenceOf[id] && place(id) === null) {
+                stranded[id] = true;
+                centres[id] = fallback[index] !== undefined ? fallback[index] : 50;
+            }
+        });
+
+        var neighbours = {};
+
+        function link(from, to) {
+            neighbours[from] = (neighbours[from] || []).concat([to]);
+        }
+
+        Object.keys(referenceOf).forEach(function (id) {
+            var reference = referenceOf[id];
+
+            if (stranded[id] || stranded[reference]) {
+                return;
+            }
+
+            link(id, reference);
+            link(reference, id);
+        });
+
+        var visited = {};
+
+        function slideInsideStage(group) {
+            var groupCentres = group
+                .map(function (id) { return centres[id]; })
+                .filter(function (centre) { return centre !== undefined; });
+
+            if (groupCentres.length < 2) {
+                return;
+            }
+
+            var leftmost = Math.min.apply(null, groupCentres);
+            var rightmost = Math.max.apply(null, groupCentres);
+            var shift = leftmost < halfWidth
+                ? halfWidth - leftmost
+                : rightmost > 100 - halfWidth
+                    ? 100 - halfWidth - rightmost
+                    : 0;
+
+            if (!shift) {
+                return;
+            }
+
+            group.forEach(function (id) {
+                if (centres[id] !== undefined) {
+                    centres[id] += shift;
+                }
+            });
+        }
+
+        Object.keys(neighbours).forEach(function (id) {
+            if (visited[id]) {
+                return;
+            }
+
+            var group = [];
+            var queue = [id];
+
+            while (queue.length) {
+                var current = queue.pop();
+
+                if (visited[current]) {
+                    continue;
+                }
+
+                visited[current] = true;
+                group.push(current);
+                queue = queue.concat(neighbours[current] || []);
+            }
+
+            slideInsideStage(group);
+        });
+
+        return centres;
+    }
+
     Forger.model = {
         NODE_TYPES: NODE_TYPES,
         REMOVED_NODE_TYPES: REMOVED_NODE_TYPES,
@@ -874,6 +1129,9 @@
         collectEffects: collectEffects,
         collectCharacterIds: collectCharacterIds,
         collectInputVariables: collectInputVariables,
+        orderForStage: orderForStage,
+        resolveCastCentres: resolveCastCentres,
+        stageWidthFor: stageWidthFor,
         createHistory: createHistory,
     };
 })(window.DialogueForger);
