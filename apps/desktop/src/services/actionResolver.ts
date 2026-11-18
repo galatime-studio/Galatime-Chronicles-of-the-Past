@@ -34,7 +34,9 @@ import { foldAttackModifiers } from './combat/abilityModifiers';
 import { resolveForcedMiss } from './combat/abilityInterception';
 import { resolveAbilityEvent } from './combat/abilityTriggers';
 import { phaseEffectMultiplier, resolveDamage, isProjectileAction } from './combat/damageCalculator';
-import { reapDefeated, promoteRearLines } from './combat/defeatResolver';
+import { reapDefeated } from './combat/defeatResolver';
+import { deployHoldLanes } from './combat/holdLanes';
+import { promoteRearLines } from './combat/lanePromotion';
 import { idleRegenAmount } from './combat/resourceRegen';
 import {
     absorbShieldDamage,
@@ -418,6 +420,7 @@ function resolveFlee(context: ActionResolutionContext, events: CombatEvent[]): C
     actor.status = 'defeated';
     actor.flags.fled = true;
     promoteRearLines(state, events);
+    deployHoldLanes(state, events);
     return null;
 }
 

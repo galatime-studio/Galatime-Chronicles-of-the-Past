@@ -14,12 +14,14 @@ import type {
 import { TestCombatLog } from './components/TestCombatLog';
 import { getWorldHour, setWorldHour } from '../../../services/state/worldClock';
 import {
+    addHoldLane,
     buildEncounter,
     catalogueKey,
     clearSlot,
     createEmptySetup,
     fillSlot,
     loadEntityCatalogue,
+    removeHoldLane,
     resolveUnitSprite,
     setSlotInventory,
     setSlotWeapons,
@@ -174,6 +176,8 @@ export function TestCombatPanel() {
                     weapons,
                 ))
             }
+            onAddHoldLane={(side) => setSetup((current) => addHoldLane(current, side))}
+            onRemoveHoldLane={(side, index) => setSetup((current) => removeHoldLane(current, side, index))}
             onStart={handleStart}
         />
     );

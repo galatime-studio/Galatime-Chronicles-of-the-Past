@@ -60,6 +60,16 @@ function normalizeMember(raw: unknown): CombatEncounterMember | null {
         member.hp = record.hp;
     }
 
+    // A wave member names its lane with a positive integer; anything else keeps
+    // it on the field like any other member.
+    if (
+        typeof record.hold === 'number'
+        && Number.isInteger(record.hold)
+        && record.hold > 0
+    ) {
+        member.hold = record.hold;
+    }
+
     return member;
 }
 

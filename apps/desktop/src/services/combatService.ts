@@ -19,6 +19,7 @@ import type {
     CombatEncounterMember,
     CombatErrorCode,
     CombatEvent,
+    CombatHoldLane,
     CombatLine,
     CombatOutcome,
     CombatRandom,
@@ -46,6 +47,7 @@ import {
 import { buildElementDamageIndex } from './combat/damageCalculator';
 import { previewImpact } from './combat/damagePreview';
 import { reapDefeated } from './combat/defeatResolver';
+import { deployHoldLanes, sideHasLivingUnits } from './combat/holdLanes';
 import { checkInterrupt, dealFlatDamage, resolveTurnStartMechanics } from './combat/chaosMechanics';
 import {
     changeResource,
@@ -594,8 +596,11 @@ function firstActionableTurn(
     return { index: 0, unit: null, events };
 }
 
-function evaluateOutcome(state: CombatState): CombatOutcome | null {    const alliesAlive = state.units.some((unit) => unit.side === 'allies' && unit.status === 'alive');
-    const enemiesAlive = state.units.some((unit) => unit.side === 'enemies' && unit.status === 'alive');
+function evaluateOutcome(state: CombatState): CombatOutcome | null {
+    // Hold lanes count as living: a side is not beaten while a wave it authored
+    // is still waiting to enter the field.
+    const alliesAlive = sideHasLivingUnits(state, 'allies');
+    const enemiesAlive = sideHasLivingUnits(state, 'enemies');
 
     if (!alliesAlive) return 'defeat';
     if (!enemiesAlive) return 'victory';
@@ -616,6 +621,8 @@ function outcomeReason(outcome: CombatOutcome): string {
 /** What building a roster produces: the units and the stock each was given. */
 interface BuiltRoster {
     units: CombatUnit[];
+    /** Waves waiting off the field, one entry per authored lane. */
+    holdLanes: CombatHoldLane[];
     /**
      * Opening inventory per unit id, but only for members that declared one
      * (`CombatEncounterMember.inventory`). Members without an entry fall back to
@@ -630,6 +637,7 @@ async function buildUnits(
     unitOverrides?: readonly CombatUnitOverride[],
 ): Promise<CombatResult<BuiltRoster>> {
     const units: CombatUnit[] = [];
+    const holdLanes: CombatHoldLane[] = [];
     const declaredInventories = new Map<string, Record<string, number>>();
     const overridesBySlot = new Map(
         (unitOverrides ?? []).map((override) => [
@@ -644,12 +652,23 @@ async function buildUnits(
 
     for (const { side, members } of groups) {
         const lineCounts: Record<CombatLine, number> = { front: 0, rear: 0 };
+        /** Filled positions per on-hold lane: each lane is its own row. */
+        const holdCounts = new Map<number, number>();
 
         for (const member of members) {
-            if (lineCounts[member.line] >= MAX_UNITS_PER_LINE) {
+            // A hold member is off the field: its authored `line` is ignored and
+            // its slot counts inside its wave instead of inside a battle line.
+            const holdLane = member.hold;
+            const line: CombatLine = holdLane === undefined ? member.line : 'rear';
+            const held = holdLane === undefined ? 0 : holdCounts.get(holdLane) ?? 0;
+            const filled = holdLane === undefined ? lineCounts[line] : held;
+
+            if (filled >= MAX_UNITS_PER_LINE) {
                 return combatFail(createCombatError(
                     'encounter_invalid',
-                    `The ${side} ${member.line} line already holds ${MAX_UNITS_PER_LINE} units.`,
+                    holdLane === undefined
+                        ? `The ${side} ${line} line already holds ${MAX_UNITS_PER_LINE} units.`
+                        : `The ${side} on-hold lane ${holdLane} already holds ${MAX_UNITS_PER_LINE} units.`,
                     { encounterId: encounter.id, member },
                 ));
             }
@@ -665,15 +684,22 @@ async function buildUnits(
                 ));
             }
 
-            const slot = lineCounts[member.line];
-            lineCounts[member.line] += 1;
+            const slot = filled;
+            if (holdLane === undefined) lineCounts[line] += 1;
+            else holdCounts.set(holdLane, held + 1);
 
-            const id = `${side}_${member.line}_${slot}_${member.entityId}`;
+            const id = holdLane === undefined
+                ? `${side}_${line}_${slot}_${member.entityId}`
+                : `${side}_hold${holdLane}_${slot}_${member.entityId}`;
             if (member.inventory) {
                 declaredInventories.set(id, { ...member.inventory });
             }
 
-            const override = overridesBySlot.get(`${side}:${member.line}:${slot}`);
+            // Generated units replace authored field slots. A wave keeps its
+            // authored members: it is authored off the board, not placed on it.
+            const override = holdLane === undefined
+                ? overridesBySlot.get(`${side}:${line}:${slot}`)
+                : undefined;
             // Generated units replace the authored loadout: the blueprint still
             // supplies the sprite, abilities and default weapon, while skills,
             // stats, elements and opening statuses come from the overlay.
@@ -706,10 +732,10 @@ async function buildUnits(
                 }
             }
 
-            units.push(instantiateUnit(blueprint, {
+            const unit = instantiateUnit(blueprint, {
                 id,
                 side,
-                line: member.line,
+                line,
                 slot,
                 isPlayerControlled: override?.isPlayerControlled
                     ?? member.isPlayerControlled
@@ -724,17 +750,31 @@ async function buildUnits(
                 aiProfile: override?.aiStyle
                     ? createAiProfile({ style: override.aiStyle }, blueprint.abilities)
                     : undefined,
-            }));
+            });
+
+            if (holdLane === undefined) {
+                units.push(unit);
+            } else {
+                const lane = holdLanes.find(
+                    (entry) => entry.side === side && entry.lane === holdLane,
+                );
+                if (lane) lane.units.push(unit);
+                else holdLanes.push({ side, lane: holdLane, units: [unit] });
+            }
         }
     }
 
-    if (units.length === 0) {
+    if (units.length === 0 && holdLanes.length === 0) {
         return combatFail(createCombatError('encounter_invalid', 'The encounter has no members.', {
             encounterId: encounter.id,
         }));
     }
 
-    return combatOk({ units, inventories: declaredInventories });
+    // Deployment walks the lanes in numeric order, so the roster is sorted the
+    // way the author numbered the waves.
+    holdLanes.sort((a, b) => (a.side === b.side ? a.lane - b.lane : 0));
+
+    return combatOk({ units, holdLanes, inventories: declaredInventories });
 }
 
 /**
@@ -757,17 +797,19 @@ export async function startCombat(
 
     // A summon or transform resolves its target entity by id at trigger time and
     // must be synchronous, so the blueprints its abilities can reach are fetched
-    // now, while the fight is still being set up.
-    await preloadAbilityBlueprints(built.data.units);
+    // now, while the fight is still being set up. Off-field waves are included:
+    // a battle-start ability can reach them too.
+    const units = built.data.units;
+    const holdUnits = built.data.holdLanes.flatMap((lane) => lane.units);
+    await preloadAbilityBlueprints([...units, ...holdUnits]);
 
     const elements = await getAllElementsDataService();
     const elementIndex = buildElementDamageIndex(elements);
-    const units = built.data.units;
 
     const inventories = new Map<string, Record<string, number>>();
     const loot = new Map<string, LootEntry[]>();
 
-    for (const unit of units) {
+    for (const unit of [...units, ...holdUnits]) {
         const entity = await getEntityData(unit.entityId, unit.entityType);
 
         // What a unit opens the fight with: either the stock its encounter member
@@ -820,6 +862,7 @@ export async function startCombat(
         order: [],
         turnGauges: {},
         units,
+        ...(built.data.holdLanes.length > 0 ? { holdLanes: built.data.holdLanes } : {}),
         hour,
         timePhase,
         phaseOverride: null,
@@ -836,6 +879,9 @@ export async function startCombat(
     const opening: CombatEvent[] = [];
     opening.push(...resolveBattleStartAbilities(state, random));
     reapDefeated(state, opening, random);
+    // A side that authored every member off the field opens with its first wave
+    // already standing; nothing about the trigger changes at battle start.
+    deployHoldLanes(state, opening);
 
     const plan = planTurnOrder(state.units);
     state.order = plan.order;

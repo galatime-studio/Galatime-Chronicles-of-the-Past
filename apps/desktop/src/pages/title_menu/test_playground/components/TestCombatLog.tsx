@@ -276,6 +276,12 @@ function formatEvents(
                     }),
                 );
 
+            case 'hold_lane_deployed':
+                return lineOf(
+                    key,
+                    t('playground.combat.log.holdDeployed', { lane: event.lane }),
+                );
+
             case 'action_postponed':
                 return lineOf(key, t('playground.combat.log.postponed', { count: event.slots }));
 

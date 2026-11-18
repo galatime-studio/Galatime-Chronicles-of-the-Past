@@ -95,6 +95,9 @@
 			"enemies": "Right",
 			"front": "Front",
 			"rear": "Rear",
+			"holdLane": "On hold {{lane}}",
+			"addHoldLane": "Add a wave lane",
+			"removeHoldLane": "Remove this wave lane",
 			"slotEmpty": "Add an entity to this slot",
 			"pickerTitle": "Pick an entity",
 			"pickerInput": "Entity ID",
@@ -157,6 +160,7 @@
 				"defeated": "is defeated",
 				"revived": "is revived by {{caster}}",
 				"line": "moves to the {{line}} line",
+				"holdDeployed": "wave {{lane}} enters the rear line",
 				"lines": {
 					"front": "front",
 					"rear": "rear"

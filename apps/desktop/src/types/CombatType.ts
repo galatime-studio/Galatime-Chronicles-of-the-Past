@@ -1227,6 +1227,8 @@ export type CombatEvent =
     | { type: 'unit_revived'; unitId: string; casterId: string }
     /** A living rear-line unit stepped into its side's emptied front line. */
     | { type: 'unit_line_changed'; unitId: string; line: CombatLine; slot: number }
+    /** An on-hold lane stepped onto the field together, filling the rear line. */
+    | { type: 'hold_lane_deployed'; side: CombatSide; lane: number; unitIds: string[] }
     /** A skill pushed the unit's next turn back through the queue mid-round. */
     | { type: 'action_postponed'; unitId: string; slots: number }
     /** A skill raised a battlefield-wide weather state (`Rain`, `Storm`). */
@@ -1394,6 +1396,22 @@ export interface CombatWeather {
     chipDamage: number;
 }
 
+/**
+ * A wave waiting off the field.
+ *
+ * Its units are built with the rest of the roster but are none of the
+ * battlefield's business until the lane deploys: they are not drawn, cannot be
+ * targeted and are not in the turn queue. A lane deploys as a whole into the
+ * rear line when that line has no living unit left.
+ */
+export interface CombatHoldLane {
+    side: CombatSide;
+    /** Authored number; lower lanes deploy first. */
+    lane: number;
+    /** The off-field units, in their authored order. */
+    units: CombatUnit[];
+}
+
 /** The serializable shape of a fight. The frontend renders this directly. */
 export interface CombatState {
     sessionId: string;
@@ -1440,6 +1458,13 @@ export interface CombatState {
     /** Speed banked per unit, carried between rounds. */
     turnGauges: CombatTurnGauges;
     units: CombatUnit[];
+    /**
+     * Waves still waiting off the field, one entry per authored lane.
+     *
+     * A lane joins `units` when it deploys; until then it is invisible and
+     * untouchable. Missing on hand-built states and older fixtures.
+     */
+    holdLanes?: CombatHoldLane[];
     phase: CombatPhase;
     outcome: CombatOutcome | null;
     /** Most recent feedback, oldest first, capped while the fight runs. */
@@ -1471,6 +1496,14 @@ export interface CombatEncounterMember {
     entityId: string;
     entityType: CombatEntityType;
     line: CombatLine;
+    /**
+     * Puts the member in an on-hold lane instead of the battlefield.
+     *
+     * Members sharing a number form one wave; lower numbers deploy first. A
+     * lane waits until its side's rear line has no living unit, then enters the
+     * rear together. Absent members stand in `line` from the opening.
+     */
+    hold?: number;
     /** Marks the unit as played by the player rather than the AI. */
     isPlayerControlled?: boolean;
     /** Display override (a "Corrupted Slime" that is still `slime.yaml`). */

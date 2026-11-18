@@ -77,24 +77,48 @@ export interface SetupSlot {
 /** One line of one side: a fixed row of positions, empty ones included. */
 export type SetupLine = Array<SetupSlot | null>;
 
-/** Both lines of one side. */
-export type SetupLanes = Record<CombatLine, SetupLine>;
+/** A row the setup can fill: either a battle line or one on-hold lane. */
+export type SetupLineId = CombatLine | `hold_${number}`;
 
-/** The whole setup: both sides, each with its front and rear rows. */
+/**
+ * The rows of one side.
+ *
+ * `front` and `rear` are the battlefield. `hold` is the queue of waves waiting
+ * off it: index 0 is the first lane to deploy, then 1, and so on.
+ */
+export interface SetupLanes {
+    front: SetupLine;
+    rear: SetupLine;
+    hold: SetupLine[];
+}
+
+/** The whole setup: both sides, each with its battlefield rows and waves. */
 export type CombatSetup = Record<CombatSide, SetupLanes>;
+
+/** Turns a hold-lane index into the row id the setup helpers take. */
+export function holdLaneId(index: number): SetupLineId {
+    return `hold_${index}`;
+}
+
+/** The row a line id names; an unknown hold lane reads as empty. */
+function lineOf(lanes: SetupLanes, line: SetupLineId): SetupLine {
+    if (line === 'front' || line === 'rear') return lanes[line];
+    const index = Number(line.slice('hold_'.length));
+    return lanes.hold[index] ?? [];
+}
 
 /** Key a catalogue entry is indexed by, so a slot can look its entity up again. */
 export function catalogueKey(entityType: CombatEntityType, entityId: string): string {
     return `${entityType}:${entityId}`;
 }
 
-/** A setup with every position empty. */
+/** A setup with every position empty, plus one on-hold lane per side. */
 export function createEmptySetup(): CombatSetup {
     const emptyLine = (): SetupLine => Array.from({ length: SLOTS_PER_LINE }, () => null);
 
     return {
-        allies: { front: emptyLine(), rear: emptyLine() },
-        enemies: { front: emptyLine(), rear: emptyLine() },
+        allies: { front: emptyLine(), rear: emptyLine(), hold: [emptyLine()] },
+        enemies: { front: emptyLine(), rear: emptyLine(), hold: [emptyLine()] },
     };
 }
 
@@ -102,15 +126,32 @@ export function createEmptySetup(): CombatSetup {
 function updateSlot(
     setup: CombatSetup,
     side: CombatSide,
-    line: CombatLine,
+    line: SetupLineId,
     index: number,
     update: (slot: SetupSlot | null) => SetupSlot | null,
 ): CombatSetup {
+    const lanes = setup[side];
+
+    if (line === 'front' || line === 'rear') {
+        return {
+            ...setup,
+            [side]: {
+                ...lanes,
+                [line]: lanes[line].map((slot, position) => (position === index ? update(slot) : slot)),
+            },
+        };
+    }
+
+    const laneIndex = Number(line.slice('hold_'.length));
     return {
         ...setup,
         [side]: {
-            ...setup[side],
-            [line]: setup[side][line].map((slot, position) => (position === index ? update(slot) : slot)),
+            ...lanes,
+            hold: lanes.hold.map((lane, position) => (
+                position === laneIndex
+                    ? lane.map((slot, slotIndex) => (slotIndex === index ? update(slot) : slot))
+                    : lane
+            )),
         },
     };
 }
@@ -119,17 +160,22 @@ function updateSlot(
 export function slotAt(
     setup: CombatSetup,
     side: CombatSide,
-    line: CombatLine,
+    line: SetupLineId,
     index: number,
 ): SetupSlot | null {
-    return setup[side][line][index] ?? null;
+    return lineOf(setup[side], line)[index] ?? null;
+}
+
+/** The positions of one row, whether it is a battle line or a wave. */
+export function setupLine(setup: CombatSetup, side: CombatSide, line: SetupLineId): SetupLine {
+    return lineOf(setup[side], line);
 }
 
 /** Places an entity in a position. New picks start unmarked and empty-handed. */
 export function fillSlot(
     setup: CombatSetup,
     side: CombatSide,
-    line: CombatLine,
+    line: SetupLineId,
     index: number,
     entity: CatalogueEntity,
 ): CombatSetup {
@@ -157,7 +203,7 @@ export function defaultWeaponIds(entity: CatalogueEntity): string[] {
 export function setSlotWeapons(
     setup: CombatSetup,
     side: CombatSide,
-    line: CombatLine,
+    line: SetupLineId,
     index: number,
     weapons: string[],
 ): CombatSetup {
@@ -170,7 +216,7 @@ export function setSlotWeapons(
 export function clearSlot(
     setup: CombatSetup,
     side: CombatSide,
-    line: CombatLine,
+    line: SetupLineId,
     index: number,
 ): CombatSetup {
     return updateSlot(setup, side, line, index, () => null);
@@ -180,7 +226,7 @@ export function clearSlot(
 export function toggleControlled(
     setup: CombatSetup,
     side: CombatSide,
-    line: CombatLine,
+    line: SetupLineId,
     index: number,
 ): CombatSetup {
     return updateSlot(setup, side, line, index, (slot) => (
@@ -192,7 +238,7 @@ export function toggleControlled(
 export function setSlotInventory(
     setup: CombatSetup,
     side: CombatSide,
-    line: CombatLine,
+    line: SetupLineId,
     index: number,
     inventory: EntityInventoryState,
 ): CombatSetup {
@@ -201,12 +247,33 @@ export function setSlotInventory(
     ));
 }
 
-/** Filled positions on one side, front and rear together. */
+/** Adds another on-hold lane at the back of the queue. */
+export function addHoldLane(setup: CombatSetup, side: CombatSide): CombatSetup {
+    const lane: SetupLine = Array.from({ length: SLOTS_PER_LINE }, () => null);
+    return {
+        ...setup,
+        [side]: { ...setup[side], hold: [...setup[side].hold, lane] },
+    };
+}
+
+/** Drops one on-hold lane; the lanes after it close the gap. */
+export function removeHoldLane(setup: CombatSetup, side: CombatSide, index: number): CombatSetup {
+    return {
+        ...setup,
+        [side]: {
+            ...setup[side],
+            hold: setup[side].hold.filter((_, position) => position !== index),
+        },
+    };
+}
+
+/** Filled positions on one side: both battle lines and every wave. */
 export function countSide(setup: CombatSetup, side: CombatSide): number {
-    return SETUP_LINES.reduce(
-        (total, line) => total + setup[side][line].filter((slot) => slot !== null).length,
-        0,
-    );
+    const laneCount = (line: SetupLine): number => line.filter((slot) => slot !== null).length;
+    const lanes = setup[side];
+    return laneCount(lanes.front)
+        + laneCount(lanes.rear)
+        + lanes.hold.reduce((total, lane) => total + laneCount(lane), 0);
 }
 
 /** Whether the setup can be fought: both sides need at least one character. */
@@ -290,21 +357,34 @@ export async function loadEntityCatalogue(): Promise<CatalogueEntity[]> {
  *
  * Positions are compacted per line, so a line with a hole in the middle still
  * deploys without a gap — the same numbering `services/combatService.buildUnits`
- * uses when it turns members into units.
+ * uses when it turns members into units. On-hold lanes keep their own order:
+ * lane 1 deploys before lane 2.
  */
 export function buildEncounter(setup: CombatSetup, encounterName: string): CombatEncounter {
-    const roster = (side: CombatSide): CombatEncounterMember[] => SETUP_LINES.flatMap((line) => (
-        setup[side][line]
-            .filter((slot): slot is SetupSlot => slot !== null)
-            .map((slot) => ({
-                entityId: slot.entityId,
-                entityType: slot.entityType,
-                line,
-                isPlayerControlled: slot.controlled,
-                inventory: { ...slot.inventory },
-                ...(slot.weapons ? { weapons: [...slot.weapons] } : {}),
-            }))
-    ));
+    const memberOf = (slot: SetupSlot, line: CombatLine): CombatEncounterMember => ({
+        entityId: slot.entityId,
+        entityType: slot.entityType,
+        line,
+        isPlayerControlled: slot.controlled,
+        inventory: { ...slot.inventory },
+        ...(slot.weapons ? { weapons: [...slot.weapons] } : {}),
+    });
+
+    const roster = (side: CombatSide): CombatEncounterMember[] => {
+        const field = SETUP_LINES.flatMap((line) => (
+            setup[side][line]
+                .filter((slot): slot is SetupSlot => slot !== null)
+                .map((slot) => memberOf(slot, line))
+        ));
+
+        const waves = setup[side].hold.flatMap((lane, laneIndex) => (
+            lane
+                .filter((slot): slot is SetupSlot => slot !== null)
+                .map((slot) => ({ ...memberOf(slot, 'rear'), hold: laneIndex + 1 }))
+        ));
+
+        return [...field, ...waves];
+    };
 
     return {
         id: 'playground',

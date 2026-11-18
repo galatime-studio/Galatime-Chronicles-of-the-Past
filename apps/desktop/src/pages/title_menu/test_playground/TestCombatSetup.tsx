@@ -11,12 +11,15 @@ import {
     catalogueKey,
     countSide,
     defaultWeaponIds,
+    holdLaneId,
     isSetupValid,
+    setupLine,
     slotAt,
     type CatalogueEntity,
     type CombatSetup,
+    type SetupLineId,
 } from './combatSetupModel';
-import type { CombatLine, CombatSide } from '../../../types/CombatType';
+import type { CombatSide } from '../../../types/CombatType';
 import type { EntityInventoryState } from '../../../types/InventoryType';
 import { TestCombatPickerPopup } from './components/TestCombatPickerPopup';
 import { TestCombatSlot } from './components/TestCombatSlot';
@@ -25,7 +28,7 @@ import { TestSlotInventoryPopup } from './components/TestSlotInventoryPopup';
 /** Roster position the entity picker is currently filling. */
 interface PickerTarget {
     side: CombatSide;
-    line: CombatLine;
+    line: SetupLineId;
     index: number;
 }
 
@@ -40,16 +43,20 @@ interface TestCombatSetupProps {
     /** How well the opponents will play. Sent to the fight, not saved anywhere. */
     difficulty: Difficulty;
     onDifficultyChange: (difficulty: Difficulty) => void;
-    onFill: (side: CombatSide, line: CombatLine, index: number, entity: CatalogueEntity) => void;
-    onClear: (side: CombatSide, line: CombatLine, index: number) => void;
-    onToggleControl: (side: CombatSide, line: CombatLine, index: number) => void;
+    onFill: (side: CombatSide, line: SetupLineId, index: number, entity: CatalogueEntity) => void;
+    onClear: (side: CombatSide, line: SetupLineId, index: number) => void;
+    onToggleControl: (side: CombatSide, line: SetupLineId, index: number) => void;
     onSetLoadout: (
         side: CombatSide,
-        line: CombatLine,
+        line: SetupLineId,
         index: number,
         inventory: EntityInventoryState,
         weapons: string[],
     ) => void;
+    /** Appends another on-hold lane to a side's queue. */
+    onAddHoldLane: (side: CombatSide) => void;
+    /** Drops a side's on-hold lane; later lanes close the gap. */
+    onRemoveHoldLane: (side: CombatSide, index: number) => void;
     onStart: () => void;
 }
 
@@ -57,11 +64,13 @@ interface TestCombatSetupProps {
  * Roster setup of the combat tab.
  *
  * Both sides get one row per battle line, each row a fixed number of positions that
- * mirror what the formation board can draw. Which position holds which character is
- * the player's call, and so is which of them they play: the control mark is the only
- * thing that decides whose actions the battle's HUD shows. Each filled slot also
- * carries an inventory the player stocks item by item — the only stock the fight
- * will know, because playground entities exist for one battle.
+ * mirror what the formation board can draw. Below the battlefield each side keeps
+ * its on-hold lanes: waves that wait off the board until the rear line empties,
+ * then enter together. Which position holds which character is the player's call,
+ * and so is which of them they play — the control mark is the only thing that
+ * decides whose actions the battle's HUD shows. Each filled slot also carries an
+ * inventory the player stocks item by item: the only stock the fight will know,
+ * because playground entities exist for one battle.
  */
 export function TestCombatSetup({
     setup,
@@ -74,6 +83,8 @@ export function TestCombatSetup({
     onClear,
     onToggleControl,
     onSetLoadout,
+    onAddHoldLane,
+    onRemoveHoldLane,
     onStart,
 }: TestCombatSetupProps) {
     const { t } = useTranslation(['playground', 'game']);
@@ -85,6 +96,55 @@ export function TestCombatSetup({
     const inventoryEntity = inventorySlot
         ? entities.get(catalogueKey(inventorySlot.entityType, inventorySlot.entityId))
         : undefined;
+
+    /** One row of positions; the label names its battle line or its wave. */
+    const renderRow = (side: CombatSide, line: SetupLineId, label: string) => {
+        const slots = setupLine(setup, side, line);
+        const filledCount = slots.filter((slot) => slot !== null).length;
+        const showAddButton = filledCount < SLOTS_PER_LINE;
+        /** First open position, so the lone "add" slot always lands in a gap. */
+        const nextIndex = slots.findIndex((slot) => slot === null);
+
+        return (
+            <div key={line}>
+                <p className="mb-1 text-[0.65rem] uppercase tracking-[0.15em] text-white/40">
+                    {label}
+                </p>
+
+                <div className="flex gap-2 overflow-x-auto pt-2 pr-2 pb-2">
+                    {slots.map((slot, index) => {
+                        if (!slot) return null;
+
+                        const entity = entities.get(catalogueKey(slot.entityType, slot.entityId));
+
+                        return (
+                            <TestCombatSlot
+                                key={index}
+                                slot={slot}
+                                entity={entity}
+                                label={`${label} ${index + 1}`}
+                                onAdd={() => setTarget({ side, line, index })}
+                                onRemove={() => onClear(side, line, index)}
+                                onToggleControl={() => onToggleControl(side, line, index)}
+                                onOpenInventory={() => setInventoryTarget({ side, line, index })}
+                            />
+                        );
+                    })}
+
+                    {showAddButton && nextIndex >= 0 && (
+                        <TestCombatSlot
+                            slot={null}
+                            label={`${label} ${nextIndex + 1}`}
+                            onAdd={() => setTarget({ side, line, index: nextIndex })}
+                            onRemove={() => {}}
+                            onToggleControl={() => {}}
+                            onOpenInventory={() => {}}
+                        />
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-4">
@@ -106,56 +166,44 @@ export function TestCombatSetup({
                             </div>
 
                             {SETUP_LINES.map((line) => {
+                                // The rear only matters once somebody holds the front.
                                 if (line === 'rear' && !setup[side].front.some((slot) => slot !== null)) {
                                     return null;
                                 }
 
-                                const filledCount = setup[side][line].filter((slot) => slot !== null).length;
-                                const showAddButton = filledCount < SLOTS_PER_LINE;
-                                /** First open position, so the lone "add" slot always lands in a gap. */
-                                const nextIndex = setup[side][line].findIndex((slot) => slot === null);
+                                return renderRow(side, line, t(`playground.combat.${line}`));
+                            })}
 
-                                return (
-                                    <div key={line}>
-                                        <p className="mb-1 text-[0.65rem] uppercase tracking-[0.15em] text-white/40">
-                                            {t(`playground.combat.${line}`)}
-                                        </p>
-
-                                        <div className="flex gap-2 overflow-x-auto pt-2 pr-2 pb-2">
-                                            {setup[side][line].map((slot, index) => {
-                                                if (!slot) return null;
-
-                                                const entity = entities.get(catalogueKey(slot.entityType, slot.entityId));
-                                                const label = `${t(`playground.combat.${side}`)} ${t(`playground.combat.${line}`)} ${index + 1}`;
-
-                                                return (
-                                                    <TestCombatSlot
-                                                        key={index}
-                                                        slot={slot}
-                                                        entity={entity}
-                                                        label={label}
-                                                        onAdd={() => setTarget({ side, line, index })}
-                                                        onRemove={() => onClear(side, line, index)}
-                                                        onToggleControl={() => onToggleControl(side, line, index)}
-                                                        onOpenInventory={() => setInventoryTarget({ side, line, index })}
-                                                    />
-                                                );
-                                            })}
-
-                                            {showAddButton && nextIndex >= 0 && (
-                                                <TestCombatSlot
-                                                    slot={null}
-                                                    label={`${t(`playground.combat.${side}`)} ${t(`playground.combat.${line}`)} ${nextIndex + 1}`}
-                                                    onAdd={() => setTarget({ side, line, index: nextIndex })}
-                                                    onRemove={() => {}}
-                                                    onToggleControl={() => {}}
-                                                    onOpenInventory={() => {}}
-                                                />
+                            <div className="flex flex-col gap-1 border-t-game border-white/10 pt-2">
+                                {setup[side].hold.map((_, index) => (
+                                    <div key={index} className="flex items-end gap-1">
+                                        <div className="min-w-0 flex-1">
+                                            {renderRow(
+                                                side,
+                                                holdLaneId(index),
+                                                t('playground.combat.holdLane', { lane: index + 1 }),
                                             )}
                                         </div>
+                                        <CommonButton
+                                            variant="ghost"
+                                            size="sm"
+                                            aria-label={t('playground.combat.removeHoldLane')}
+                                            onPress={() => onRemoveHoldLane(side, index)}
+                                        >
+                                            {t('playground.combat.remove')}
+                                        </CommonButton>
                                     </div>
-                                );
-                            })}
+                                ))}
+
+                                <CommonButton
+                                    variant="ghost"
+                                    size="sm"
+                                    className="self-start"
+                                    onPress={() => onAddHoldLane(side)}
+                                >
+                                    {t('playground.combat.addHoldLane')}
+                                </CommonButton>
+                            </div>
                         </section>
                     ))}
                 </div>
