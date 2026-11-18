@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence, steps } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { Loading } from '../../assets/GalatimeIcon';
 
@@ -134,26 +134,16 @@ const CommonPopupCard: React.FC<CommonPopupCardProps> = ({
 
     /**
      * Icon slot content.
-     * `'music'` overrides the loading spinner and bounces the icon with `steps()`,
-     * so movement snaps between discrete frames — no eased tweens, pixel-game feel.
+     * `'music'` overrides the loading spinner with a CSS keyframe bounce
+     * (`.common-popup-icon-music` in globals.css): poses snap instead of tweening,
+     * and the loop is a stylesheet animation so it runs regardless of the motion
+     * runtime — a framer-motion loop declared on mount never started reliably
+     * across builds (see issue #37).
      */
     const iconContent = iconAnimation === 'music' ? (
-        <motion.span
-            className="block"
-            initial={false}
-            animate={{
-                y: [0, -4, 0, -2, 0],
-                rotate: [0, -12, 0, 10, 0],
-            }}
-            transition={{
-                duration: 0.6,
-                repeat: Infinity,
-                repeatDelay: 0.4,
-                ease: steps(2), // 2 discrete jumps per segment → choppy, "pixel" motion
-            }}
-        >
+        <span className="block common-popup-icon-music">
             {icon ?? <MusicNoteIcon />}
-        </motion.span>
+        </span>
     ) : (
         icon ?? (showLoading ? <Loading imageClassName="h-5" /> : null)
     );

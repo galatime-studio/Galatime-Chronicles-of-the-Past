@@ -160,7 +160,7 @@ export function NewGameScreen({ onBack }: { onBack: () => void }) {
                                     <CommonButton
                                         variant="ghost"
                                         icon={<AddIcon className="h-7 w-7 text-galatime-primary" />}
-                                        className="group min-h-16 w-full flex-1 flex-row gap-3 border-0 bg-transparent"
+                                        className="group min-h-16 w-full flex-1 flex-row gap-3 border-0"
                                         aria-label={t('newGame.create', { slot })}
                                         onPress={() => void makeSave(slot)}
                                     >

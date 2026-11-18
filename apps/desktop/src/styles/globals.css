@@ -335,6 +335,33 @@
   }
 }
 
+/* The Now Playing note keeps time with the track: a choppy hop of five poses
+   over the first 0.6 s of a 1 s cycle, then a 0.4 s hold. `steps(1, end)` makes
+   each pose snap to the next instead of tweening — pixel-game feel, and the
+   loop lives in the stylesheet so it runs in every build. */
+@keyframes popup-icon-music {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  15% {
+    transform: translateY(-4px) rotate(-12deg);
+  }
+  30% {
+    transform: translateY(0) rotate(0deg);
+  }
+  45% {
+    transform: translateY(-2px) rotate(10deg);
+  }
+  60%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+.common-popup-icon-music {
+  animation: popup-icon-music 1s steps(1, end) infinite;
+}
+
 /* The arena's ground plane. Each side deploys as two diagonal walls climbing at
    45° into the field: the front wall's low end stands on the shared ground line,
    and the rear wall is a parallel wall lifted behind it (the same lift doubles as
@@ -612,6 +639,10 @@ img {
   @media (prefers-reduced-motion: reduce) {
     .common-input-line {
       transition: none;
+    }
+
+    .common-popup-icon-music {
+      animation: none;
     }
   }
 }
