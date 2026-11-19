@@ -12,6 +12,7 @@ import type {
     CombatActionPreview,
     CombatErrorCode,
     CombatLine,
+    CombatOutcome,
     CombatSide,
     CombatState,
     CombatStats,
@@ -61,6 +62,34 @@ export type CombatSpriteResolver = (
 export interface CombatFormationSides {
     allies: CombatFormationLanes;
     adversaries: CombatFormationLanes;
+}
+
+/**
+ * Reads a backend outcome from the player's point of view.
+ *
+ * The backend names `victory`/`defeat` after the semantic `allies` side, but the
+ * generalized battle does not assume which side the player owns. If the player
+ * owns exactly one side, flip the outcome when that side is `enemies`. Flee stays
+ * as it is, and an ambiguous or ownerless board keeps the backend outcome.
+ */
+export function outcomeForPlayer(
+    state: CombatState,
+    outcome: CombatOutcome | null,
+): CombatOutcome | null {
+    if (outcome !== 'victory' && outcome !== 'defeat') return outcome;
+
+    const units = [
+        ...state.units,
+        ...(state.holdLanes ?? []).flatMap((lane) => lane.units),
+    ];
+    const playerSide = units.find((unit) => unit.isPlayerControlled)?.side;
+    if (!playerSide) return outcome;
+    if (units.some((unit) => unit.isPlayerControlled && unit.side !== playerSide)) {
+        return outcome;
+    }
+
+    const playerWon = (outcome === 'victory') === (playerSide === 'allies');
+    return playerWon ? 'victory' : 'defeat';
 }
 
 /**

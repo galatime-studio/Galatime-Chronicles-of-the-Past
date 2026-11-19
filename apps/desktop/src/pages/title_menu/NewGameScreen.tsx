@@ -247,7 +247,7 @@ export function NewGameScreen({ onBack }: { onBack: () => void }) {
                                                                         t('newGame.labels.difficulty'),
                                                                     ],
                                                                     [
-                                                                        capabilities.hasAllies ? t(ALLY_CONTROLS[save.allyControl].title) : t('newGame.labels.notApplicable'),
+                                                                        capabilities.configuresAllyControl ? t(ALLY_CONTROLS[save.allyControl].title) : t('newGame.labels.notApplicable'),
                                                                         t('newGame.labels.allies'),
                                                                     ],
                                                                 ] as [string, string][]).map(([info, label], idx) => (

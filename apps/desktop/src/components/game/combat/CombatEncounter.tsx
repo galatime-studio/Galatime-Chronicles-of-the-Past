@@ -4,8 +4,9 @@
  * Drop it on any screen with an encounter and it runs the battle end to end: it
  * opens a session through `controllers/combatController`, walks the turn queue,
  * hands the player their own turns, plays everyone else's, and closes the session
- * when the fight is over. The caller supplies the fight, a sprite resolver and an
- * `onFinish` callback — nothing else.
+ * when the fight is over. The caller supplies the fight, the side drawn on the
+ * left, a sprite resolver and an `onFinish` callback. `onFinish` reports the
+ * outcome from the player's point of view, not the semantic allies side.
  *
  * Whose turn it is decides what is drawn. A unit the player controls gets the
  * action HUD and picks an action (and, when the action needs one, a target on the
@@ -46,6 +47,7 @@ import type {
     CombatEncounter as CombatEncounterData,
     CombatEvent,
     CombatOutcome,
+    CombatSide,
     CombatState,
     StartCombatOptions,
 } from '../../../types/CombatType';
@@ -54,7 +56,7 @@ import { usePrefersReducedMotion } from '../../../hooks/usePrefersReducedMotion'
 import { BREAK_WARNING_DURABILITY } from './hud/ExtraMovementCard';
 import { buildArenaSequence, type ArenaSequence } from './battle/combatArenaSequence';
 import { CombatBattle } from './battle/CombatBattle';
-import { selectTurnUnit } from './battle/combatBattleView';
+import { outcomeForPlayer, selectTurnUnit } from './battle/combatBattleView';
 import type { CombatSpriteResolver } from './battle/combatBattleView';
 
 /**
@@ -86,8 +88,13 @@ export interface CombatEncounterProps {
     tooltipVisible?: boolean;
     /** Attack grid shape; defaults to the HUD's 2x2. */
     gridConfig?: { columns: number; rows: number };
-    /** Draws enemies on the left and the party on the right (Survival Mode). */
-    mirrorSides?: boolean;
+    /**
+     * Which semantic side is drawn on the left of the board.
+     *
+     * There is no canonical orientation in the generalized battle: the caller
+     * chooses where each side stands. The other side is drawn on the right.
+     */
+    leftSide: CombatSide;
     /**
      * Overrides `gameState.settings.combatAnimations` for this fight.
      *
@@ -340,7 +347,7 @@ export function CombatEncounter({
     onEvents,
     tooltipVisible,
     gridConfig,
-    mirrorSides = false,
+    leftSide,
     animationsEnabled,
     aiDelayMs = DEFAULT_AI_DELAY_MS,
     inventoryPicker = false,
@@ -589,7 +596,7 @@ export function CombatEncounter({
         if (reported.current === state.sessionId) return;
 
         reported.current = state.sessionId;
-        onFinish?.(state.outcome, state);
+        onFinish?.(outcomeForPlayer(state, state.outcome) ?? state.outcome, state);
     }, [state, sequence, onFinish]);
 
     /** Playing a card: resolve it, or start choosing who it lands on. */
@@ -756,7 +763,7 @@ export function CombatEncounter({
     // unit with the selector icon itself. What remains is what the fight waits on.
     const label = notice
         ?? (!busy && state.phase === 'finished' && state.outcome
-            ? t(`combat.outcome.${state.outcome}`)
+            ? t(`combat.outcome.${outcomeForPlayer(state, state.outcome) ?? state.outcome}`)
             : busy && sequence?.actionName
                 ? (sequence.actorName
                     ? t('combat.acting', { actor: sequence.actorName, action: sequence.actionName })
@@ -786,7 +793,7 @@ export function CombatEncounter({
                 onEntitySelect={handleEntitySelect}
                 tooltipVisible={tooltipVisible}
                 gridConfig={gridConfig}
-                mirrorSides={mirrorSides}
+                leftSide={leftSide}
                 className="h-full"
             />
 

@@ -47,7 +47,8 @@ export type NewGameStepId =
  * The mode is always asked first, then only the questions its capabilities make
  * meaningful: Story has no combat, so no difficulty or combat animations;
  * Survival has no dialogue, so no text speed or dialogue hint; and a mode
- * without exploration has no interactable objects to point out.
+ * without exploration has no interactable objects to point out. Ally control is
+ * asked whenever the mode configures it, even if no allies exist yet.
  */
 export function getNewGameSteps(mode: GameMode): readonly NewGameStepId[] {
   const capabilities = GAME_MODES[mode];
@@ -55,7 +56,7 @@ export function getNewGameSteps(mode: GameMode): readonly NewGameStepId[] {
 
   if (capabilities.hasCombat) steps.push('difficulty');
   steps.push('tooltips');
-  if (capabilities.hasAllies) steps.push('allies');
+  if (capabilities.configuresAllyControl) steps.push('allies');
   steps.push('presentation');
   steps.push('name');
 
@@ -109,7 +110,7 @@ export function withGameMode(draft: NewGameDraft, mode: GameMode): NewGameDraft 
     ...draft,
     gameMode: mode,
     difficulty: capabilities.hasCombat ? draft.difficulty : 'normal',
-    allyControl: capabilities.hasAllies ? draft.allyControl : 'player',
+    allyControl: capabilities.configuresAllyControl ? draft.allyControl : 'player',
     combatAnimations: capabilities.hasCombat ? draft.combatAnimations : true,
     dialogueTextSpeed: capabilities.hasDialogue ? draft.dialogueTextSpeed : DIALOGUE_DEFAULT_TEXT_SPEED,
     fightingTooltipVisible: capabilities.hasCombat ? draft.fightingTooltipVisible : true,

@@ -4,6 +4,7 @@ import type {
     CombatAction,
     CombatActionImpact,
     CombatActionPreview,
+    CombatSide,
     CombatState,
 } from '../../../../types/CombatType';
 import type { ArenaSequence } from './combatArenaSequence';
@@ -51,12 +52,13 @@ export interface CombatBattleProps {
     /** Attack grid shape; defaults to the HUD's 2x2. */
     gridConfig?: { columns: number; rows: number };
     /**
-     * Draws the enemy side on the left and the party on the right.
+     * Which semantic side is drawn on the left of the board.
      *
-     * The fight's semantics never change — allies are still `allies` — only the
-     * two visual halves swap. Sprite facing follows the drawn side, so each
-     * entity uses its own left/right combat sprite instead of being flipped.
+     * The generalized battle has no canonical orientation: the caller chooses
+     * where each side stands, and the other side is drawn on the right. Sprite
+     * facing follows the drawn side, so a unit on the left uses its right-facing
+     * sprite and a unit on the right uses its left-facing sprite.
      */
-    mirrorSides?: boolean;
+    leftSide: CombatSide;
     className?: string;
 }

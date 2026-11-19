@@ -133,7 +133,7 @@ export function EditSaveScreen({ save, onSubmit, onCancel }: EditSaveScreenProps
                                 />
                             )}
 
-                            {capabilities.hasAllies && (
+                            {capabilities.configuresAllyControl && (
                                 <CommonSelector
                                     items={ALLY_ITEMS}
                                     defaultId={draft.allyControl}

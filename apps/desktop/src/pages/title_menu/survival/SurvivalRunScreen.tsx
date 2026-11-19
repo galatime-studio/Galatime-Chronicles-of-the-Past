@@ -151,7 +151,7 @@ export function SurvivalRunScreen({ save, onSave, onExit }: SurvivalRunScreenPro
                     key={encounter.id}
                     encounter={encounter}
                     resolveSpriteUrl={resolveUnitSprite}
-                    mirrorSides
+                    leftSide="enemies"
                     animationsEnabled={record.combatAnimations}
                     tooltipVisible={record.tooltips.fighting}
                     startOptions={{ difficulty: record.difficulty, persistInventories: false }}

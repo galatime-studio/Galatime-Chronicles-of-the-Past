@@ -133,6 +133,7 @@ export function TestCombatPanel() {
                     <CombatEncounter
                         encounter={encounter}
                         resolveSpriteUrl={resolveUnitSprite}
+                        leftSide="allies"
                         onEvents={handleEvents}
                         inventoryPicker
                         startOptions={{ persistInventories: false, difficulty }}

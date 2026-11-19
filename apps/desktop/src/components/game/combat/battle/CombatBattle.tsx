@@ -45,7 +45,7 @@ export function CombatBattle({
     onEntitySelect,
     tooltipVisible,
     gridConfig,
-    mirrorSides = false,
+    leftSide,
     className = '',
 }: CombatBattleProps) {
     const turnUnit = useMemo(() => selectTurnUnit(state), [state]);
@@ -78,21 +78,21 @@ export function CombatBattle({
     const hudUnit = hudVisible ? turnUnit : reserveUnit;
 
     const sides = useMemo(() => {
-        // A mirrored board keeps the combat sides semantic and only swaps where
-        // they are drawn. Entities ship both facings, so tell the resolver which
-        // side of the board the sprite is actually drawn on instead of flipping it.
-        const resolve = mirrorSides && resolveSpriteUrl
+        // The caller decides which semantic side stands on the left. Sprite facing
+        // follows the drawn side, so tell the resolver where each unit is drawn
+        // instead of assuming a canonical orientation and flipping the rest.
+        const resolve = resolveSpriteUrl
             ? (unit: CombatUnit) => resolveSpriteUrl(
                 unit,
-                unit.side === 'allies' ? 'right' : 'left',
+                unit.side === leftSide ? 'left' : 'right',
             )
-            : resolveSpriteUrl;
+            : undefined;
         const formation = toFormationSides(state.units, resolve);
 
-        return mirrorSides
-            ? { allies: formation.adversaries, adversaries: formation.allies }
-            : formation;
-    }, [state.units, resolveSpriteUrl, mirrorSides]);
+        return leftSide === 'allies'
+            ? formation
+            : { allies: formation.adversaries, adversaries: formation.allies };
+    }, [state.units, resolveSpriteUrl, leftSide]);
     const stats = useMemo(() => toHudStats(hudUnit), [hudUnit]);
     // Cards are only usable on the player's own (idle) turn; while a step plays out they are
     // shown as out of reach, so the HUD can stay on screen without inviting a click.

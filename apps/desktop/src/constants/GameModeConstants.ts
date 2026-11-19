@@ -8,6 +8,10 @@
  *
  * Keep the capabilities and the questions in sync through `newGameFlowModel`, which
  * derives the step list from this table instead of hard-coding one per mode.
+ *
+ * `hasAllies` describes the mode at runtime; `configuresAllyControl` says whether
+ * the setup still asks who controls them. Survival has no allies yet but keeps the
+ * preference so a future update can start using it without migrating saves.
  */
 export const GAME_MODES = {
   story: {
@@ -18,6 +22,7 @@ export const GAME_MODES = {
     hasDialogue: true,
     hasExploration: true,
     hasAllies: false,
+    configuresAllyControl: false,
   },
   normal: {
     id: 'normal',
@@ -27,6 +32,7 @@ export const GAME_MODES = {
     hasDialogue: true,
     hasExploration: true,
     hasAllies: true,
+    configuresAllyControl: true,
   },
   survival: {
     id: 'survival',
@@ -36,6 +42,7 @@ export const GAME_MODES = {
     hasDialogue: false,
     hasExploration: false,
     hasAllies: false,
+    configuresAllyControl: true,
   },
 } as const;
 
