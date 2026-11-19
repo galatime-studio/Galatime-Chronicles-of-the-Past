@@ -11,7 +11,7 @@
  * shield-adjacent support action visible to the Utility AI.
  */
 
-import { AI_HEAL_REFERENCE_FRACTION } from '../../../constants/AiConstants';
+import { AI_MEND_REFERENCE_FRACTION } from '../../../constants/AiConstants';
 import type { AiDecisionContext } from '../../../types/AiType';
 import type { CombatAction, CombatUnit } from '../../../types/CombatType';
 import {
@@ -30,8 +30,12 @@ const DEFAULT_EFFECT_TURNS = 3;
  * A `[0, 1]` value for healing `target`: the fraction of its health it is
  * missing, scaled by how completely the heal covers it.
  *
- * A heal worth {@link AI_HEAL_REFERENCE_FRACTION} of the target's max HP (or
+ * A heal worth {@link AI_MEND_REFERENCE_FRACTION} of the target's max HP (or
  * more) counts as a full mend; a target at full health scores `0`.
+ *
+ * The mend reference is lower than the damage one on purpose: restoring 5% of a
+ * health bar should compete with removing 5% of one, otherwise healing is
+ * systematically undervalued against attacking and a support never supports.
  */
 export function healScore(
     context: AiDecisionContext,
@@ -49,7 +53,7 @@ export function healScore(
     const healed = estimateHealing(action, context.actor, target, context.state.units);
     if (healed <= 0) return 0;
 
-    const coverage = clamp(healed / (maxHp * AI_HEAL_REFERENCE_FRACTION), 0, 1);
+    const coverage = clamp(healed / (maxHp * AI_MEND_REFERENCE_FRACTION), 0, 1);
     return missing * coverage;
 }
 

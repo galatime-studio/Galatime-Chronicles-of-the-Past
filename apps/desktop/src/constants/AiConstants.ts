@@ -186,6 +186,24 @@ export const AI_DAMAGE_REFERENCE_FRACTION = 0.1;
 /** A heal worth this fraction of the target's max HP counts as a full mend. */
 export const AI_HEAL_REFERENCE_FRACTION = 0.25;
 
+/**
+ * The mend reference sits below the damage one on purpose: restoring health has
+ * to compete with removing it, and a support's upkeep is its whole turn. A heal
+ * worth this fraction of the target's bar reads as a full mend, so a modest
+ * 18-point team heal is still visible next to a decisive hit.
+ */
+export const AI_MEND_REFERENCE_FRACTION = 0.05;
+
+/**
+ * Health fraction below which a mend counts as a rescue, not just upkeep.
+ *
+ * A heal that pulls a unit out of kill range keeps its whole contribution in
+ * the fight, so it is worth more than the same health restored to a half-full
+ * ally. `AI_HEAL_RESCUE_WEIGHT` sets how much that premium adds at zero health.
+ */
+export const AI_HEAL_RESCUE_THRESHOLD = 0.5;
+export const AI_HEAL_RESCUE_WEIGHT = 1.5;
+
 /** Stat-delta magnitude (attack/defence points) that reads as a "full" effect. */
 export const AI_EFFECT_REFERENCE = 40;
 

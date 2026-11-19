@@ -103,29 +103,39 @@ function buildFactors(situation: AiSituation): Record<AiConsiderationId, number>
     /** `0` = nothing to combine, `1` = two live setups with payoffs. */
     const comboPotential = clamp(situation.kit.comboPotential, 0, 1);
 
+    /**
+     * `0` = the actor carries its share of the damage, `1` = a dedicated
+     * support whose attack is far behind the team's.
+     */
+    const support = clamp(situation.role.support, 0, 1);
+
     return {
-        // Damage is always good; it is worth more when a kill ends the fight.
-        expected_damage: 1 + 0.35 * lateGame,
+        // Damage is always good; it is worth more when a kill ends the fight,
+        // and less when the unit's job is to keep someone else standing.
+        expected_damage: (1 + 0.35 * lateGame) * (1 - 0.4 * support),
         kill_secure: 1 + 0.6 * lateGame,
 
         // Elemental advantage pays off over several hits, so it needs a fight.
         element_edge: 1 + 0.2 * earlyGame,
 
         // Setups are the future: worth more with time, when they land, and when
-        // the kit actually holds the payoff for them.
+        // the kit actually holds the payoff for them. A support unit's setup is
+        // the buff itself, so the role raises the whole family.
         effect_value: (1 - 0.45 * lateGame + 0.5 * timeToPlan)
             * (1 - 0.5 * resistance)
-            * (1 + 0.45 * comboPotential),
+            * (1 + 0.45 * comboPotential)
+            * (1 + 0.6 * support),
 
         survival: 1 + 1.1 * ownHp + 0.5 * threat + 0.35 * outnumbered,
         flee: 1,
-        heal_ally: 1 + 0.9 * allyHp + 0.3 * outnumbered,
+        heal_ally: (1 + 0.9 * allyHp + 0.3 * outnumbered) * (1 + 0.9 * support),
         heal_self: 1 + 0.9 * ownHp,
         defend: 1 + 0.9 * threat + 0.25 * outnumbered,
         rest: 1 + 1.4 * resource,
         reposition: 1 + 0.35 * earlyGame,
         resource_guard: 1 + 1.1 * resource,
-        resource_share: 1 + 0.8 * clamp(Math.max(pressure.allyMana, pressure.allyStamina), 0, 1),
+        resource_share: (1 + 0.8 * clamp(Math.max(pressure.allyMana, pressure.allyStamina), 0, 1))
+            * (1 + 0.3 * support),
 
         // A potion is a stopgap: it matters most when the actor is nearly out.
         item: 1 + 0.8 * ownHp,

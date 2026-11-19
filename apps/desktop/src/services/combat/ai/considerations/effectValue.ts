@@ -379,18 +379,26 @@ function statValue(
     targets: readonly CombatUnit[],
     turns: number,
 ): number {
-    const bearer = targets[0] ?? context.actor;
-    const stats = effectiveStats(bearer);
+    // Each bearer sees the change against its own base stats, and an AoE buff
+    // has to pay for every unit it actually reaches: pricing a team buff from
+    // its first target made wide support actions look worthless.
+    const bearers = targets.length > 0 ? targets : [context.actor];
+    const buff = readStatDelta(record.buff);
+    const debuff = readStatDelta(record.debuff);
+    const multipliers = multiplierMagnitude(record.stat_multipliers);
 
-    let share = statShare(readStatDelta(record.buff), stats);
+    let share = 0;
+    for (const bearer of bearers) {
+        const stats = effectiveStats(bearer);
+        share += statShare(buff, stats);
 
-    // A debuff is only a gain when it lands on the other side. `granite_hide`
-    // taxes the caster's speed to raise its guard; pricing that tax as value
-    // paid the AI for hurting itself and made the wall outrank an attack.
-    const harmsOpponent = targets.some((entry) => entry.side !== context.actor.side);
-    if (harmsOpponent) share += statShare(readStatDelta(record.debuff), stats);
+        // A debuff is only a gain when it lands on the other side. `granite_hide`
+        // taxes the caster's speed to raise its guard; pricing that tax as value
+        // paid the AI for hurting itself and made the wall outrank an attack.
+        if (bearer.side !== context.actor.side) share += statShare(debuff, stats);
+    }
 
-    share += multiplierMagnitude(record.stat_multipliers);
+    share += multipliers * bearers.length;
 
     return clamp(share * turns * AI_STAT_TURN_VALUE, 0, AI_STAT_EFFECT_CAP);
 }

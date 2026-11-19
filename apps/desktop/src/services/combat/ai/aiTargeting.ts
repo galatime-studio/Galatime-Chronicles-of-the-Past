@@ -43,17 +43,25 @@ const WRONG_SIDE_BIAS = 0.05;
  * The multiplier a candidate's score is scaled by.
  *
  * `0` when every target is avoided, `1` when the profile has no preference, and
- * a value in `[AI_TARGET_BIAS_FLOOR, 1]` when a preference applies. Multi-target
- * actions use the mean bias of the units they land on.
+ * a value in `[AI_TARGET_BIAS_FLOOR, 1]` when a preference applies. Offensive
+ * multi-target actions use the mean bias of the units they land on; a support
+ * action uses the best one, because a team mend is only as good as the ally who
+ * needs it, not the healthy caster it also lands on.
  */
 export function targetBias(context: AiDecisionContext, candidate: AiCandidate): number {
     const targets = candidateTargetUnits(context, candidate);
     if (targets.length === 0) return 1;
 
     const pool = aimPool(context, candidate);
-    let total = 0;
-    for (const target of targets) total += biasForTarget(context, candidate.action, target, pool);
-    return total / targets.length;
+    const biases = targets.map((target) => (
+        biasForTarget(context, candidate.action, target, pool)
+    ));
+
+    if (actionIntent(candidate.action) === 'supportive' && biases.length > 1) {
+        return Math.max(...biases);
+    }
+
+    return biases.reduce((total, bias) => total + bias, 0) / biases.length;
 }
 
 /**

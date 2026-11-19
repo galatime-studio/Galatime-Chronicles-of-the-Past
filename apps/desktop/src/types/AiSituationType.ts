@@ -44,6 +44,26 @@ export interface AiSituationEffect {
     debuffMagnitude: number;
 }
 
+/**
+ * How the actor's kit compares to the rest of its side.
+ *
+ * A healer with a weak attack should not be scored like a damage dealer. The
+ * role reads the actor's own offensive output against its allies' and how much
+ * of its kit is aimed at helping them, so the weight layer can lean the unit
+ * towards support without changing one authored number.
+ */
+export interface AiSituationRole {
+    /** The actor's share of its side's damage per round, `0`–`1`. */
+    offenseShare: number;
+    /** Fraction of the actor's actions that support allies, `0`–`1`. */
+    supportShare: number;
+    /**
+     * `0`–`1` support-role strength: support kit × how far below the team's
+     * average output the actor sits. `0` for a solo side or a strong attacker.
+     */
+    support: number;
+}
+
 /** One unit as the situational model sees it. */
 export interface AiSituationUnit {
     id: string;
@@ -190,6 +210,7 @@ export interface AiSituation {
     horizon: AiSituationHorizon;
     pressure: AiSituationPressure;
     kit: AiSituationKit;
+    role: AiSituationRole;
     /** Active battlefield weather, when any. */
     weather: {
         id: string;

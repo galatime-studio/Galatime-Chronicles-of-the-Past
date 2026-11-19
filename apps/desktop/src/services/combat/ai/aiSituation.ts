@@ -35,6 +35,7 @@ import type {
     AiSituationHorizon,
     AiSituationKit,
     AiSituationPressure,
+    AiSituationRole,
     AiSituationUnit,
 } from '../../../types/AiSituationType';
 import type {
@@ -47,6 +48,7 @@ import type {
 } from '../../../types/CombatType';
 import { clamp } from '../../../utils/combatUtils';
 import { effectiveStats } from '../effectResolver';
+import { actionIntent } from './aiIntent';
 import { estimateThreatAgainst, threatFrom } from './aiThreat';
 
 /** Builds the snapshot for the context's actor. */
@@ -87,6 +89,7 @@ export function buildAiSituation(context: AiDecisionContext): AiSituation {
     );
     const pressure = buildPressure(allies, enemies);
     const kit = buildKit(actor, livingAllies);
+    const role = buildRole(context, actor, livingAllies, livingEnemies);
 
     return {
         round: state.round,
@@ -99,6 +102,7 @@ export function buildAiSituation(context: AiDecisionContext): AiSituation {
         horizon,
         pressure,
         kit,
+        role,
         weather: state.weather
             ? {
                 id: state.weather.id,
@@ -128,6 +132,57 @@ function sideDamagePerRound(
         (total, attacker) => total + threatFrom(context, attacker, target),
         0,
     );
+}
+
+/**
+ * How much of a support role the actor is playing.
+ *
+ * Two signals, both read from the fight rather than authored: the share of the
+ * side's damage the actor is expected to land, and the share of its kit that
+ * helps allies. A healer whose attack is a fraction of her team's output gets a
+ * strong support score; a heavy hitter who happens to carry one buff does not.
+ */
+function buildRole(
+    context: AiDecisionContext,
+    actor: CombatUnit,
+    livingAllies: readonly CombatUnit[],
+    livingEnemies: readonly CombatUnit[],
+): AiSituationRole {
+    const supportShare = actor.actions.length > 0
+        ? actor.actions.filter(isAllySupport).length / actor.actions.length
+        : 0;
+
+    if (livingAllies.length <= 1 || livingEnemies.length === 0) {
+        return { offenseShare: 0, supportShare, support: 0 };
+    }
+
+    const target = livingEnemies.reduce((weakest, unit) => (
+        unit.currentHp < weakest.currentHp ? unit : weakest
+    ));
+    let total = 0;
+    const output = new Map<string, number>();
+    for (const ally of livingAllies) {
+        const value = threatFrom(context, ally, target);
+        output.set(ally.id, value);
+        total += value;
+    }
+
+    const offenseShare = total > 0 ? clamp((output.get(actor.id) ?? 0) / total, 0, 1) : 0;
+    // 1 means exactly the team's average output; below it the unit is a
+    // contributor, above it the unit is carrying the damage.
+    const relative = offenseShare * livingAllies.length;
+    const weakness = total > 0 ? clamp(1 - relative, 0, 1) : 1;
+    return { offenseShare, supportShare, support: clamp(supportShare * weakness, 0, 1) };
+}
+
+/**
+ * An action that helps the actor's allies.
+ *
+ * Self-only buffs do not count: a brawler casting a personal rage is still
+ * playing its own game, while a heal or team buff is a team resource.
+ */
+function isAllySupport(action: CombatAction): boolean {
+    return action.targeting !== 'self' && actionIntent(action) === 'supportive';
 }
 
 /** One unit, with every pool and every effect. */

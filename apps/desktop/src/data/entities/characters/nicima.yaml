@@ -56,6 +56,9 @@ weapon:
     summary: "60% chance to restore 6 mana to the wielder on hit."
 
 ai:
+  # A healer first: the weighting leans on mends, buffs and mana sharing, and a
+  # weakened team reads as a reason to support instead of trading hits.
+  style: support
   targeting:
     # `damage` only ranks offensive aims, so mends still follow `weakest`.
     prefer: [weakest, damage]
