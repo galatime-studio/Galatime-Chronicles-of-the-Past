@@ -5,6 +5,7 @@
 		"slot": "Save {{slot}}",
 		"emptySlot": "Empty slot {{slot}}",
 		"create": "Create save in slot {{slot}}",
+		"openSave": "Open {{name}}",
 		"edit": "Edit",
 		"editTitle": "Edit Save",
 		"editModeLocked": "The mode is fixed after the chronicle is created.",

@@ -64,6 +64,12 @@ export interface UnitInstantiationParams {
     /** Fraction of max HP to start on; `1` (the default) is full health. */
     hpRatio?: number;
     /**
+     * Explicit starting health, for a unit whose damage carries between fights.
+     *
+     * Takes precedence over {@link hpRatio} and is clamped to the maximum.
+     */
+    currentHp?: number;
+    /**
      * Weapons the unit carries instead of the blueprint's default. The first usable
      * one is equipped. An empty list falls back to the blueprint's own loadout, so a
      * unit is never left without an attack.
@@ -235,7 +241,12 @@ export function instantiateUnit(
     if (inHand) equipCarriedWeapon(unit, inHand);
 
     const ratio = params.hpRatio ?? 1;
-    if (ratio < 1) {
+    if (params.currentHp !== undefined) {
+        unit.currentHp = Math.min(
+            unit.stats.maxHp,
+            Math.max(1, Math.round(params.currentHp)),
+        );
+    } else if (ratio < 1) {
         unit.currentHp = Math.max(1, Math.round(unit.stats.maxHp * Math.max(0, ratio)));
     }
 

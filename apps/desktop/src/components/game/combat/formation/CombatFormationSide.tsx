@@ -399,6 +399,7 @@ export function CombatFormationSide({
                                     entity={entity}
                                     side={side}
                                     lane={lane}
+                                    spriteMirrored={entity.spriteMirrored}
                                     stackIndex={index}
                                     wallOut={out}
                                     wallUp={up}

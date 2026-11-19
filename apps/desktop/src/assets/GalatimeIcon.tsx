@@ -3,20 +3,18 @@ import { useTranslation } from 'react-i18next';
 import CommonImage from '../components/common/CommonImage';
 
 // Checked-in UI glyphs, hashed by Vite at build time (or inlined as data URIs when small).
-import arrowRightUrl from './images/ui/arrow/arrow_right.svg';
-import arrowUpUrl from './images/ui/arrow/arrow_up.svg';
-import arrowDownUrl from './images/ui/arrow/arrow_down.svg';
-import musicNoteUrl from './images/ui/misc/music_note.svg';
-import folderUrl from './images/ui/misc/folder.svg';
-import unknownUrl from './images/ui/misc/unknown.svg';
-import addUrl from './images/ui/misc/add.svg';
-import closeUrl from './images/ui/misc/close.svg';
-import controlUrl from './images/ui/misc/control.svg';
-import editUrl from './images/ui/misc/edit.svg';
-import fitUrl from './images/ui/misc/fit.svg';
-import removeUrl from './images/ui/misc/remove.svg';
-import selectorUrl from './images/ui/misc/selector.svg';
-import trashUrl from './images/ui/misc/trash.svg';
+import arrowRightUrl from './images/ui/outline/arrow.svg';
+import musicNoteUrl from './images/ui/outline/music_note.svg';
+import folderUrl from './images/ui/outline/folder.svg';
+import unknownUrl from './images/ui/outline/unknown.svg';
+import addUrl from './images/ui/outline/add.svg';
+import closeUrl from './images/ui/outline/close.svg';
+import controlUrl from './images/ui/outline/control.svg';
+import editUrl from './images/ui/outline/edit.svg';
+import fitUrl from './images/ui/outline/fit.svg';
+import removeUrl from './images/ui/outline/remove.svg';
+import selectorUrl from './images/ui/outline/selector.svg';
+import trashUrl from './images/ui/outline/trash.svg';
 import gtStudioSvgUrl from './images/gt-studio.svg';
 import defendUrl from './images/combat/extra/defend.svg';
 import restUrl from './images/combat/extra/rest.svg';
@@ -61,10 +59,7 @@ export const UNKNOWN_ELEMENT_ICON: string = elementUnknownUrl;
  * `public/GT_Team_logo.png`, which was the same square art rasterised at 3100×3100.
  */
 export const gtStudioLogoUrl: string = gtStudioSvgUrl;
-import loading0Url from './images/ui/loading/loading_0.svg';
-import loading1Url from './images/ui/loading/loading_1.svg';
-import loading2Url from './images/ui/loading/loading_2.svg';
-import loading3Url from './images/ui/loading/loading_3.svg';
+import loadingUrl from './images/ui/outline/loading.svg';
 
 // --- App Icon (Genérico) ---
 interface AppIconProps {
@@ -116,6 +111,8 @@ interface MaskIconProps {
   className?: string;
   /** Size box classes, so an icon can default to a size relative to the text it sits in. */
   sizeClass?: string;
+  /** Rotation in degrees; used when one SVG stands in for several orientations. */
+  rotate?: number;
 }
 
 /**
@@ -129,7 +126,7 @@ interface MaskIconProps {
  * Like {@link ArrowRight}'s old glyph, icons are sized in `em` by default (the `em`-based size
  * classes beat a plain `text-*` font-size; pass `h-*`/`w-*` classes to force concrete sizes).
  */
-const MaskIcon: React.FC<MaskIconProps & { src: string }> = ({ src, sizeClass = 'h-[1em] w-[1em]', className = '' }) => (
+const MaskIcon: React.FC<MaskIconProps & { src: string }> = ({ src, sizeClass = 'h-[1em] w-[1em]', className = '', rotate = 0 }) => (
   <span
     aria-hidden="true"
     className={`block ${sizeClass} bg-current ${className}`}
@@ -146,6 +143,7 @@ const MaskIcon: React.FC<MaskIconProps & { src: string }> = ({ src, sizeClass = 
       WebkitMaskPosition: 'center',
       maskSize: 'contain',
       WebkitMaskSize: 'contain',
+      transform: rotate ? `rotate(${rotate}deg)` : undefined,
     }}
   />
 );
@@ -166,10 +164,10 @@ interface ArrowIconProps {
 export const ArrowRight: React.FC<ArrowIconProps> = ({ className = '' }) => <MaskIcon src={arrowRightUrl} sizeClass="h-[0.8em] w-[0.8em]" className={className} />;
 
 /** Used to mark a statistic a status effect has raised. */
-export const ArrowUp: React.FC<ArrowIconProps> = ({ className = '' }) => <MaskIcon src={arrowUpUrl} sizeClass="h-[0.8em] w-[0.8em]" className={className} />;
+export const ArrowUp: React.FC<ArrowIconProps> = ({ className = '' }) => <MaskIcon src={arrowRightUrl} sizeClass="h-[0.8em] w-[0.8em]" className={className} rotate={-90} />;
 
 /** Used to mark a statistic a status effect has lowered. */
-export const ArrowDown: React.FC<ArrowIconProps> = ({ className = '' }) => <MaskIcon src={arrowDownUrl} sizeClass="h-[0.8em] w-[0.8em]" className={className} />;
+export const ArrowDown: React.FC<ArrowIconProps> = ({ className = '' }) => <MaskIcon src={arrowRightUrl} sizeClass="h-[0.8em] w-[0.8em]" className={className} rotate={90} />;
 
 // --- Switch Icon ---
 interface SwitchIconProps {
@@ -306,7 +304,7 @@ export const ChangeIcon: React.FC<CombatIconProps> = ({ className = '' }) => <Ma
 
 // --- Loading Component ---
 interface LoadingProps {
-  images?: [string, string, string, string];
+  images?: string[];
   interval?: number;
   loadingText?: string;
   subtext?: string;
@@ -316,12 +314,7 @@ interface LoadingProps {
   subtextClassName?: string;
 }
 
-const DEFAULT_LOADING_IMAGES: [string, string, string, string] = [
-  loading0Url,
-  loading1Url,
-  loading2Url,
-  loading3Url,
-];
+const DEFAULT_LOADING_IMAGES: string[] = [loadingUrl];
 
 export const Loading: React.FC<LoadingProps> = ({
   images = DEFAULT_LOADING_IMAGES,

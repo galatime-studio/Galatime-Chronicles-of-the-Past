@@ -3,6 +3,8 @@ import { clampDialogueTextSpeed, DIALOGUE_DEFAULT_TEXT_SPEED } from '../constant
 import { isAllyControl, type AllyControl } from '../constants/AllyControlConstants';
 import { isDifficulty, type Difficulty } from '../constants/DifficultyConstants';
 import { isGameMode, type GameMode } from '../constants/GameModeConstants';
+import { normalizeSurvivalRun } from '../constants/SurvivalConstants';
+import type { SurvivalRun } from '../types/SurvivalType';
 
 export const SAVE_SLOTS = [1, 2, 3, 4, 5] as const;
 export type SaveSlot = (typeof SAVE_SLOTS)[number];
@@ -35,6 +37,8 @@ export interface SaveData {
   combatAnimations: boolean;
   dialogueTextSpeed: number;
   showNowPlayingMusic: boolean;
+  /** Survival Mode's carried state; unused by the other modes. */
+  survival: SurvivalRun;
   /** ISO timestamp of the first creation; preserved when the save is edited. */
   createdAt: string;
 }
@@ -89,6 +93,7 @@ function normalizeSaveData(raw: unknown): SaveData | null {
     combatAnimations: data.combatAnimations !== false,
     dialogueTextSpeed: textSpeed,
     showNowPlayingMusic: data.showNowPlayingMusic !== false,
+    survival: normalizeSurvivalRun(data.survival),
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
   };
 }

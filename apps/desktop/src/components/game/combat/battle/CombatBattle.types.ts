@@ -50,5 +50,13 @@ export interface CombatBattleProps {
     tooltipVisible?: boolean;
     /** Attack grid shape; defaults to the HUD's 2x2. */
     gridConfig?: { columns: number; rows: number };
+    /**
+     * Draws the enemy side on the left and the party on the right.
+     *
+     * The fight's semantics never change — allies are still `allies` — only the
+     * two visual halves swap. Sprite facing follows the drawn side, so each
+     * entity uses its own left/right combat sprite instead of being flipped.
+     */
+    mirrorSides?: boolean;
     className?: string;
 }

@@ -9,8 +9,9 @@ import dialogueEn from './locales/en/dialogue.json';
 import playgroundEn from './locales/en/playground.json';
 import combatEn from './locales/en/combat.json';
 import creditsEn from './locales/en/credits.json';
+import survivalEn from './locales/en/survival.json';
 
-const namespaces = ['common', 'game', 'titleMenu', 'newGame', 'settings', 'dialogue', 'playground', 'combat', 'credits'] as const;
+const namespaces = ['common', 'game', 'titleMenu', 'newGame', 'settings', 'dialogue', 'playground', 'combat', 'credits', 'survival'] as const;
 
 // `useTranslation(['a', 'b'])` only binds the first namespace unless `nsMode` is
 // `'fallback'`. Without it, keys from the second namespace (e.g. `dialogue.debug.*`
@@ -37,6 +38,7 @@ i18next
         playground: playgroundEn,
         combat: combatEn,
         credits: creditsEn,
+        survival: survivalEn,
       },
     },
     interpolation: {

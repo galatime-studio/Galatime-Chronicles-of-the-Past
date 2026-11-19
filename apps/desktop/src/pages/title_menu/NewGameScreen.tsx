@@ -15,6 +15,7 @@ import { playSfx } from '../../controllers/audioController';
 import { createNewGameDraft } from './new_game/newGameFlowModel';
 import { NewGameFlow } from './new_game/NewGameFlow';
 import { EditSaveScreen } from './new_game/EditSaveScreen';
+import { SurvivalRunScreen } from './survival/SurvivalRunScreen';
 
 /**
  * Reveal of the folder shortcut: it starts tucked behind the label (shifted left, shrunk and
@@ -45,11 +46,18 @@ interface FlowState {
     save: SaveData | null;
 }
 
+/** A save opened for play; currently only Survival Mode has a run to open. */
+interface RunState {
+    slot: SaveSlot;
+    save: SaveData;
+}
+
 export function NewGameScreen({ onBack }: { onBack: () => void }) {
     const { t } = useTranslation(['newGame', 'game', 'common']);
     const { gameState, setGameState } = useGame();
     const [saves, setSaves] = useState<Record<SaveSlot, SaveData | null>>(EMPTY_SLOTS);
     const [flow, setFlow] = useState<FlowState | null>(null);
+    const [run, setRun] = useState<RunState | null>(null);
     const [deleteSlot, setDeleteSlot] = useState<SaveSlot | null>(null);
     const [hovered, setHovered] = useState(false);
     const [focused, setFocused] = useState(false);
@@ -77,17 +85,35 @@ export function NewGameScreen({ onBack }: { onBack: () => void }) {
         setDeleteSlot(null);
     };
 
+    /** Opens a run from a survival save; other modes have no gameplay screen yet. */
+    const openRun = (slot: SaveSlot, save: SaveData) => {
+        if (save.gameMode !== 'survival') return;
+        playSfx('click');
+        setRun({ slot, save });
+    };
+
+    /** Writes a run's progress back to its slot without leaving the run. */
+    const saveRun = async (data: SaveData) => {
+        if (!run) return;
+
+        const slot = run.slot;
+        await createSave(slot, data);
+        setSaves((previous) => ({ ...previous, [slot]: data }));
+        setRun({ slot, save: data });
+    };
+
     /**
      * Writes the setup to the slot and applies it to the running settings.
      *
-     * There is no gameplay screen yet, so the newly created save is shown back in
-     * the slot list; the settings are still updated so the answers are already in
-     * effect when the chronicle opens.
+     * A newly created Survival save opens its run straight away, so its first
+     * round can start without a detour through the slot list. Editing a save and
+     * every other mode still return to the list.
      */
     const completeFlow = async (data: SaveData) => {
         if (!flow) return;
 
         const slot = flow.slot;
+        const creating = flow.save === null;
         await createSave(slot, data);
         setSaves((previous) => ({ ...previous, [slot]: data }));
         setGameState((previous) => ({
@@ -107,6 +133,9 @@ export function NewGameScreen({ onBack }: { onBack: () => void }) {
             },
         }));
         setFlow(null);
+        if (creating && data.gameMode === 'survival') {
+            setRun({ slot, save: data });
+        }
     };
 
     return (
@@ -117,7 +146,14 @@ export function NewGameScreen({ onBack }: { onBack: () => void }) {
             exit={{ opacity: 0, transition: PAGE_FADE_TRANSITION }}
         >
             <AnimatePresence mode="wait" initial={false}>
-                {flow ? (
+                {run ? (
+                    <SurvivalRunScreen
+                        key={`survival-${run.slot}`}
+                        save={run.save}
+                        onSave={saveRun}
+                        onExit={() => setRun(null)}
+                    />
+                ) : flow ? (
                     flow.save ? (
                         <EditSaveScreen
                             key="edit-save"
@@ -185,7 +221,18 @@ export function NewGameScreen({ onBack }: { onBack: () => void }) {
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: slot * 0.04, duration: 0.25 }}
-                                                className="flex w-full flex-col border-game border-white/15 bg-galatime-dark/60 py-2.5 px-4 transition-colors duration-300 hover:border-galatime-primary/70 sm:flex-row sm:items-center sm:gap-3"
+                                                role={save?.gameMode === 'survival' ? 'button' : undefined}
+                                                tabIndex={save?.gameMode === 'survival' ? 0 : undefined}
+                                                aria-label={save?.gameMode === 'survival' ? t('newGame.openSave', { name: save.name }) : undefined}
+                                                onClick={save?.gameMode === 'survival' ? () => openRun(slot, save) : undefined}
+                                                onKeyDown={save?.gameMode === 'survival' ? (event) => {
+                                                    if (event.target !== event.currentTarget) return;
+                                                    if (event.key === 'Enter' || event.key === ' ') {
+                                                        event.preventDefault();
+                                                        openRun(slot, save);
+                                                    }
+                                                } : undefined}
+                                                className={`flex w-full flex-col border-game border-white/15 bg-galatime-dark/60 py-2.5 px-4 transition-colors duration-300 hover:border-galatime-primary/70 sm:flex-row sm:items-center sm:gap-3 ${save?.gameMode === 'survival' ? 'cursor-pointer' : ''}`}
                                             >
                                                 {save && capabilities ? (
                                                     <>
@@ -219,6 +266,7 @@ export function NewGameScreen({ onBack }: { onBack: () => void }) {
                                                                 size="sm"
                                                                 aria-label={t('newGame.edit')}
                                                                 title={t('newGame.edit')}
+                                                                onClick={(event) => event.stopPropagation()}
                                                                 onPress={() => setFlow({ slot, save })}
                                                                 className="h-7 w-7 border-game p-0 opacity-55 hover:opacity-100"
                                                                 icon={<EditIcon className="h-3.5 w-3.5" />}
@@ -228,6 +276,7 @@ export function NewGameScreen({ onBack }: { onBack: () => void }) {
                                                                 size="sm"
                                                                 aria-label={t('newGame.remove')}
                                                                 title={t('newGame.remove')}
+                                                                onClick={(event) => event.stopPropagation()}
                                                                 onPress={() => setDeleteSlot(slot)}
                                                                 className="h-7 w-7 border-game p-0"
                                                                 icon={<TrashIcon className="h-3.5 w-3.5 text-galatime-error" />}

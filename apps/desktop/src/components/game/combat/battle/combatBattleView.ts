@@ -44,14 +44,18 @@ export interface CombatSpriteSelection {
     /**
      * The sprite faces away from the unit's battlefield side and is drawn flipped.
      *
-     * Entities ship combat sprites for one facing only; when the opposite one is
-     * all there is, the resolver hands it back with this flag and the formation
-     * mirrors it in CSS rather than playing a character walking backwards.
+     * This is only a fallback for an entity that has no sprite for the side it is
+     * drawn on. Entities normally ship both facings; the resolver picks the right
+     * one instead of mirroring it.
      */
     mirrored?: boolean;
 }
 
-export type CombatSpriteResolver = (unit: CombatUnit) => CombatSpriteSelection | undefined;
+export type CombatSpriteResolver = (
+    unit: CombatUnit,
+    /** Board side the unit is drawn on. Defaults to its semantic combat side. */
+    visualSide?: 'left' | 'right',
+) => CombatSpriteSelection | undefined;
 
 /** Both sides of the battlefield, split into their two lanes. */
 export interface CombatFormationSides {

@@ -742,9 +742,10 @@ async function buildUnits(
                     ?? side === 'allies',
                 name: override?.name ?? member.name,
                 hp: member.hp,
+                currentHp: member.currentHp,
                 weapons,
                 actions: generatedActions,
-                stats: override?.stats,
+                stats: override?.stats ?? member.stats,
                 elementIds: override?.elementIds,
                 startingEffects: override?.startingEffects,
                 aiProfile: override?.aiStyle

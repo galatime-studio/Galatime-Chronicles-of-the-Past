@@ -14,7 +14,7 @@
  */
 
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { CombatAction } from '../../../../types/CombatType';
+import type { CombatAction, CombatUnit } from '../../../../types/CombatType';
 import { effectiveTimePhase } from '../../../../services/combat/phaseOverride';
 import type { CombatBattleProps } from './CombatBattle.types';
 import { CombatFormationHUD } from '../formation/CombatFormationHUD';
@@ -45,6 +45,7 @@ export function CombatBattle({
     onEntitySelect,
     tooltipVisible,
     gridConfig,
+    mirrorSides = false,
     className = '',
 }: CombatBattleProps) {
     const turnUnit = useMemo(() => selectTurnUnit(state), [state]);
@@ -76,10 +77,22 @@ export function CombatBattle({
     /** The HUD shows the acting player unit; during an opponent's turn, the reserve unit. */
     const hudUnit = hudVisible ? turnUnit : reserveUnit;
 
-    const sides = useMemo(
-        () => toFormationSides(state.units, resolveSpriteUrl),
-        [state.units, resolveSpriteUrl],
-    );
+    const sides = useMemo(() => {
+        // A mirrored board keeps the combat sides semantic and only swaps where
+        // they are drawn. Entities ship both facings, so tell the resolver which
+        // side of the board the sprite is actually drawn on instead of flipping it.
+        const resolve = mirrorSides && resolveSpriteUrl
+            ? (unit: CombatUnit) => resolveSpriteUrl(
+                unit,
+                unit.side === 'allies' ? 'right' : 'left',
+            )
+            : resolveSpriteUrl;
+        const formation = toFormationSides(state.units, resolve);
+
+        return mirrorSides
+            ? { allies: formation.adversaries, adversaries: formation.allies }
+            : formation;
+    }, [state.units, resolveSpriteUrl, mirrorSides]);
     const stats = useMemo(() => toHudStats(hudUnit), [hudUnit]);
     // Cards are only usable on the player's own (idle) turn; while a step plays out they are
     // shown as out of reach, so the HUD can stay on screen without inviting a click.

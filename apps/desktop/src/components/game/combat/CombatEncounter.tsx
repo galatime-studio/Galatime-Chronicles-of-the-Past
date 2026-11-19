@@ -86,6 +86,15 @@ export interface CombatEncounterProps {
     tooltipVisible?: boolean;
     /** Attack grid shape; defaults to the HUD's 2x2. */
     gridConfig?: { columns: number; rows: number };
+    /** Draws enemies on the left and the party on the right (Survival Mode). */
+    mirrorSides?: boolean;
+    /**
+     * Overrides `gameState.settings.combatAnimations` for this fight.
+     *
+     * Survival Mode keeps the choice with the save, so opening a save applies its
+     * own preference even when the running settings belong to another chronicle.
+     */
+    animationsEnabled?: boolean;
     /** Pause before an opponent's move, so the player can follow what happened. */
     aiDelayMs?: number;
     /**
@@ -331,6 +340,8 @@ export function CombatEncounter({
     onEvents,
     tooltipVisible,
     gridConfig,
+    mirrorSides = false,
+    animationsEnabled,
     aiDelayMs = DEFAULT_AI_DELAY_MS,
     inventoryPicker = false,
     startOptions,
@@ -375,7 +386,7 @@ export function CombatEncounter({
     const sequenceId = useRef(0);
 
     /** Whether the arena narrates its steps or resolves them instantly. */
-    const animate = (gameState.settings.combatAnimations ?? true) && !reduceMotion;
+    const animate = (animationsEnabled ?? gameState.settings.combatAnimations ?? true) && !reduceMotion;
 
     /** A step is being played: the turn has not really moved on yet. */
     const busy = sequence !== null;
@@ -775,6 +786,7 @@ export function CombatEncounter({
                 onEntitySelect={handleEntitySelect}
                 tooltipVisible={tooltipVisible}
                 gridConfig={gridConfig}
+                mirrorSides={mirrorSides}
                 className="h-full"
             />
 

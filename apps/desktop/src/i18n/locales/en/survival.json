@@ -1,0 +1,44 @@
+{
+	"survival": {
+		"character": "Arthur",
+		"round": "Round {{round}}",
+		"bestRound": "Best round",
+		"nextRound": "Next round",
+		"coinsAria": "{{coins}} coins",
+		"hp": "HP",
+		"heal": "Heal",
+		"start": "Start round {{round}}",
+		"loading": "Preparing the waves...",
+		"roundCleared": "Round {{round}} cleared.",
+		"returnToSaves": "Return to saves",
+		"comingSoon": "Soon",
+		"tabs": {
+			"label": "Market sections",
+			"shop": "Shop",
+			"inventory": "Inventory",
+			"upgrades": "Upgrades",
+			"skillTree": "Skill Tree",
+			"fountain": "Fountain of Life"
+		},
+		"fountain": {
+			"title": "Fountain of Life",
+			"description": "Restores {{percent}}% of maximum HP.",
+			"full": "HP is already full.",
+			"needCoins": "You need more coins for a heal."
+		},
+		"shop": {
+			"title": "Supplies",
+			"select": "Select {{name}} for {{price}} coins",
+			"buy": "Buy",
+			"unavailable": "Inventory coming soon"
+		},
+		"defeat": {
+			"kicker": "The run ends",
+			"title": "Run over",
+			"reached": "You fell on round {{round}}.",
+			"retreated": "You left the run at round {{round}}.",
+			"reachedLabel": "Round reached",
+			"bestLabel": "Best round"
+		}
+	}
+}

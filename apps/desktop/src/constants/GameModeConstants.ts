@@ -35,7 +35,7 @@ export const GAME_MODES = {
     hasCombat: true,
     hasDialogue: false,
     hasExploration: false,
-    hasAllies: true,
+    hasAllies: false,
   },
 } as const;
 

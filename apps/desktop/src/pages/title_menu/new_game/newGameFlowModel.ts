@@ -2,6 +2,7 @@ import type { GameSettings } from '../../../context/GameContext';
 import type { SaveData } from '../../../services/saveService';
 import type { AllyControl } from '../../../constants/AllyControlConstants';
 import { DIALOGUE_DEFAULT_TEXT_SPEED, flipDialogueTextSpeed } from '../../../constants/DialogueConstants';
+import { createDefaultSurvivalRun } from '../../../constants/SurvivalConstants';
 import type { Difficulty } from '../../../constants/DifficultyConstants';
 import { GAME_MODES, type GameMode } from '../../../constants/GameModeConstants';
 
@@ -152,6 +153,7 @@ export function toSaveData(draft: NewGameDraft, previous?: SaveData | null): Sav
     combatAnimations: draft.combatAnimations,
     dialogueTextSpeed: draft.dialogueTextSpeed,
     showNowPlayingMusic: draft.showNowPlayingMusic,
+    survival: previous?.survival ?? createDefaultSurvivalRun(),
     createdAt: previous?.createdAt || new Date().toISOString(),
   };
 }

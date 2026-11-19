@@ -1511,6 +1511,19 @@ export interface CombatEncounterMember {
     /** Max-HP override for bosses and scaled encounters. */
     hp?: number;
     /**
+     * Stat overlay for scaled encounters.
+     *
+     * Merged over the entity's `base_stats`, so a Survival Mode slime can grow
+     * with the round without authoring a new mob for every step of the ladder.
+     */
+    stats?: Partial<CombatStats>;
+    /**
+     * Starting health for a unit that carries damage between fights.
+     *
+     * Clamped to the resolved maximum. Omitted, the unit starts full.
+     */
+    currentHp?: number;
+    /**
      * What this member carries into the fight, item id to quantity.
      *
      * When set, it replaces the entity store as the source of the unit's opening
