@@ -1,6 +1,7 @@
 {
 	"settings": {
 		"title": "Settings",
+		"exitGame": "Exit game",
 		"openFolder": "Open the settings folder",
 		"restoreDefaults": "Restore Defaults",
 		"restoreTitle": "Restore defaults?",

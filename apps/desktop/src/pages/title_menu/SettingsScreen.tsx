@@ -17,9 +17,11 @@ import { SettingsSoundPanel } from './settings/SettingsSoundPanel';
 
 interface SettingsScreenProps {
     onBack: () => void;
+    /** Present when Settings is opened from inside a run. */
+    onExitGame?: () => void;
 }
 
-export function SettingsScreen({ onBack }: SettingsScreenProps) {
+export function SettingsScreen({ onBack, onExitGame }: SettingsScreenProps) {
     const { t } = useTranslation(['settings', 'common']);
     const { gameState, setGameState } = useGame();
     const [activeTab, setActiveTab] = useState<SettingsTab>('game');
@@ -78,7 +80,13 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
                 <div className="flex min-h-0 flex-1 flex-col justify-center gap-8 py-6">
                     <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row md:gap-4">
                         {/* Left Column — Sidebar */}
-                        <SettingsSidebar activeTab={activeTab} onChange={setActiveTab} labels={labels} />
+                        <SettingsSidebar
+                            activeTab={activeTab}
+                            onChange={setActiveTab}
+                            labels={labels}
+                            exitLabel={onExitGame ? t('settings.exitGame') : undefined}
+                            onExitGame={onExitGame}
+                        />
 
                         {/* Right Column — Tab Panel */}
                         <section className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-4 pr-2">

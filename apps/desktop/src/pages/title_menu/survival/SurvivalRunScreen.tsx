@@ -14,6 +14,7 @@ import type {
     CombatState,
 } from '@/types/CombatType';
 import type { SurvivalRun } from '@/types/SurvivalType';
+import { SettingsScreen } from '../SettingsScreen';
 import { SurvivalDefeat, type SurvivalDefeatSummary } from './SurvivalDefeat';
 import { SurvivalMarket } from './SurvivalMarket';
 import {
@@ -31,6 +32,8 @@ interface SurvivalRunScreenProps {
     save: SaveData;
     onSave: (data: SaveData) => Promise<void>;
     onExit: () => void;
+    /** Leaves the run for the title menu, used by the in-run Settings screen. */
+    onQuit: () => void;
 }
 
 type SurvivalPhase = 'market' | 'combat' | 'defeat';
@@ -46,10 +49,11 @@ type SurvivalPhase = 'market' | 'combat' | 'defeat';
  * straight into the fight, and the market appears only after a wave has been
  * cleared.
  */
-export function SurvivalRunScreen({ save, onSave, onExit }: SurvivalRunScreenProps) {
+export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunScreenProps) {
     const { t } = useTranslation(['survival', 'common']);
     const [record, setRecord] = useState(save);
     const [phase, setPhase] = useState<SurvivalPhase>('market');
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const [encounter, setEncounter] = useState<CombatEncounterData | null>(null);
     const [summary, setSummary] = useState<SurvivalDefeatSummary | null>(null);
     const [clearedRound, setClearedRound] = useState<number | null>(null);
@@ -137,6 +141,15 @@ export function SurvivalRunScreen({ save, onSave, onExit }: SurvivalRunScreenPro
         void persist({ ...record, survival: resolveSurvivalDefeat(run, run.round) });
     };
 
+    if (settingsOpen) {
+        return (
+            <SettingsScreen
+                onBack={() => setSettingsOpen(false)}
+                onExitGame={onQuit}
+            />
+        );
+    }
+
     if (phase === 'combat' && encounter) {
         return (
             <motion.div
@@ -213,6 +226,7 @@ export function SurvivalRunScreen({ save, onSave, onExit }: SurvivalRunScreenPro
                 clearedRound={clearedRound}
                 onHeal={heal}
                 onStart={startRound}
+                onSettings={() => setSettingsOpen(true)}
             />
         </motion.div>
     );

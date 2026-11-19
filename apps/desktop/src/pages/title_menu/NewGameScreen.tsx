@@ -152,6 +152,7 @@ export function NewGameScreen({ onBack }: { onBack: () => void }) {
                         save={run.save}
                         onSave={saveRun}
                         onExit={() => setRun(null)}
+                        onQuit={onBack}
                     />
                 ) : flow ? (
                     flow.save ? (

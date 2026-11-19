@@ -19,6 +19,7 @@ interface SurvivalMarketProps {
     clearedRound: number | null;
     onHeal: () => void;
     onStart: () => void;
+    onSettings: () => void;
 }
 
 type MarketTabId = 'shop' | 'inventory' | 'upgrades' | 'skillTree' | 'fountain';
@@ -126,8 +127,9 @@ export function SurvivalMarket({
     clearedRound,
     onHeal,
     onStart,
+    onSettings,
 }: SurvivalMarketProps) {
-    const { t } = useTranslation(['survival', 'common']);
+    const { t } = useTranslation(['survival', 'common', 'settings']);
     const [activeTab, setActiveTab] = useState<MarketTabId>('shop');
     const [selectedId, setSelectedId] = useState(SHOP_SHELF[0]?.itemId ?? '');
 
@@ -262,6 +264,15 @@ export function SurvivalMarket({
                             onPress={onStart}
                         >
                             {t('survival.start', { round: run.round })}
+                        </CommonButton>
+
+                        <CommonButton
+                            variant="ghost"
+                            size="sm"
+                            className="mt-2 w-full justify-center"
+                            onPress={onSettings}
+                        >
+                            {t('settings.title')}
                         </CommonButton>
                     </div>
                 </aside>

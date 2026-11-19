@@ -6,9 +6,18 @@ interface SettingsSidebarProps {
     activeTab: SettingsTab;
     onChange: (tab: SettingsTab) => void;
     labels: Record<SettingsTab, string>;
+    /** Shown below the tabs when Settings is opened from inside a run. */
+    exitLabel?: string;
+    onExitGame?: () => void;
 }
 
-export function SettingsSidebar({ activeTab, onChange, labels }: SettingsSidebarProps) {
+export function SettingsSidebar({
+    activeTab,
+    onChange,
+    labels,
+    exitLabel,
+    onExitGame,
+}: SettingsSidebarProps) {
     const tabs: SettingsTab[] = ['game', 'controls', 'display', 'sound', 'language'];
 
     return (
@@ -35,6 +44,19 @@ export function SettingsSidebar({ activeTab, onChange, labels }: SettingsSidebar
                     </CommonButton>
                 );
             })}
+
+            {onExitGame && exitLabel && (
+                <div className="col-span-2 mt-2 border-t-game border-white/10 pt-2 sm:ml-auto md:col-span-1 md:ml-0 md:mt-auto">
+                    <CommonButton
+                        variant="ghost"
+                        size="sm"
+                        onPress={onExitGame}
+                        className="w-full justify-start border-0 px-3 py-1.5 text-galatime-error tracking-[0.15em]"
+                    >
+                        {exitLabel}
+                    </CommonButton>
+                </div>
+            )}
         </nav>
     );
 }
