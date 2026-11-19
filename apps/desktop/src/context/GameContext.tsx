@@ -20,7 +20,9 @@ import {
   DIALOGUE_TEXT_SPEED_MAX,
   DIALOGUE_TEXT_SPEED_MIN,
 } from '../constants/DialogueConstants';
-import type { Difficulty } from '../constants/DifficultyConstants';
+import { isAllyControl, type AllyControl } from '../constants/AllyControlConstants';
+import { isDifficulty, type Difficulty } from '../constants/DifficultyConstants';
+import { isGameMode, type GameMode } from '../constants/GameModeConstants';
 import {
   findControlsForEvent,
   findControlsForGamepadButton,
@@ -48,7 +50,11 @@ import { loadSettings, saveSettings } from '../services/settingsService';
 
 export interface GameSettings {
   saveName: string;
+  /** The mode this chronicle was created with. It decides which systems are available. */
+  gameMode: GameMode;
   difficulty: Difficulty;
+  /** Who gives orders to the allies during combat. */
+  allyControl: AllyControl;
   fightingTooltipVisible: boolean;
   actionsTooltipVisible: boolean;
   /** Highlights the phrases inside a dialogue that the player can click. */
@@ -187,7 +193,9 @@ interface GameContextType {
 
 export const DEFAULT_SETTINGS: GameSettings = {
   saveName: 'Chronicles',
+  gameMode: 'normal',
   difficulty: 'normal',
+  allyControl: 'player',
   fightingTooltipVisible: true,
   actionsTooltipVisible: true,
   dialogueTooltipVisible: true,
@@ -322,6 +330,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
           settings: {
             ...previous.settings,
             ...saved,
+            gameMode: isGameMode(saved.gameMode) ? saved.gameMode : previous.settings.gameMode,
+            difficulty: isDifficulty(saved.difficulty) ? saved.difficulty : previous.settings.difficulty,
+            allyControl: isAllyControl(saved.allyControl) ? saved.allyControl : previous.settings.allyControl,
             dialogueTextSpeed: normalizeTextSpeed(saved.dialogueTextSpeed, previous.settings.dialogueTextSpeed),
             audio: { ...previous.settings.audio, ...saved.audio },
             controls: { ...previous.settings.controls, ...normalizeControlBindings(saved.controls) },

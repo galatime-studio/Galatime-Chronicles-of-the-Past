@@ -61,15 +61,15 @@
 				}
 			},
 			"fightingTips": {
-				"title": "Fighting Tool tip",
+				"title": "Fighting Tooltip",
 				"description": "Display details about attacks."
 			},
 			"actionTips": {
-				"title": "Action Tool tip",
+				"title": "Action Tooltip",
 				"description": "Display all the interactable objects."
 			},
 			"dialogueTips": {
-				"title": "Dialogue Tool tip",
+				"title": "Dialogue Tooltip",
 				"description": "Highlight the phrases in a dialogue that you can interact."
 			},
 			"combatAnimations": {

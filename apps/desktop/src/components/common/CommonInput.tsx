@@ -29,6 +29,8 @@ interface CommonInputProps {
     maxCharacters?: number;
     /** Disable the input */
     disabled?: boolean;
+    /** Let the browser check the spelling of the value. Defaults to `false`. */
+    spellCheck?: boolean;
     /** Input type */
     type?: React.HTMLInputTypeAttribute;
     /** Layout of the input. Defaults to `'title-top'`. */
@@ -77,6 +79,7 @@ const CommonInput: React.FC<CommonInputProps> = ({
     placeholder = '',
     maxCharacters = 100,
     disabled = false,
+    spellCheck = false,
     type = 'text',
     variant = 'title-top',
     showDescription = false,
@@ -237,6 +240,10 @@ const CommonInput: React.FC<CommonInputProps> = ({
                                 onFocus={() => setIsFocused(true)}
                                 onBlur={() => setIsFocused(false)}
                                 disabled={disabled}
+                                spellCheck={spellCheck}
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
                                 placeholder={placeholder}
                                 aria-label={title}
                                 aria-describedby={showInlineDescription ? descriptionId : undefined}

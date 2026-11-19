@@ -23,3 +23,11 @@ export const DIFFICULTIES = {
 
 export type Difficulty = keyof typeof DIFFICULTIES;
 export type DifficultyItem = typeof DIFFICULTIES[Difficulty];
+
+/** Display order, from the gentlest to the most punishing. */
+export const DIFFICULTY_ORDER: readonly Difficulty[] = ['easy', 'normal', 'hard', 'hardcore'];
+
+/** Narrows an untrusted value, such as one read from a save file or settings JSON. */
+export function isDifficulty(value: unknown): value is Difficulty {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(DIFFICULTIES, value);
+}

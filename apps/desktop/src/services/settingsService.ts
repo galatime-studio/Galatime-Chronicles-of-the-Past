@@ -1,5 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { GameSettings } from '../context/GameContext';
+import { isAllyControl } from '../constants/AllyControlConstants';
+import { isDifficulty } from '../constants/DifficultyConstants';
+import { isGameMode } from '../constants/GameModeConstants';
 
 const SETTINGS_STORAGE_KEY = 'galatime.settings.v1';
 
@@ -7,11 +10,17 @@ const SETTINGS_STORAGE_KEY = 'galatime.settings.v1';
  * Picks only the fields that belong to the current `GameSettings` interface,
  * discarding any legacy/unknown properties that may have leaked into the
  * persisted JSON (e.g. from older builds that saved extra data).
+ *
+ * The choices that used to exist only in the New Game wizard are narrowed here
+ * as well, so a hand-edited file falls back to the same defaults the interface
+ * offers instead of carrying an unknown mode into the game.
  */
 function pickSettings(raw: GameSettings): GameSettings {
   return {
     saveName: raw.saveName,
-    difficulty: raw.difficulty,
+    gameMode: isGameMode(raw.gameMode) ? raw.gameMode : 'normal',
+    difficulty: isDifficulty(raw.difficulty) ? raw.difficulty : 'normal',
+    allyControl: isAllyControl(raw.allyControl) ? raw.allyControl : 'player',
     fightingTooltipVisible: raw.fightingTooltipVisible,
     actionsTooltipVisible: raw.actionsTooltipVisible,
     dialogueTooltipVisible: raw.dialogueTooltipVisible,

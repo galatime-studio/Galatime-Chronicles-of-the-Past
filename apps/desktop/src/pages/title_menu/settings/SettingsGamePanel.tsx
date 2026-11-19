@@ -4,19 +4,9 @@ import CommonSwitch from '../../../components/common/CommonSwitch';
 import {
     DIALOGUE_TEXT_SPEED_MAX,
     DIALOGUE_TEXT_SPEED_MIN,
+    flipDialogueTextSpeed,
 } from '../../../constants/DialogueConstants';
 import type { SettingsPanelProps } from './types';
-
-/**
- * The setting counts milliseconds per character, so a bigger number is a slower
- * line — while a slider's bars grow with its value. Flipping the number across
- * the two bounds makes them agree (the slider fills up as the text gets faster),
- * and the flip is its own inverse, so reading the value back needs no second
- * mapping.
- */
-function flipTextSpeed(msPerChar: number): number {
-    return DIALOGUE_TEXT_SPEED_MIN + DIALOGUE_TEXT_SPEED_MAX - msPerChar;
-}
 
 export function SettingsGamePanel({ settings, updateSettings }: SettingsPanelProps) {
     const { t } = useTranslation('game');
@@ -75,8 +65,8 @@ export function SettingsGamePanel({ settings, updateSettings }: SettingsPanelPro
                     min={DIALOGUE_TEXT_SPEED_MIN}
                     max={DIALOGUE_TEXT_SPEED_MAX}
                     numBars={10}
-                    value={flipTextSpeed(settings.dialogueTextSpeed)}
-                    onChange={(value) => updateSettings({ dialogueTextSpeed: flipTextSpeed(value) })}
+                    value={flipDialogueTextSpeed(settings.dialogueTextSpeed)}
+                    onChange={(value) => updateSettings({ dialogueTextSpeed: flipDialogueTextSpeed(value) })}
                     sliderContainerClassName="w-36 sm:w-48"
                 />
             </div>

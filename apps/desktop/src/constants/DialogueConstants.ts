@@ -24,6 +24,28 @@ export const DIALOGUE_TEXT_SPEED_MIN = 10;
 export const DIALOGUE_TEXT_SPEED_MAX = 60;
 
 /**
+ * Keeps a text speed inside the slider's range.
+ *
+ * The stored setting counts milliseconds per character, so a smaller value is a
+ * faster line. Callers clamp every value that comes from a save file or from a
+ * hand-edited settings JSON before applying it.
+ */
+export function clampDialogueTextSpeed(value: number): number {
+    return Math.min(DIALOGUE_TEXT_SPEED_MAX, Math.max(DIALOGUE_TEXT_SPEED_MIN, Math.round(value)));
+}
+
+/**
+ * The setting counts milliseconds per character, so a bigger number is a slower
+ * line — while a slider's bars grow with its value. Flipping the number across
+ * the two bounds makes them agree (the slider fills up as the text gets faster),
+ * and the flip is its own inverse, so reading the value back needs no second
+ * mapping.
+ */
+export function flipDialogueTextSpeed(msPerChar: number): number {
+    return DIALOGUE_TEXT_SPEED_MIN + DIALOGUE_TEXT_SPEED_MAX - msPerChar;
+}
+
+/**
  * Rows of text the box shows before a line is paginated.
  *
  * The height of a row is not a constant here. The spoken line scales with the

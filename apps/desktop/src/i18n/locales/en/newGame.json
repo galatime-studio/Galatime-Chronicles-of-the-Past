@@ -6,13 +6,50 @@
 		"emptySlot": "Empty slot {{slot}}",
 		"create": "Create save in slot {{slot}}",
 		"edit": "Edit",
+		"editTitle": "Edit Save",
+		"editModeLocked": "The mode is fixed after the chronicle is created.",
+		"save": "Save",
 		"remove": "Remove",
 		"removeTitle": "Remove save?",
 		"removeMessage": "Are you sure you want to permanently remove this save?",
 		"labels": {
-			"elements": "Elements",
-			"money": "Money",
-			"mainObjective": "Main objective"
+			"mode": "Mode",
+			"difficulty": "Difficulty",
+			"allies": "Control",
+			"notApplicable": "—"
+		},
+		"modes": {
+			"story": {
+				"title": "Story Mode",
+				"description": "Follow the chronicle through its dialogue and its world, with no battles to interrupt it."
+			},
+			"normal": {
+				"title": "Normal Mode",
+				"description": "The full chronicle: story, exploration and turn-based combat."
+			},
+			"survival": {
+				"title": "Survival Mode",
+				"description": "Fight endless waves of monsters and survive as many rounds as you can."
+			}
+		},
+		"wizard": {
+			"previous": "Previous",
+			"continue": "Continue",
+			"start": "Create",
+			"saving": "Creating...",
+			"on": "On",
+			"off": "Off",
+			"presentation": {
+				"speed": {
+					"fast": "Fast",
+					"normal": "Normal",
+					"slow": "Slow"
+				}
+			},
+			"name": {
+				"label": "Save name",
+				"placeholder": "Untitled chronicle"
+			}
 		}
 	}
 }
