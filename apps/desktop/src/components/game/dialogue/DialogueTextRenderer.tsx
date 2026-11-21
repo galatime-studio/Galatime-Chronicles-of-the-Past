@@ -2,10 +2,11 @@ import { Fragment } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import type { DialogueSegment, DialogueTextStyle } from '../../../types/DialogueType';
+import type { DialogueDelivery, DialogueSegment, DialogueTextStyle } from '../../../types/DialogueType';
 import { playSfx } from '../../../controllers/audioController';
 import { useGame } from '../../../context/GameContext';
 import { isAtomicSegment, splitSegmentWords } from '../../../services/dialogueTextService';
+import { LINE_DELIVERY_CLASSES, segmentDeliveryClass } from './dialogueDeliveryStyles';
 import {
     DIALOGUE_JITTER_DURATION,
     DIALOGUE_JITTER_INTENSITY,
@@ -43,19 +44,17 @@ import {
  * interaction, so a player who wants to find the branches themselves can.
  */
 
-/**
- * How each way of speaking is drawn.
- *
- * A thought is dimmer and slanted, a whisper is smaller and slanted, and a
- * shout is bold and bright. The wording never changes — only how it reads.
- */
-const DELIVERY_CLASSES: Record<'thought' | 'whisper' | 'shout', string> = {
-    thought: 'italic text-white/55',
-    whisper: 'italic text-[0.75em] text-white',
-    shout: 'font-bold text-white',
-};
-
-export interface DialogueTextRendererProps {    segments: DialogueSegment[];
+export interface DialogueTextRendererProps {
+    segments: DialogueSegment[];
+    /**
+     * How the whole line is delivered, read from the node the segments came
+     * from.
+     *
+     * It is the line's voice rather than any one segment's: a line the author
+     * marked `thought` is a thought even where a piece of it is bold or was
+     * shouted, and that piece still has to read soft and slightly transparent.
+     */
+    delivery?: DialogueDelivery;
     /**
      * When false the clickable spans are shown as text but do nothing.
      *
@@ -283,6 +282,7 @@ function MotionText({
 
 export function DialogueTextRenderer({
     segments,
+    delivery = 'spoken',
     interactiveEnabled = true,
     onInteraction,
     measureTokens = false,
@@ -298,7 +298,7 @@ export function DialogueTextRenderer({
     let tokenIndex = 0;
     const nextToken = () => tokenIndex++;
 
-    return (
+    const body = (
         <>
             {segments.map((segment, index) => {
                 if (segment.type === 'pause') {
@@ -373,7 +373,7 @@ export function DialogueTextRenderer({
                 if (segment.type === 'thought'
                     || segment.type === 'whisper'
                     || segment.type === 'shout') {
-                    const deliveryClass = DELIVERY_CLASSES[segment.type];
+                    const deliveryClass = segmentDeliveryClass(segment.type, delivery);
 
                     if (!measureTokens) {
                         return (
@@ -480,6 +480,19 @@ export function DialogueTextRenderer({
             })}
         </>
     );
+
+    /*
+      A spoken line stays exactly the plain prose it has always been: no
+      wrapper, so nothing about the ordinary look can move. Every other
+      delivery is drawn once, around the whole page — that is what lets a bold,
+      coloured or shouted piece inside a thought keep the thought's soft,
+      slightly transparent aspect instead of escaping it.
+    */
+    if (delivery === 'spoken') {
+        return body;
+    }
+
+    return <span className={LINE_DELIVERY_CLASSES[delivery]}>{body}</span>;
 }
 
 export default DialogueTextRenderer;

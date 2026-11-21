@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import type { DialogueSegment } from '../../../types/DialogueType';
+import type { DialogueDelivery, DialogueSegment } from '../../../types/DialogueType';
 import {
     DIALOGUE_AUTO_ADVANCE_HOLD_MS,
     DIALOGUE_DEFAULT_MAX_ROWS,
@@ -34,6 +34,15 @@ export interface GameDialogueProps {
     speakerName: string;
     /** The current node's text, as the backend resolved it. */
     segments: DialogueSegment[];
+    /**
+     * How the whole line is delivered — the node's voice, not any one
+     * segment's.
+     *
+     * Both copies of the text take it: the measuring mirror has to see the
+     * same look as the visible one, or the pages it measures would not be the
+     * pages the box draws.
+     */
+    delivery?: DialogueDelivery;
     textSpeed?: number;
     maxRows?: number;
     /** Hides the `>>` indicator while the player is choosing an option instead. */
@@ -66,6 +75,7 @@ export interface GameDialogueProps {
 export const GameDialogue = forwardRef<GameDialogueHandle, GameDialogueProps>(function GameDialogue({
     speakerName,
     segments,
+    delivery = 'spoken',
     textSpeed = DIALOGUE_DEFAULT_TEXT_SPEED,
     maxRows = DIALOGUE_DEFAULT_MAX_ROWS,
     showIndicator = true,
@@ -233,6 +243,7 @@ export const GameDialogue = forwardRef<GameDialogueHandle, GameDialogueProps>(fu
                     >
                         <DialogueTextRenderer
                             segments={revealed}
+                            delivery={delivery}
                             interactiveEnabled={!isTyping && !disabled}
                             onInteraction={onInteraction}
                             reduceMotion={reduceMotion}
@@ -283,6 +294,7 @@ export const GameDialogue = forwardRef<GameDialogueHandle, GameDialogueProps>(fu
                 >
                     <DialogueTextRenderer
                         segments={segments}
+                        delivery={delivery}
                         measureTokens
                         // Disabled so the hidden copy holds no focusable elements.
                         interactiveEnabled={false}

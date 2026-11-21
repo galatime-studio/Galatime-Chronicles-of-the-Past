@@ -399,6 +399,9 @@ export function DialogueView({
                         ref={dialogueRef}
                         speakerName={speakerName}
                         segments={segments}
+                        // The line's own voice: a thought has to stay soft even
+                        // where a piece of it is bold, coloured or shouted.
+                        delivery={node?.delivery ?? 'spoken'}
                         textSpeed={baseTextSpeed}
                         // A choice node is answered by the list, not by the box.
                         showIndicator={node?.next_action === 'continue'}
