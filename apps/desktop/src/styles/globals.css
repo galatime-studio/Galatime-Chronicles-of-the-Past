@@ -532,6 +532,24 @@ img {
  * callers never need the `!` important suffix.
  */
 @layer components {
+  /* Selection outline for a combat sprite.
+   *
+   * A chained `drop-shadow` traces the alpha channel of the canvas, so the ring
+   * follows the artwork's own silhouette instead of boxing the sprite. Eight
+   * zero-blur directions make the stroke read evenly around pixel-art edges,
+   * and chaining them widens the contour without a soft halo behind the art. */
+  .sprite-outline {
+    filter:
+      drop-shadow(1px 0 0 #fff)
+      drop-shadow(-1px 0 0 #fff)
+      drop-shadow(0 1px 0 #fff)
+      drop-shadow(0 -1px 0 #fff)
+      drop-shadow(1px 1px 0 #fff)
+      drop-shadow(-1px 1px 0 #fff)
+      drop-shadow(1px -1px 0 #fff)
+      drop-shadow(-1px -1px 0 #fff);
+  }
+
   /* CommonTooltip / CommonTooltipCard layered defaults.
    *
    * The card is only the frame and surface; internal layout belongs to the

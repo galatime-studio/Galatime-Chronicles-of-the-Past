@@ -283,6 +283,10 @@ export function CombatFormationEntity({
 
     // `status` is authoritative; the HP check only covers a unit handed over without one.
     const isDefeated = entity.status === 'defeated' || (entity.currentHp !== undefined && entity.currentHp <= 0);
+    // Selection is drawn as a contour around the sprite's own pixels, never as a
+    // glow behind it: focused (hover/pinned) units and legal targets while a target
+    // is being chosen are the only ones that carry it.
+    const outlined = !isDefeated && !inert && (isFocused || (isTargeting && isTargetable));
 
     /* This unit's part in the step being narrated. */
     // The party stands on the left and faces right into the fight, the enemies on the
@@ -544,7 +548,7 @@ export function CombatFormationEntity({
                 <div style={lungeStyle} className="relative">
                     <div style={hitStyle} className="relative">
                         <div
-                            className={`pointer-events-none relative flex flex-col items-center transition-[transform,opacity,filter] duration-200 motion-reduce:transition-none motion-reduce:translate-y-0 motion-reduce:scale-100 ${isDefeated ? 'motion-reduce:translate-y-0' : inert ? 'opacity-40 saturate-50' : isFocused ? `-translate-y-1 scale-110 ${isPinned ? 'drop-shadow-[0_6px_14px_rgba(255,255,255,0.75)]' : 'drop-shadow-[0_5px_9px_rgba(255,255,255,0.2)]'}` : hasFocus ? 'opacity-40 grayscale' : isTargeting && isTargetable ? 'drop-shadow-[0_0_12px_rgba(255,255,255,0.5)]' : 'group-hover:-translate-y-0.5 motion-reduce:group-hover:translate-y-0'} ${isRearLine && !isFocused ? 'brightness-70 saturate-75' : ''}`}
+                            className={`pointer-events-none relative flex flex-col items-center transition-[transform,opacity,filter] duration-200 motion-reduce:transition-none motion-reduce:translate-y-0 motion-reduce:scale-100 ${isDefeated ? 'motion-reduce:translate-y-0' : inert ? 'opacity-40 saturate-50' : isFocused ? '-translate-y-1 scale-110' : hasFocus ? 'opacity-40 grayscale' : isTargeting && isTargetable ? '' : 'group-hover:-translate-y-0.5 motion-reduce:group-hover:translate-y-0'} ${isRearLine && !isFocused ? 'brightness-70 saturate-75' : ''}`}
                         >
                             {/* The patch of ground the unit stands on. It rides the same
                                 layer that scales and dims the sprite, so a deeper line
@@ -578,7 +582,7 @@ export function CombatFormationEntity({
                              * underground, and the delay holds the corpse upright for a
                              * second before it goes.
                              */}
-                            <div className="relative overflow-hidden">
+                            <div className={`relative overflow-hidden ${outlined ? 'sprite-outline' : ''}`}>
                                 <div
                                     onTransitionEnd={isDying ? reportGone : undefined}
                                     className={`${animationsEnabled ? 'transition-transform duration-700 ease-in motion-reduce:transition-none motion-reduce:translate-y-0' : ''} ${isDying ? (animationsEnabled ? 'translate-y-full delay-1000' : 'translate-y-full') : ''}`}
