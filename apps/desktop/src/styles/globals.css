@@ -245,6 +245,27 @@
   }
 }
 
+/* The selection contour fades in and out instead of snapping. Only the shadow
+   colours change, so the artwork itself stays fully opaque while the ring
+   materialises around its silhouette. */
+@keyframes sprite-outline-in {
+  from {
+    filter: var(--sprite-outline-ring-off);
+  }
+  to {
+    filter: var(--sprite-outline-ring);
+  }
+}
+
+@keyframes sprite-outline-out {
+  from {
+    filter: var(--sprite-outline-ring);
+  }
+  to {
+    filter: var(--sprite-outline-ring-off);
+  }
+}
+
 /* The ground shadow of a unit entering the field: it needs not exist until the
    unit has almost landed. Filled with `backwards` (not `both`) on purpose, so an
    entered unit can still be dimmed or faded by its own classes afterwards. */
@@ -535,19 +556,46 @@ img {
   /* Selection outline for a combat sprite.
    *
    * A chained `drop-shadow` traces the alpha channel of the canvas, so the ring
-   * follows the artwork's own silhouette instead of boxing the sprite. Eight
-   * zero-blur directions make the stroke read evenly around pixel-art edges,
-   * and chaining them widens the contour without a soft halo behind the art. */
+   * follows the artwork's own silhouette instead of boxing the sprite. The eight
+   * offsets walk the eight cells of a 3x3 ring around the centre instead of
+   * jumping to each diagonal: chained shadows compose their offsets, so this
+   * path keeps every accumulated shift inside the ring and makes the stroke
+   * uniform, where the old diagonal list piled extra pixels on the last sides.
+   *
+   * The selection contour follows the canvas alpha instead of its box: a chain of
+   * zero-blur drop-shadows paints the silhouette. Four cardinal shadows are enough
+   * because every filter also re-shadows the output of the previous one, so the
+   * recursive union already covers the diagonals and never drifts to one side.
+   * Widths stay integral on purpose: 1.5px rasterises as two pixels on one edge and
+   * one on the other at DPR 1. Hover is 1px, a picked (pinned) unit 2px; the ring
+   * carries the emphasis, the sprite never changes size.
+   * The `-in`/`-out` modifiers fade the ring by interpolating between the white
+   * ring and its transparent twin, so the art stays fully opaque throughout. */
   .sprite-outline {
-    filter:
-      drop-shadow(1px 0 0 #fff)
-      drop-shadow(-1px 0 0 #fff)
-      drop-shadow(0 1px 0 #fff)
-      drop-shadow(0 -1px 0 #fff)
-      drop-shadow(1px 1px 0 #fff)
-      drop-shadow(-1px 1px 0 #fff)
-      drop-shadow(1px -1px 0 #fff)
-      drop-shadow(-1px -1px 0 #fff);
+    --sprite-outline-width: 1px;
+    --sprite-outline-ring:
+      drop-shadow(var(--sprite-outline-width) 0 0 #fff)
+      drop-shadow(calc(-1 * var(--sprite-outline-width)) 0 0 #fff)
+      drop-shadow(0 var(--sprite-outline-width) 0 #fff)
+      drop-shadow(0 calc(-1 * var(--sprite-outline-width)) 0 #fff);
+    --sprite-outline-ring-off:
+      drop-shadow(var(--sprite-outline-width) 0 0 rgba(255, 255, 255, 0))
+      drop-shadow(calc(-1 * var(--sprite-outline-width)) 0 0 rgba(255, 255, 255, 0))
+      drop-shadow(0 var(--sprite-outline-width) 0 rgba(255, 255, 255, 0))
+      drop-shadow(0 calc(-1 * var(--sprite-outline-width)) 0 rgba(255, 255, 255, 0));
+    filter: var(--sprite-outline-ring);
+  }
+
+  .sprite-outline-selected {
+    --sprite-outline-width: 2px;
+  }
+
+  .sprite-outline-in {
+    animation: sprite-outline-in 200ms ease-out both;
+  }
+
+  .sprite-outline-out {
+    animation: sprite-outline-out 200ms ease-in both;
   }
 
   /* CommonTooltip / CommonTooltipCard layered defaults.
@@ -661,6 +709,15 @@ img {
 
     .common-popup-icon-music {
       animation: none;
+    }
+
+    .sprite-outline-in,
+    .sprite-outline-out {
+      animation: none;
+    }
+
+    .sprite-outline-out {
+      filter: var(--sprite-outline-ring-off);
     }
   }
 }

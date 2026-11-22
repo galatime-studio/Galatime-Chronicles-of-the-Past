@@ -47,6 +47,15 @@ export const ARENA_ENTER_MS = 480;
 export const ARENA_ENTER_STAGGER_MS = 130;
 
 /**
+ * How long the selection contour takes to fade in or out.
+ *
+ * Mirrors the `sprite-outline-in` / `sprite-outline-out` animations in
+ * `styles/globals.css`; the entity keeps the fading class mounted for this long
+ * before dropping it from the DOM.
+ */
+export const ARENA_OUTLINE_FADE_MS = 200;
+
+/**
  * How long a defeated unit takes to sink out of the board.
  *
  * Matches the corpse's `delay-1000` + `duration-700` in `CombatFormationEntity`. The

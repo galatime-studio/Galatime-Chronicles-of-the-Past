@@ -14,6 +14,7 @@ import {
     ARENA_IMPACT_MS,
     ARENA_LUNGE_MS,
     ARENA_MULTI_HIT_STAGGER_MS,
+    ARENA_OUTLINE_FADE_MS,
     ARENA_STATUS_DELAY_MS,
     ARENA_STATUS_MS,
     ARENA_STATUS_STAGGER_MS,
@@ -288,6 +289,33 @@ export function CombatFormationEntity({
     // is being chosen are the only ones that carry it.
     const outlined = !isDefeated && !inert && (isFocused || (isTargeting && isTargetable));
 
+    // The contour fades both ways: on focus it animates in, and when focus leaves
+    // it is kept mounted for one fade-out before the class is dropped. `outlineWasSelected`
+    // freezes the pinned thickness during that fade, so unpinning cannot snap the ring
+    // thinner while it is on its way out.
+    const [outlinePhase, setOutlinePhase] = useState<'hidden' | 'in' | 'out'>('hidden');
+    const [outlineWasSelected, setOutlineWasSelected] = useState(isPinned);
+    const outlineShown = useRef(false);
+
+    useEffect(() => {
+        if (outlined) {
+            outlineShown.current = true;
+            setOutlinePhase('in');
+            setOutlineWasSelected(isPinned);
+            return;
+        }
+
+        if (!outlineShown.current) return;
+
+        setOutlinePhase('out');
+        const timer = setTimeout(() => {
+            outlineShown.current = false;
+            setOutlinePhase('hidden');
+        }, ARENA_OUTLINE_FADE_MS);
+
+        return () => clearTimeout(timer);
+    }, [outlined, isPinned]);
+
     /* This unit's part in the step being narrated. */
     // The party stands on the left and faces right into the fight, the enemies on the
     // right face left: one var drives every sideways reaction, from lunges to knocks.
@@ -489,6 +517,10 @@ export function CombatFormationEntity({
         scheduleHoverClear();
     };
 
+    const outlineClass = outlinePhase === 'hidden'
+        ? ''
+        : `sprite-outline ${outlinePhase === 'in' ? 'sprite-outline-in' : 'sprite-outline-out'}${(outlinePhase === 'out' ? outlineWasSelected : isPinned) ? ' sprite-outline-selected' : ''}`;
+
     return (
         <>
             <button
@@ -582,7 +614,7 @@ export function CombatFormationEntity({
                              * underground, and the delay holds the corpse upright for a
                              * second before it goes.
                              */}
-                            <div className={`relative overflow-hidden ${outlined ? 'sprite-outline' : ''}`}>
+                            <div className={`relative overflow-hidden ${outlineClass}`}>
                                 <div
                                     onTransitionEnd={isDying ? reportGone : undefined}
                                     className={`${animationsEnabled ? 'transition-transform duration-700 ease-in motion-reduce:transition-none motion-reduce:translate-y-0' : ''} ${isDying ? (animationsEnabled ? 'translate-y-full delay-1000' : 'translate-y-full') : ''}`}
