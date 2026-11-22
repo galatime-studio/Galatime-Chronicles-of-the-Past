@@ -258,9 +258,17 @@ export const SWITCH_LINE_STAMINA_COST = 20;
 export const RESOURCE_REGEN_MINIMUM = 1;
 
 /**
+ * First payout of the idle-regen ladder.
+ *
+ * The ladder is Fibonacci seeded here, so it runs 4, 4, 8, 12, 20, 32 … and an
+ * unspent turn already pays a meaningful slice instead of a single point.
+ */
+export const RESOURCE_REGEN_START = 4;
+
+/**
  * Idle-regen payout ceiling, as a fraction of the pool's maximum.
  *
- * The payout grows along Fibonacci (1, 1, 2, 3, 5, 8, 13 …) every turn the
+ * The payout grows along the seeded Fibonacci ladder above every turn the
  * resource goes unspent, but never past an eighth of the pool per turn.
  */
 export const RESOURCE_REGEN_MAX_FRACTION = 1 / 8;

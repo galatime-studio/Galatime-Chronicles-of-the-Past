@@ -3,13 +3,13 @@
  *
  * A resource (mana or stamina) a unit does not spend during its own turn
  * regenerates on the NEXT turn's start, and the payout grows every further
- * idle turn along the Fibonacci sequence — 1, 1, 2, 3, 5, 8, 13, 21 …
+ * idle turn along the Fibonacci sequence — 4, 4, 8, 12, 20, 32, 52 …
  *
  * Fibonacci was chosen over a plain exponential or the golden ratio because it
- * IS the golden-ratio exponential (`fib(n) ≈ φⁿ/√5`) while staying integer
- * native — no rounding drift, it starts exactly at the configured minimum, and
- * it reaches the cap in ~7 idle turns instead of ~4 (pure doubling), so the
- * reward for hoarding ramps smoothly rather than exploding.
+ * follows the same golden-ratio growth while staying integer native — no
+ * rounding drift, it starts exactly at {@link RESOURCE_REGEN_START}, and it
+ * reaches the cap in a few idle turns, so hoarding ramps smoothly rather than
+ * exploding.
  *
  * The payout is floored at `RESOURCE_REGEN_MINIMUM` and capped at
  * `RESOURCE_REGEN_MAX_FRACTION` of the pool's maximum.
@@ -21,6 +21,7 @@
 import {
     RESOURCE_REGEN_MAX_FRACTION,
     RESOURCE_REGEN_MINIMUM,
+    RESOURCE_REGEN_START,
 } from '../../constants/CombatConstants';
 import type { CombatEvent, CombatUnit } from '../../types/CombatType';
 import { changeResource, effectiveStats } from './effectResolver';
@@ -28,10 +29,10 @@ import { changeResource, effectiveStats } from './effectResolver';
 /** Resources the idle curve applies to (never HP). */
 const IDLE_RESOURCES = ['mana', 'stamina'] as const;
 
-/** The `steps`-th Fibonacci number, 1-indexed: 1, 1, 2, 3, 5, 8, 13, 21 … */
+/** The `steps`-th Fibonacci number, 1-indexed: 4, 4, 8, 12, 20, 32, 52 … */
 export function fibonacci(steps: number): number {
     let previous = 0;
-    let current = 1;
+    let current = RESOURCE_REGEN_START;
     for (let index = 1; index < steps; index += 1) {
         const next = previous + current;
         previous = current;
