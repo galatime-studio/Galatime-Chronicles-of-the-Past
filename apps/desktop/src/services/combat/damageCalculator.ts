@@ -5,12 +5,14 @@
  *
  *     dano = MITIGATION x EFFECT x (PWR / POWER_DIVISOR) x VARIANCE
  *
- * `MITIGATION` is `ATTACK_DEFENSE_WEIGHT x ATK / (ATK + DEF)`. It replaces the
- * old `ATK / DEF` ratio so a frail attacker still scratches an armoured target
- * and a huge attack advantage cannot balloon one hit into the hundreds. At the
- * authored 2:1 benchmark it still reads `x2`, and it is capped below the weight
- * (`3`) instead of growing without bound. `attackDefenseFactor` is the exported
- * helper for previews and diagnostics.
+ * `MITIGATION` is `ATTACK_DEFENSE_WEIGHT x ATK / DEF`, clamped between
+ * {@link ATTACK_DEFENSE_MIN_FACTOR} and {@link ATTACK_DEFENSE_MAX_FACTOR}. The
+ * pure ratio keeps the authored 2:1 benchmark at `x2` while letting equal stats
+ * read `x1`: attack buffs and defence buffs move the hit by their own share
+ * instead of being diluted by the sum, and a frail attacker still scratches an
+ * armoured target. The clamp keeps an overwhelming advantage from ballooning a
+ * single hit. `attackDefenseFactor` is the exported helper for previews and
+ * diagnostics.
  *
  * `POWER_DIVISOR` is the constant in `CombatConstants` (currently `1`); read it
  * before reasoning about balance — this comment used to hard-code `/5`, which
@@ -34,7 +36,7 @@
  * - `defense_pierce` — the fraction of the target's defence the hit ignores.
  * - `bonus_vs_elements` — an extra multiplier per element of the defender.
  * - `bonus_vs_hp_below` — an extra multiplier against a wounded target.
- * - `crit_chance` / `guaranteed_crit_vs_status` — the critical hit (x1.75).
+ * - `crit_chance` / `guaranteed_crit_vs_status` — the critical hit (x1.5).
  * - `accuracy` / `evasion` — the attacker's aim and the defender's dodge.
  * - `ignore_accuracy` — the hit lands whatever the roll says.
  * - `ignore_position_penalty` — the lane (front/rear) damage multiplier and
@@ -45,6 +47,8 @@
  */
 
 import {
+    ATTACK_DEFENSE_MAX_FACTOR,
+    ATTACK_DEFENSE_MIN_FACTOR,
     ATTACK_DEFENSE_WEIGHT,
     CRIT_MULTIPLIER,
     DAMAGE_VARIANCE_RANGE,
@@ -144,16 +148,21 @@ export function defenseStat(stats: CombatStats, damageType: DamageType): number 
 /**
  * The attack/defence multiplier of one hit.
  *
- * `ATTACK_DEFENSE_WEIGHT x ATK / (ATK + DEF)`: a soft ratio that preserves the
- * authored 2:1 benchmark (`20 ATK` vs `10 DEF` = `x2`) while compressing the
- * extremes. Equal stats read `1.5`, overwhelming attack approaches `3`, and a
- * frail attacker against a wall approaches `0` instead of going negative or
- * exploding. Exported so previews and diagnostics show the same factor.
+ * `ATTACK_DEFENSE_WEIGHT x ATK / DEF`, clamped to the authored bounds. The pure
+ * ratio keeps buffs proportional: `+20 ATK` on a `100 ATK` unit always reads
+ * `+20%` damage, and `+20 DEF` on a `50 DEF` target always removes the same
+ * share. At the authored 2:1 benchmark (`20 ATK` vs `10 DEF`) it reads `x2`;
+ * equal stats read `x1`. The clamp keeps a frail attacker above zero and an
+ * overwhelming one below the cap. Exported so previews and diagnostics show
+ * the same factor.
  */
 export function attackDefenseFactor(attackValue: number, defenseValue: number): number {
     const attack = Math.max(0, attackValue);
+    if (attack === 0) return 0;
+
     const defense = Math.max(MINIMUM_DEFENSE, defenseValue);
-    return (ATTACK_DEFENSE_WEIGHT * attack) / (attack + defense);
+    const ratio = (ATTACK_DEFENSE_WEIGHT * attack) / defense;
+    return clamp(ratio, ATTACK_DEFENSE_MIN_FACTOR, ATTACK_DEFENSE_MAX_FACTOR);
 }
 
 /**
@@ -428,11 +437,12 @@ interface DamageBreakdown {
  * The damage chain: `MITIGATION x EFFECT x (PWR / POWER_DIVISOR)`, then the
  * skill's traits, the lane and the bracing, then the variance, then rounded.
  *
- * `MITIGATION` is {@link attackDefenseFactor}: a soft ratio that keeps the
- * authored 2:1 benchmark at `x2` but compresses the extremes. Defence is
- * clamped to {@link MINIMUM_DEFENSE} before the ratio. A hit that lands always
- * deals at least {@link MINIMUM_DAMAGE} — except against an immune target
- * (effect `x0`), which takes nothing.
+ * `MITIGATION` is {@link attackDefenseFactor}: the pure attack/defence ratio,
+ * clamped between its authored bounds. It keeps the 2:1 benchmark at `x2` while
+ * letting the difference between attack and defence show. Defence is clamped
+ * to {@link MINIMUM_DEFENSE} before the ratio. A hit that lands always deals at
+ * least {@link MINIMUM_DAMAGE} — except against an immune target (effect `x0`),
+ * which takes nothing.
  */
 function calculateDamage(params: BaseDamageParams): DamageBreakdown {
     const { attackValue, defenseValue, power, elementMultiplier: effect } = params;
@@ -788,7 +798,7 @@ export function resolveDamage(request: DamageRequest): DamageResult {
         const critical = rolling && critChance > 0 && random() * 100 < critChance;
         if (critical) isCrit = true;
         // An authored `crit_multiplier` (`Meteor Drop` doubles) replaces the
-        // global ×1.75 when it is strictly bigger.
+        // global ×1.5 when it is strictly bigger.
         const critMultiplier = (action.critMultiplier && action.critMultiplier > 0)
             ? action.critMultiplier
             : CRIT_MULTIPLIER;

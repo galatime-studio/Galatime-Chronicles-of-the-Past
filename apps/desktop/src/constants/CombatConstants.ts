@@ -159,14 +159,29 @@ export const POWER_DIVISOR = 1;
 /**
  * Weight of the attacker's stat in the damage mitigation ratio.
  *
- * The hit scales by `WEIGHT x ATK / (ATK + DEF)` instead of `ATK / DEF`. At the
- * authored 2:1 benchmark (`20 ATK` against `10 DEF`) the two read the same `x2`,
- * but the curve bends towards `0` and `WEIGHT` at the extremes: a frail mage
- * facing a wall still chips it, and an overwhelming attacker no longer
- * multiplies the hit into the hundreds. That keeps a strong character ahead
- * without letting the gap between the strongest and the weakest run away.
+ * The hit scales by `WEIGHT x ATK / DEF`. With the weight at `1` the ratio is
+ * proportional: every point of attack (including a buff) buys the same share of
+ * damage, and every point of defence takes the same share away. The authored
+ * 2:1 benchmark (`20 ATK` against `10 DEF`) still reads `x2`, while equal stats
+ * read `x1` — the difference between attack and defence is no longer flattened.
  */
-export const ATTACK_DEFENSE_WEIGHT = 3;
+export const ATTACK_DEFENSE_WEIGHT = 1;
+
+/**
+ * Lower bound of the attack/defence factor.
+ *
+ * A frail attacker facing a wall still scratches it instead of rounding to
+ * nothing; the floor keeps that scratch proportional to the action's power.
+ */
+export const ATTACK_DEFENSE_MIN_FACTOR = 0.25;
+
+/**
+ * Upper bound of the attack/defence factor.
+ *
+ * An overwhelming attack advantage cannot balloon a single hit without bound.
+ * Low-defence mobs still take a heavy hit, but not an uncapped one.
+ */
+export const ATTACK_DEFENSE_MAX_FACTOR = 3;
 
 /** Defence is clamped before the mitigation ratio, so it can never be zero. */
 export const MINIMUM_DEFENSE = 1;
