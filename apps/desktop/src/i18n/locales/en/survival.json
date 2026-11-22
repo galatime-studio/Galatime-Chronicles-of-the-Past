@@ -30,7 +30,24 @@
 			"title": "Supplies",
 			"select": "Select {{name}} for {{price}} coins",
 			"buy": "Buy",
-			"unavailable": "Inventory coming soon"
+			"empty": "The shelves are empty tonight.",
+			"needCoins": "You need more coins.",
+			"stackFull": "You cannot carry more of this item."
+		},
+		"inventory": {
+			"title": "Inventory",
+			"count_one": "{{count}} item",
+			"count_other": "{{count}} items",
+			"quantity": "×{{quantity}}",
+			"empty": "Nothing carried yet. Supplies bought in the shop wait here for the next wave.",
+			"combatHint": "Supplies can be used during combat on Arthur's turn."
+		},
+		"rarity": {
+			"common": "Common",
+			"uncommon": "Uncommon",
+			"rare": "Rare",
+			"epic": "Epic",
+			"legendary": "Legendary"
 		},
 		"defeat": {
 			"kicker": "The run ends",

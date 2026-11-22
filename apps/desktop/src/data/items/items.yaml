@@ -4,6 +4,8 @@ items:
     name: HP Potion
     description: Restores 30 HP to one ally.
     category: consumable
+    rarity: common
+    price: 3
     target: one_ally
     effects:
       - type: restore
@@ -18,6 +20,8 @@ items:
     name: HP Potion+
     description: Restores 75 HP to one ally.
     category: consumable
+    rarity: uncommon
+    price: 6
     target: one_ally
     effects:
       - type: restore
@@ -32,6 +36,8 @@ items:
     name: Mega HP Potion
     description: Restores 200 HP to one ally.
     category: consumable
+    rarity: rare
+    price: 12
     target: one_ally
     effects:
       - type: restore
@@ -46,6 +52,8 @@ items:
     name: Team HP Potion
     description: Restores 40 HP to all allies.
     category: consumable
+    rarity: uncommon
+    price: 5
     target: all_allies
     effects:
       - type: restore
@@ -60,6 +68,8 @@ items:
     name: MN Potion
     description: Restores 20 Mana to one ally.
     category: consumable
+    rarity: common
+    price: 3
     target: one_ally
     effects:
       - type: restore
@@ -74,6 +84,8 @@ items:
     name: MN Potion+
     description: Restores 50 Mana to one ally.
     category: consumable
+    rarity: uncommon
+    price: 6
     target: one_ally
     effects:
       - type: restore
@@ -88,6 +100,8 @@ items:
     name: Mega MN Potion
     description: Restores 120 Mana to one ally.
     category: consumable
+    rarity: rare
+    price: 12
     target: one_ally
     effects:
       - type: restore
@@ -102,6 +116,8 @@ items:
     name: Team MN Potion
     description: Restores 25 Mana to all allies.
     category: consumable
+    rarity: uncommon
+    price: 5
     target: all_allies
     effects:
       - type: restore
@@ -116,6 +132,8 @@ items:
     name: SN Potion
     description: Restores 20 Stamina to one ally.
     category: consumable
+    rarity: common
+    price: 3
     target: one_ally
     effects:
       - type: restore
@@ -130,6 +148,8 @@ items:
     name: SN Potion+
     description: Restores 50 Stamina to one ally.
     category: consumable
+    rarity: uncommon
+    price: 6
     target: one_ally
     effects:
       - type: restore
@@ -144,6 +164,8 @@ items:
     name: Mega SN Potion
     description: Restores 120 Stamina to one ally.
     category: consumable
+    rarity: rare
+    price: 12
     target: one_ally
     effects:
       - type: restore
@@ -158,6 +180,8 @@ items:
     name: Elixir
     description: Restores 50 HP, 30 Mana, and 30 Stamina to one ally.
     category: consumable
+    rarity: rare
+    price: 8
     target: one_ally
     effects:
       - type: restore
@@ -178,6 +202,8 @@ items:
     name: Mega Elixir
     description: Fully restores HP, Mana, and Stamina of one ally.
     category: consumable
+    rarity: legendary
+    price: 40
     target: one_ally
     effects:
       - type: restore
@@ -198,6 +224,8 @@ items:
     name: Team Elixir
     description: Restores 30 HP, 15 Mana, and 15 Stamina to all allies.
     category: consumable
+    rarity: epic
+    price: 14
     target: all_allies
     effects:
       - type: restore
@@ -218,6 +246,8 @@ items:
     name: Arrow
     description: A plain wooden arrow
     category: consumable
+    rarity: common
+    price: 1
     target: self
     item_type: arrow
     effects: []

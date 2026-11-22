@@ -15,6 +15,7 @@ import type {
     ItemDefinition,
     ItemEffect,
     ItemEffectType,
+    ItemRarity,
     ItemResourceId,
     ItemTargetRule,
 } from '../../types/InventoryType';
@@ -37,6 +38,15 @@ export const ITEM_CATEGORIES: readonly ItemCategory[] = [
     'buff',
     'debuff',
     'key_item',
+];
+
+/** Item rarity bands, weakest first. */
+export const ITEM_RARITIES: readonly ItemRarity[] = [
+    'common',
+    'uncommon',
+    'rare',
+    'epic',
+    'legendary',
 ];
 
 /** Item target scopes, in the authored vocabulary. */
@@ -70,6 +80,11 @@ export function isItemCategory(value: unknown): value is ItemCategory {
     return typeof value === 'string' && (ITEM_CATEGORIES as readonly string[]).includes(value);
 }
 
+/** Whether a value names a known item rarity. */
+export function isItemRarity(value: unknown): value is ItemRarity {
+    return typeof value === 'string' && (ITEM_RARITIES as readonly string[]).includes(value);
+}
+
 /** Whether a value names a known item target scope. */
 export function isItemTargetRule(value: unknown): value is ItemTargetRule {
     return typeof value === 'string' && (ITEM_TARGET_RULES as readonly string[]).includes(value);
@@ -90,6 +105,16 @@ function normalizeCategory(value: unknown): ItemCategory {
 
 function normalizeTarget(value: unknown, fallback: ItemTargetRule): ItemTargetRule {
     return isItemTargetRule(readString(value, '')) ? (value as ItemTargetRule) : fallback;
+}
+
+function normalizeRarity(value: unknown): ItemRarity {
+    return isItemRarity(readString(value, '')) ? (value as ItemRarity) : 'common';
+}
+
+/** A price is a non-negative whole number of coins; anything else leans to 1. */
+function readPrice(value: unknown): number {
+    const raw = readNumber(value, Number.NaN);
+    return Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : 1;
 }
 
 function normalizeResource(value: unknown): ItemResourceId {
@@ -245,6 +270,8 @@ export function normalizeItem(raw: unknown): ItemDefinition | null {
         name: readString(record.name, id),
         description: readString(record.description, ''),
         category,
+        rarity: normalizeRarity(record.rarity),
+        price: readPrice(record.price),
         target,
         effects: normalizeEffects(record.effects, target),
         usable_in_combat: readBoolean(record.usable_in_combat, defaults.usableInCombat),

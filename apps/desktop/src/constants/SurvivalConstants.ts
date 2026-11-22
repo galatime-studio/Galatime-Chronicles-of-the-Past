@@ -1,3 +1,4 @@
+import type { EntityInventoryState, ItemRarity } from '../types/InventoryType';
 import type { SurvivalRun } from '../types/SurvivalType';
 
 /** Entity id of the player character in Survival Mode. */
@@ -27,26 +28,36 @@ export const SURVIVAL_PRESSURE_REFERENCE_DEFENSE = 50;
 /** Attack a mob's durability is measured against (Arthur's attack band). */
 export const SURVIVAL_DURABILITY_REFERENCE_ATTACK = 80;
 
-/** One of the six supplies shown in the marketplace. */
-export interface SurvivalShopItem {
-    itemId: string;
-    price: number;
-}
+/** How many distinct supplies a round's shelf holds. */
+export const SURVIVAL_SHOP_SIZE = 6;
 
 /**
- * The marketplace stock: six catalogue items, in shelf order.
+ * Relative odds of each rarity being drawn onto a shelf.
  *
- * Buying is deliberately unavailable until the inventory exists; the prices are
- * already here so the shelf can show them without inventing a second item list.
+ * Common supplies dominate so the shelf is usually affordable; the best items
+ * stay rare enough that finding one is a decision, not a routine.
  */
-export const SURVIVAL_SHOP_ITEMS: readonly SurvivalShopItem[] = [
-    { itemId: 'hp_potion', price: 3 },
-    { itemId: 'hp_potion_plus', price: 6 },
-    { itemId: 'mega_hp_potion', price: 12 },
-    { itemId: 'mn_potion', price: 3 },
-    { itemId: 'sn_potion', price: 3 },
-    { itemId: 'elixir', price: 8 },
-];
+export const SURVIVAL_SHOP_RARITY_WEIGHTS: Record<ItemRarity, number> = {
+    common: 60,
+    uncommon: 25,
+    rare: 10,
+    epic: 4,
+    legendary: 1,
+};
+
+/**
+ * First round a rarity may appear on a shelf.
+ *
+ * The weight table alone would let a legendary slip into round 1; gating by
+ * round turns the weights into a proper difficulty curve.
+ */
+export const SURVIVAL_SHOP_RARITY_MIN_ROUND: Record<ItemRarity, number> = {
+    common: 1,
+    uncommon: 1,
+    rare: 2,
+    epic: 4,
+    legendary: 6,
+};
 
 /** A run that has not started yet. */
 export function createDefaultSurvivalRun(): SurvivalRun {
@@ -55,6 +66,7 @@ export function createDefaultSurvivalRun(): SurvivalRun {
         hp: null,
         maxHp: 0,
         coins: 0,
+        inventory: {},
         bestRound: 0,
         active: false,
     };
@@ -64,6 +76,18 @@ function wholeNumber(value: unknown, fallback: number, minimum = 0): number {
     return typeof value === 'number' && Number.isFinite(value)
         ? Math.max(minimum, Math.round(value))
         : fallback;
+}
+
+/** Keeps only positive whole stacks, so a malformed save cannot smuggle junk in. */
+function normalizeInventory(raw: unknown): EntityInventoryState {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+
+    const inventory: EntityInventoryState = {};
+    for (const [itemId, quantity] of Object.entries(raw as Record<string, unknown>)) {
+        const amount = wholeNumber(quantity, 0);
+        if (itemId && amount > 0) inventory[itemId] = amount;
+    }
+    return inventory;
 }
 
 /** Normalises a run read from a save, so old or malformed saves still open. */
@@ -78,6 +102,7 @@ export function normalizeSurvivalRun(raw: unknown): SurvivalRun {
             : null,
         maxHp: wholeNumber(data.maxHp, 0),
         coins: wholeNumber(data.coins, 0),
+        inventory: normalizeInventory(data.inventory),
         bestRound: wholeNumber(data.bestRound, 0),
         active: data.active === true,
     };

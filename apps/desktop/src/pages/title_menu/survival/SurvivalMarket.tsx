@@ -3,12 +3,13 @@ import { useTranslation } from 'react-i18next';
 import CommonButton from '@/components/common/CommonButton';
 import CommonImage from '@/components/common/CommonImage';
 import { ControlIcon, InventoryIcon, SelectorIcon, UnknownIcon } from '@/assets/GalatimeIcon';
-import { SURVIVAL_HEAL_COST, SURVIVAL_HEAL_FRACTION, SURVIVAL_SHOP_ITEMS } from '@/constants/SurvivalConstants';
+import { SURVIVAL_HEAL_COST, SURVIVAL_HEAL_FRACTION } from '@/constants/SurvivalConstants';
 import { getEntityImages } from '@/services/entityImageService';
 import { getItemDefinition } from '@/services/inventory/itemService';
-import type { ItemDefinition } from '@/types/InventoryType';
+import type { ItemDefinition, ItemRarity } from '@/types/InventoryType';
 import type { SurvivalRun } from '@/types/SurvivalType';
 import { playSfx } from '@/controllers/audioController';
+import { canBuySurvivalItem } from './survivalModel';
 
 interface SurvivalMarketProps {
     run: SurvivalRun;
@@ -17,7 +18,10 @@ interface SurvivalMarketProps {
     ready: boolean;
     canHeal: boolean;
     clearedRound: number | null;
+    /** The six supplies drawn for this round. */
+    stock: readonly ItemDefinition[];
     onHeal: () => void;
+    onBuy: (itemId: string) => void;
     onStart: () => void;
     onSettings: () => void;
 }
@@ -31,21 +35,10 @@ interface MarketTab {
     disabled: boolean;
 }
 
-interface ShopShelfItem {
-    itemId: string;
-    price: number;
+interface OwnedItem {
     item: ItemDefinition;
+    quantity: number;
 }
-
-/**
- * The 6 items in the shelves. They exist in the item catalogue already, so the
- * shop only pins their order and their price; names, descriptions and effects
- * keep coming from the catalogue.
- */
-const SHOP_SHELF: ShopShelfItem[] = SURVIVAL_SHOP_ITEMS.flatMap((entry) => {
-    const item = getItemDefinition(entry.itemId);
-    return item ? [{ ...entry, item }] : [];
-});
 
 const TAB_ICON_CLASS = 'h-4 w-4';
 
@@ -53,6 +46,15 @@ const RESOURCE_LABEL: Record<string, string> = {
     hp: 'HP',
     mana: 'MP',
     stamina: 'SP',
+};
+
+/** Rarity is a colour cue everywhere it is printed. */
+const RARITY_CLASS: Record<ItemRarity, string> = {
+    common: 'text-white/50',
+    uncommon: 'text-galatime-success',
+    rare: 'text-galatime-primaryHover',
+    epic: 'text-galatime-accent',
+    legendary: 'text-galatime-warning',
 };
 
 /** A compact shelf label such as `HP +30 · MP +20`. */
@@ -113,10 +115,10 @@ function ShelfItemArt() {
 /**
  * The Survival Mode marketplace, drawn as a game shop instead of a settings card.
  *
- * Everything here is presentation: the shelves, the item selection and the tab
- * rail. The screen above owns the run, persistence and combat. Inventory and
- * upgrades are deliberately visible but disabled until those systems exist; the
- * Shop and the Life Fountain are the two working sections.
+ * Everything here is presentation: the shelves, the item selection, the bag and
+ * the tab rail. The screen above owns the run, persistence and combat. The Shop
+ * and the Fountain of Life share the main panel with the Inventory; Upgrades and
+ * the Skill Tree stay visible but disabled until those systems exist.
  */
 export function SurvivalMarket({
     run,
@@ -125,20 +127,42 @@ export function SurvivalMarket({
     ready,
     canHeal,
     clearedRound,
+    stock,
     onHeal,
+    onBuy,
     onStart,
     onSettings,
 }: SurvivalMarketProps) {
     const { t } = useTranslation(['survival', 'common', 'settings']);
     const [activeTab, setActiveTab] = useState<MarketTabId>('shop');
-    const [selectedId, setSelectedId] = useState(SHOP_SHELF[0]?.itemId ?? '');
+    const [selectedId, setSelectedId] = useState('');
 
     const portrait = useMemo(
         () => getEntityImages({ type: 'character', id: 'arthur', name: 'Arthur' })[0]?.url,
         [],
     );
 
-    const selected = SHOP_SHELF.find((entry) => entry.itemId === selectedId) ?? SHOP_SHELF[0];
+    const owned = useMemo<OwnedItem[]>(() => (
+        Object.entries(run.inventory)
+            .flatMap(([itemId, quantity]) => {
+                const item = getItemDefinition(itemId);
+                return item && quantity > 0 ? [{ item, quantity }] : [];
+            })
+            .sort((a, b) => a.item.name.localeCompare(b.item.name))
+    ), [run.inventory]);
+
+    // A stale selection (the shelf rolled over) falls back to the first slot.
+    const selected = stock.find((item) => item.id === selectedId) ?? stock[0] ?? null;
+    const selectedOwned = selected ? run.inventory[selected.id] ?? 0 : 0;
+    const selectedCanBuy = selected !== null && ready && canBuySurvivalItem(run, selected);
+    const buyHint = !selected
+        ? undefined
+        : run.coins < selected.price
+            ? t('survival.shop.needCoins')
+            : selected.max_stack !== null && selectedOwned >= selected.max_stack
+                ? t('survival.shop.stackFull')
+                : undefined;
+
     const healthFull = currentHp >= maxHp;
     const healHint = healthFull
         ? t('survival.fountain.full')
@@ -156,7 +180,7 @@ export function SurvivalMarket({
             id: 'inventory',
             labelKey: 'survival.tabs.inventory',
             icon: <InventoryIcon className={TAB_ICON_CLASS} />,
-            disabled: true,
+            disabled: false,
         },
         {
             id: 'upgrades',
@@ -310,6 +334,61 @@ export function SurvivalMarket({
                                 </div>
                             </div>
                         </div>
+                    ) : activeTab === 'inventory' ? (
+                        <div className="flex flex-col border-game border-white/10 bg-galatime-dark/50 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+                            <div className="flex shrink-0 items-center justify-between border-b-game border-white/10 px-3 py-2">
+                                <h2 className="text-[0.65rem] uppercase tracking-[0.3em] text-white/45">
+                                    {t('survival.inventory.title')}
+                                </h2>
+                                <p className="text-[0.6rem] uppercase tracking-[0.12em] text-white/35">
+                                    {t('survival.inventory.count', { count: owned.length })}
+                                </p>
+                            </div>
+
+                            <div className="p-3 sm:p-4">
+                                {owned.length === 0 ? (
+                                    <p className="max-w-md text-sm leading-relaxed text-white/50">
+                                        {t('survival.inventory.empty')}
+                                    </p>
+                                ) : (
+                                    <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                                        {owned.map(({ item, quantity }) => (
+                                            <li
+                                                key={item.id}
+                                                className="flex gap-3 border-game border-white/15 bg-galatime-darkHover/70 p-2.5"
+                                            >
+                                                <div className="flex size-14 shrink-0 items-center justify-center border-game border-white/10 bg-galatime-background">
+                                                    <UnknownIcon className="h-7 w-7 text-white/20" />
+                                                </div>
+                                                <div className="flex min-w-0 flex-1 flex-col">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <p className="truncate text-sm uppercase tracking-[0.08em] text-white">
+                                                            {item.name}
+                                                        </p>
+                                                        <span className="shrink-0 text-sm leading-none text-white/70">
+                                                            {t('survival.inventory.quantity', { quantity })}
+                                                        </span>
+                                                    </div>
+                                                    <p className={`text-[0.6rem] uppercase tracking-[0.16em] ${RARITY_CLASS[item.rarity]}`}>
+                                                        {t(`survival.rarity.${item.rarity}`)}
+                                                    </p>
+                                                    <p className="mt-1 text-[0.65rem] uppercase tracking-[0.12em] text-galatime-stats-health">
+                                                        {itemEffectSummary(item)}
+                                                    </p>
+                                                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-white/45">
+                                                        {item.description}
+                                                    </p>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+
+                                <p className="mt-3 text-[0.65rem] uppercase tracking-[0.12em] text-white/30">
+                                    {t('survival.inventory.combatHint')}
+                                </p>
+                            </div>
+                        </div>
                     ) : (
                         <>
                             <div className="flex flex-col border-game border-white/10 bg-galatime-dark/50 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
@@ -325,58 +404,79 @@ export function SurvivalMarket({
                                 </div>
 
                                 <div className="p-3 sm:p-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-                                    <div className="grid auto-rows-fr grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:h-full">
-                                        {SHOP_SHELF.map((entry) => {
-                                            const active = entry.itemId === selected?.itemId;
-                                            return (
-                                                <button
-                                                    key={entry.itemId}
-                                                    type="button"
-                                                    aria-pressed={active}
-                                                    aria-label={t('survival.shop.select', {
-                                                        name: entry.item.name,
-                                                        price: entry.price,
-                                                    })}
-                                                    onMouseEnter={() => playSfx('hover')}
-                                                    onClick={() => {
-                                                        playSfx('click');
-                                                        setSelectedId(entry.itemId);
-                                                    }}
-                                                    className={`relative flex min-h-40 flex-col border-game bg-galatime-darkHover/70 p-2 text-left outline-offset-2 transition-colors duration-200 focus-visible:outline focus-visible:outline-game focus-visible:outline-galatime-primary ${active
-                                                        ? 'border-galatime-warning outline outline-game outline-galatime-warning/40'
-                                                        : 'border-white/15 hover:border-galatime-primary/70'}`}
-                                                >
-                                                    <span className="absolute right-2 top-2 z-10 flex items-center gap-1 border-game border-galatime-warning/50 bg-galatime-background px-1.5 py-0.5 text-xs text-galatime-warning">
-                                                        <CommonImage src="/images/ui/coin.png" alt="" className="size-3" />
-                                                        {entry.price}
-                                                    </span>
+                                    {stock.length === 0 ? (
+                                        <p className="max-w-md text-sm leading-relaxed text-white/50">
+                                            {t('survival.shop.empty')}
+                                        </p>
+                                    ) : (
+                                        <div className="grid auto-rows-fr grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:h-full">
+                                            {stock.map((item) => {
+                                                const active = item.id === selected?.id;
+                                                return (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        aria-pressed={active}
+                                                        aria-label={t('survival.shop.select', {
+                                                            name: item.name,
+                                                            price: item.price,
+                                                        })}
+                                                        onMouseEnter={() => playSfx('hover')}
+                                                        onClick={() => {
+                                                            playSfx('click');
+                                                            setSelectedId(item.id);
+                                                        }}
+                                                        className={`relative flex min-h-40 flex-col border-game bg-galatime-darkHover/70 p-2 text-left outline-offset-2 transition-colors duration-200 focus-visible:outline focus-visible:outline-game focus-visible:outline-galatime-primary ${active
+                                                            ? 'border-galatime-warning outline outline-game outline-galatime-warning/40'
+                                                            : 'border-white/15 hover:border-galatime-primary/70'}`}
+                                                    >
+                                                        <span className="absolute right-2 top-2 z-10 flex items-center gap-1 border-game border-galatime-warning/50 bg-galatime-background px-1.5 py-0.5 text-xs text-galatime-warning">
+                                                            <CommonImage src="/images/ui/coin.png" alt="" className="size-3" />
+                                                            {item.price}
+                                                        </span>
 
-                                                    <ShelfItemArt />
+                                                        <ShelfItemArt />
 
-                                                    <span className="mt-3 px-0.5 text-sm uppercase tracking-[0.1em] text-white">
-                                                        {entry.item.name}
-                                                    </span>
-                                                    <span className="mt-1 px-0.5 text-[0.65rem] uppercase tracking-[0.12em] text-galatime-stats-health">
-                                                        {itemEffectSummary(entry.item)}
-                                                    </span>
-                                                    <span className="mt-auto px-0.5 pt-3 text-[0.55rem] uppercase tracking-[0.2em] text-white/30">
-                                                        {entry.item.category}
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                                        <span className="mt-3 px-0.5 text-sm uppercase tracking-[0.1em] text-white">
+                                                            {item.name}
+                                                        </span>
+                                                        <span className="mt-1 px-0.5 text-[0.65rem] uppercase tracking-[0.12em] text-galatime-stats-health">
+                                                            {itemEffectSummary(item)}
+                                                        </span>
+                                                        <span className="mt-auto flex items-center justify-between gap-2 px-0.5 pt-3">
+                                                            <span className="text-[0.55rem] uppercase tracking-[0.2em] text-white/30">
+                                                                {item.category}
+                                                            </span>
+                                                            <span className={`text-[0.55rem] uppercase tracking-[0.16em] ${RARITY_CLASS[item.rarity]}`}>
+                                                                {t(`survival.rarity.${item.rarity}`)}
+                                                            </span>
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {selected && (
                                 <div className="grid shrink-0 gap-3 border-game border-white/10 bg-galatime-dark p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                                     <div className="min-w-0">
-                                        <p className="text-sm uppercase tracking-[0.12em] text-white">
-                                            {selected.item.name}
-                                        </p>
+                                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                            <p className="text-sm uppercase tracking-[0.12em] text-white">
+                                                {selected.name}
+                                            </p>
+                                            <span className={`text-[0.6rem] uppercase tracking-[0.16em] ${RARITY_CLASS[selected.rarity]}`}>
+                                                {t(`survival.rarity.${selected.rarity}`)}
+                                            </span>
+                                            {selectedOwned > 0 && (
+                                                <span className="text-[0.6rem] uppercase tracking-[0.12em] text-white/40">
+                                                    {t('survival.inventory.quantity', { quantity: selectedOwned })}
+                                                </span>
+                                            )}
+                                        </div>
                                         <p className="mt-1 text-sm leading-relaxed text-white/55">
-                                            {selected.item.description}
+                                            {selected.description}
                                         </p>
                                     </div>
                                     <div className="flex items-center justify-between gap-3 sm:justify-end">
@@ -387,15 +487,17 @@ export function SurvivalMarket({
                                         <div className="flex flex-col items-end gap-1">
                                             <CommonButton
                                                 variant="outline"
-                                                disabled
-                                                title={t('survival.shop.unavailable')}
-                                                onPress={() => undefined}
+                                                disabled={!selectedCanBuy}
+                                                title={buyHint}
+                                                onPress={() => onBuy(selected.id)}
                                             >
                                                 {t('survival.shop.buy')}
                                             </CommonButton>
-                                            <span className="text-[0.6rem] uppercase tracking-[0.12em] text-white/35">
-                                                {t('survival.shop.unavailable')}
-                                            </span>
+                                            {buyHint && (
+                                                <span className="text-[0.6rem] uppercase tracking-[0.12em] text-white/35">
+                                                    {buyHint}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

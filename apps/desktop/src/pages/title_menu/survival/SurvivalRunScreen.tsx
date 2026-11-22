@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { CombatEncounter } from '@/components/game/combat/CombatEncounter';
 import { PAGE_FADE_TRANSITION } from '@/constants/AnimationConstants';
+import { SURVIVAL_CHARACTER_ID } from '@/constants/SurvivalConstants';
+import { fetchCombatInventory } from '@/controllers/combatController';
 import { fetchAllMobs, fetchCharacter } from '@/controllers/entityController';
 import { resolveUnitSprite } from '@/services/combatSpriteService';
 import { getEntityImages } from '@/services/entityImageService';
+import { getItemDefinition, loadItemCatalogue } from '@/services/inventory/itemService';
 import type { SaveData } from '@/services/saveService';
 import type { MobData } from '@/types/EntityDataType';
 import type {
@@ -18,6 +21,7 @@ import { SettingsScreen } from '../SettingsScreen';
 import { SurvivalDefeat, type SurvivalDefeatSummary } from './SurvivalDefeat';
 import { SurvivalMarket } from './SurvivalMarket';
 import {
+    buySurvivalItem,
     canHealSurvivalRun,
     countGoldCoins,
     createSurvivalEncounter,
@@ -26,6 +30,7 @@ import {
     resolveSurvivalVictory,
     survivalCurrentHp,
     survivalMaxHp,
+    survivalShopStock,
 } from './survivalModel';
 
 interface SurvivalRunScreenProps {
@@ -88,6 +93,21 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
     const maxHp = survivalMaxHp(run, arthurMaxHp ?? 1);
     const currentHp = survivalCurrentHp(run, maxHp);
     const ready = arthurMaxHp !== null && waveMobs !== null && waveMobs.length > 0;
+    // The shelf is derived from the round alone, so it changes only when the
+    // run advances — never between two renders of the same visit.
+    const shopStock = useMemo(
+        () => survivalShopStock(run.round, [...loadItemCatalogue().values()]),
+        [run.round],
+    );
+
+    const buyItem = useCallback((itemId: string) => {
+        const item = getItemDefinition(itemId);
+        if (!item) return;
+
+        const nextRun = buySurvivalItem(run, item);
+        if (nextRun === run) return;
+        void persist({ ...record, survival: nextRun });
+    }, [run, record, persist]);
 
     const startRound = useCallback(() => {
         if (!ready || !waveMobs) return;
@@ -127,7 +147,21 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
         setEncounter(null);
 
         if (outcome === 'victory') {
-            const nextRun = resolveSurvivalVictory(run, state, run.round);
+            // The picker spent items straight into the combat session, so the
+            // remaining bag has to be read back before the session is closed.
+            const arthur = state.units.find((unit) => (
+                unit.side === 'allies' && unit.entityId === SURVIVAL_CHARACTER_ID
+            ));
+            const carried = arthur ? fetchCombatInventory(state.sessionId, arthur.id) : null;
+            const inventory = carried?.ok
+                ? Object.fromEntries(
+                    carried.data
+                        .filter((entry) => entry.quantity > 0)
+                        .map((entry) => [entry.itemId, entry.quantity]),
+                )
+                : undefined;
+
+            const nextRun = resolveSurvivalVictory(run, state, run.round, inventory);
             setClearedRound(run.round);
             setPhase('market');
             void persist({ ...record, survival: nextRun });
@@ -172,6 +206,7 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
                     animationsEnabled={record.combatAnimations}
                     tooltipVisible={record.tooltips.fighting}
                     startOptions={{ difficulty: record.difficulty, persistInventories: false }}
+                    inventoryPicker
                     onFinish={finishRound}
                     className="h-full"
                 />
@@ -228,7 +263,9 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
                 ready={ready}
                 canHeal={canHealSurvivalRun(run, maxHp)}
                 clearedRound={clearedRound}
+                stock={shopStock}
                 onHeal={heal}
+                onBuy={buyItem}
                 onStart={startRound}
                 onSettings={() => setSettingsOpen(true)}
             />

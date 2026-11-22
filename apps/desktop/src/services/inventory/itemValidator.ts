@@ -10,6 +10,7 @@
  */
 
 import type { ItemDefinition, ItemEffect } from '../../types/InventoryType';
+import { ITEM_RARITIES } from './itemNormalizer';
 
 /** One problem found in the catalogue. */
 export interface ItemValidationIssue {
@@ -145,6 +146,14 @@ export function validateItemCatalogue(
 
         if (item.max_stack !== null && !(item.max_stack > 0)) {
             issues.push(issue(item.id, 'invalid_max_stack', `max_stack must be a positive number or null (got ${item.max_stack}).`));
+        }
+
+        if (!Number.isInteger(item.price) || item.price < 0) {
+            issues.push(issue(item.id, 'invalid_price', `price must be a non-negative whole number (got ${item.price}).`));
+        }
+
+        if (!(ITEM_RARITIES as readonly string[]).includes(item.rarity)) {
+            issues.push(issue(item.id, 'unknown_rarity', `rarity "${item.rarity}" is not a known band.`));
         }
 
         const isKeyItem = item.category === 'key_item';

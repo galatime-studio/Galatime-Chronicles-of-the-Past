@@ -19,6 +19,9 @@ import type { CombatEvent } from './CombatType';
 /** Category of an item, determining where it can be used. */
 export type ItemCategory = 'consumable' | 'key_item' | 'throwable' | 'buff' | 'debuff';
 
+/** Rarity band of an item; drives the marketplace odds and its price band. */
+export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+
 /**
  * Who an item effect addresses, in the catalogue's own vocabulary.
  *
@@ -141,6 +144,10 @@ export interface ItemDefinition {
     name: string;
     description: string;
     category: ItemCategory;
+    /** Rarity band; rarer supplies are drawn less often and cost more. */
+    rarity: ItemRarity;
+    /** Coin price in the Survival marketplace. */
+    price: number;
     /** Default target scope for this item's effects. */
     target: ItemTargetRule;
     /** Effects applied when the item is used. Empty for a key item. */

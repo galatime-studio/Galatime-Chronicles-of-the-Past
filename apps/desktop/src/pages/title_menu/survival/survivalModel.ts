@@ -14,12 +14,18 @@ import {
     SURVIVAL_HEAL_FRACTION,
     SURVIVAL_PRESSURE_REFERENCE_DEFENSE,
     SURVIVAL_ROUND_SCALING,
+    SURVIVAL_SHOP_RARITY_MIN_ROUND,
+    SURVIVAL_SHOP_RARITY_WEIGHTS,
+    SURVIVAL_SHOP_SIZE,
     SURVIVAL_WAVE_BUDGET_BASE,
     SURVIVAL_WAVE_BUDGET_GROWTH,
     SURVIVAL_WAVE_COST_DIVISOR,
 } from '../../../constants/SurvivalConstants';
 import { attackDefenseFactor } from '../../../services/combat/damageCalculator';
+import { createSeededCombatRandom } from '../../../services/combat/ai/training/seededRandom';
+import { addItem } from '../../../services/inventory/entityInventoryService';
 import type { MobData } from '../../../types/EntityDataType';
+import type { EntityInventoryState, ItemDefinition } from '../../../types/InventoryType';
 import type { SurvivalRun } from '../../../types/SurvivalType';
 import type {
     CombatEncounter,
@@ -66,6 +72,87 @@ export function healSurvivalRun(run: SurvivalRun, maxHp: number): SurvivalRun {
         hp: Math.min(maxHp, healed),
         coins: run.coins - SURVIVAL_HEAL_COST,
     };
+}
+
+/** How heavily a rarity is favoured on this round's shelves; `0` hides it. */
+function shopWeight(rarity: ItemDefinition['rarity'], round: number): number {
+    if ((SURVIVAL_SHOP_RARITY_MIN_ROUND[rarity] ?? 1) > round) return 0;
+    return SURVIVAL_SHOP_RARITY_WEIGHTS[rarity] ?? 0;
+}
+
+/**
+ * The supplies a round's shelf offers.
+ *
+ * The catalogue is the only source of stock: every consumable usable in combat
+ * may appear (ammunition and key items are excluded), gated by its rarity's
+ * first round and weighted against the rest. The draw is seeded by the round,
+ * so the shelf is stable while the player shops and rolls over only when the
+ * run advances. The first slot prefers a common supply, so a shelf is never six
+ * luxury items the player cannot afford.
+ */
+export function survivalShopStock(
+    round: number,
+    catalogue: readonly ItemDefinition[],
+): ItemDefinition[] {
+    const safeRound = Math.max(1, Math.round(round));
+    const pool = catalogue
+        .filter((item) => (
+            item.category === 'consumable'
+            && !item.item_type
+            && item.usable_in_combat
+            && item.price > 0
+            && shopWeight(item.rarity, safeRound) > 0
+        ))
+        .sort((a, b) => a.id.localeCompare(b.id));
+
+    if (pool.length === 0) return [];
+
+    const random = createSeededCombatRandom(`survival-shop:${safeRound}`);
+    const remaining = [...pool];
+    const stock: ItemDefinition[] = [];
+
+    while (stock.length < SURVIVAL_SHOP_SIZE && remaining.length > 0) {
+        const commons = remaining.filter((item) => item.rarity === 'common');
+        const candidates = stock.length === 0 && commons.length > 0 ? commons : remaining;
+
+        const totalWeight = candidates.reduce(
+            (total, item) => total + shopWeight(item.rarity, safeRound),
+            0,
+        );
+        let roll = random() * totalWeight;
+        let chosen = candidates[candidates.length - 1];
+
+        for (const item of candidates) {
+            roll -= shopWeight(item.rarity, safeRound);
+            if (roll < 0) {
+                chosen = item;
+                break;
+            }
+        }
+
+        stock.push(chosen);
+        remaining.splice(remaining.indexOf(chosen), 1);
+    }
+
+    return stock;
+}
+
+/** Whether the run can pay for one more of an item and still carry it. */
+export function canBuySurvivalItem(run: SurvivalRun, item: ItemDefinition): boolean {
+    if (run.coins < item.price) return false;
+    const owned = run.inventory[item.id] ?? 0;
+    return item.max_stack === null || owned < item.max_stack;
+}
+
+/** Buys one item into the run's bag; returns the run unchanged when illegal. */
+export function buySurvivalItem(run: SurvivalRun, item: ItemDefinition): SurvivalRun {
+    if (!canBuySurvivalItem(run, item)) return run;
+
+    const inventory = { ...run.inventory };
+    const added = addItem(inventory, item.id, 1);
+    if (!added.ok) return run;
+
+    return { ...run, coins: run.coins - item.price, inventory };
 }
 
 /** Gold coins found in the fight's final log. */
@@ -248,14 +335,23 @@ export function createSurvivalEncounter({
             entityType: 'character',
             line: 'front',
             isPlayerControlled: true,
+            inventory: { ...run.inventory },
             ...(run.hp === null ? {} : { currentHp: run.hp }),
         }],
         enemies,
     };
 }
 
-/** The run after clearing one wave: health and coins carry, everything else resets. */
-export function resolveSurvivalVictory(run: SurvivalRun, state: CombatState, round: number): SurvivalRun {
+/**
+ * The run after clearing one wave: health, coins and whatever is left in the
+ * bag carry; everything else resets.
+ */
+export function resolveSurvivalVictory(
+    run: SurvivalRun,
+    state: CombatState,
+    round: number,
+    inventory: EntityInventoryState = run.inventory,
+): SurvivalRun {
     const arthur = state.units.find((unit) => (
         unit.side === 'allies' && unit.entityId === SURVIVAL_CHARACTER_ID
     ));
@@ -266,6 +362,7 @@ export function resolveSurvivalVictory(run: SurvivalRun, state: CombatState, rou
         hp: arthur ? Math.max(1, Math.round(arthur.currentHp)) : run.hp,
         maxHp: arthur ? Math.max(1, Math.round(arthur.stats.maxHp)) : run.maxHp,
         coins: run.coins + countGoldCoins(state),
+        inventory: { ...inventory },
         bestRound: Math.max(run.bestRound, round),
         active: true,
     };
@@ -278,6 +375,7 @@ export function resolveSurvivalDefeat(run: SurvivalRun, round: number): Survival
         round: 1,
         hp: null,
         coins: 0,
+        inventory: {},
         bestRound: Math.max(run.bestRound, round),
         active: false,
     };
