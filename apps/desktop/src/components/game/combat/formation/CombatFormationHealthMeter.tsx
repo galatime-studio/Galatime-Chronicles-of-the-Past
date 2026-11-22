@@ -1,5 +1,4 @@
-import { useEffect, useRef } from 'react';
-import CombatStatsBar, { type CombatStatsBarRef } from '../hud/CombatStatsBar';
+import CombatStatsBar from '../hud/CombatStatsBar';
 
 interface CombatFormationHealthMeterProps {
     entityName: string;
@@ -16,10 +15,6 @@ interface CombatFormationHealthMeterProps {
  *
  * The same bar the combat HUD uses, so health drains in red and fills in green
  * with exactly the animations the player's own bars play, preview included.
- *
- * That bar animates *imperatively* - it is told how much was lost rather than
- * being re-rendered with a new number - so the reading from the previous render
- * is kept here and replayed to it whenever the value changes.
  */
 export function CombatFormationHealthMeter({
     entityName,
@@ -28,17 +23,6 @@ export function CombatFormationHealthMeter({
     previewDamage = 0,
     previewHeal = 0,
 }: CombatFormationHealthMeterProps) {
-    const barRef = useRef<CombatStatsBarRef | null>(null);
-    const previous = useRef(current);
-
-    useEffect(() => {
-        const delta = previous.current - current;
-        previous.current = current;
-
-        if (delta > 0) barRef.current?.deplete(delta);
-        else if (delta < 0) barRef.current?.restore(-delta);
-    }, [current]);
-
     if (!Number.isFinite(current) || current < 0 || !Number.isFinite(max) || max <= 0) {
         return null;
     }
@@ -56,7 +40,6 @@ export function CombatFormationHealthMeter({
             className="mt-0.5 w-5 sm:w-10"
         >
             <CombatStatsBar
-                ref={barRef}
                 current={current}
                 max={max}
                 showTitle={false}

@@ -147,6 +147,7 @@ export function CombatBattle({
             >
                 {hudUnit && (
                     <CombatHUD
+                        unitId={hudUnit.id}
                         hp={stats.hp}
                         mana={stats.mana}
                         stamina={stats.stamina}

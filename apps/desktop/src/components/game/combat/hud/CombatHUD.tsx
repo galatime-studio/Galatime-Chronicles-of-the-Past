@@ -56,6 +56,13 @@ interface CombatHUDProps {
     hp: { current: number; max: number };
     mana: { current: number; max: number };
     stamina: { current: number; max: number };
+    /**
+     * Id of the unit whose vitals these are.
+     *
+     * A change swaps the bars to the new unit without replaying a loss: the
+     * previous character's leftover pool is not this one's damage.
+     */
+    unitId?: string;
 
     // Attacks & Actions
     attacks: Attack[];
@@ -92,6 +99,7 @@ export const CombatHUD: React.FC<CombatHUDProps> = ({
     hp,
     mana,
     stamina,
+    unitId,
     attacks,
     extraMovements = DEFAULT_EXTRA_MOVEMENTS,
     selectedActionId = null,
@@ -170,6 +178,7 @@ export const CombatHUD: React.FC<CombatHUDProps> = ({
                 {/* HP Bar */}
                 <div className="w-full pr-2">
                     <CombatStatsBar
+                        key={unitId}
                         title="HP"
                         showTitle
                         current={hp.current}
@@ -234,6 +243,7 @@ export const CombatHUD: React.FC<CombatHUDProps> = ({
             {/* MN & SN */}
             <div className="flex flex-row gap-4 pt-1">
                 <CombatStatsBar
+                    key={unitId}
                     title="MN"
                     showTitle
                     current={mana.current}
@@ -241,11 +251,13 @@ export const CombatHUD: React.FC<CombatHUDProps> = ({
                     orientation="btt"
                     className="h-full"
                     healthClass="bg-gradient-to-t from-galatime-stats-manaFrom to-galatime-stats-manaTo"
+                    restoreClass="bg-galatime-stats-gain-mana"
                     previewDeplete={previewManaDeplete}
                     previewDepleteClass="bg-black/60"
                 />
 
                 <CombatStatsBar
+                    key={unitId}
                     title="SN"
                     showTitle
                     current={stamina.current}
@@ -253,6 +265,7 @@ export const CombatHUD: React.FC<CombatHUDProps> = ({
                     orientation="btt"
                     className="h-full"
                     healthClass="bg-galatime-stats-stamina"
+                    restoreClass="bg-galatime-stats-gain-stamina"
                     previewDeplete={previewStaminaDeplete}
                     previewDepleteClass="bg-black/60"
                 />
