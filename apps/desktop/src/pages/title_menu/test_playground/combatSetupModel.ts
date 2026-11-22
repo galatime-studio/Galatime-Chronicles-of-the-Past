@@ -112,13 +112,13 @@ export function catalogueKey(entityType: CombatEntityType, entityId: string): st
     return `${entityType}:${entityId}`;
 }
 
-/** A setup with every position empty, plus one on-hold lane per side. */
+/** A setup with every position empty and no on-hold lanes; waves are added on request. */
 export function createEmptySetup(): CombatSetup {
     const emptyLine = (): SetupLine => Array.from({ length: SLOTS_PER_LINE }, () => null);
 
     return {
-        allies: { front: emptyLine(), rear: emptyLine(), hold: [emptyLine()] },
-        enemies: { front: emptyLine(), rear: emptyLine(), hold: [emptyLine()] },
+        allies: { front: emptyLine(), rear: emptyLine(), hold: [] },
+        enemies: { front: emptyLine(), rear: emptyLine(), hold: [] },
     };
 }
 
