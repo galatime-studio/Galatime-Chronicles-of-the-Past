@@ -3,9 +3,9 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { CombatEncounter } from '@/components/game/combat/CombatEncounter';
 import { PAGE_FADE_TRANSITION } from '@/constants/AnimationConstants';
-import { SURVIVAL_SLIME_IDS } from '@/constants/SurvivalConstants';
 import { fetchAllMobs, fetchCharacter } from '@/controllers/entityController';
 import { resolveUnitSprite } from '@/services/combatSpriteService';
+import { getEntityImages } from '@/services/entityImageService';
 import type { SaveData } from '@/services/saveService';
 import type { MobData } from '@/types/EntityDataType';
 import type {
@@ -57,7 +57,7 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
     const [encounter, setEncounter] = useState<CombatEncounterData | null>(null);
     const [summary, setSummary] = useState<SurvivalDefeatSummary | null>(null);
     const [clearedRound, setClearedRound] = useState<number | null>(null);
-    const [slimes, setSlimes] = useState<MobData[] | null>(null);
+    const [waveMobs, setWaveMobs] = useState<MobData[] | null>(null);
     const [arthurMaxHp, setArthurMaxHp] = useState<number | null>(null);
     // The first-round launch must happen once, even across the state updates it causes.
     const autoStarted = useRef(false);
@@ -69,7 +69,11 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
 
         void Promise.all([fetchAllMobs(), fetchCharacter('arthur')]).then(([mobs, arthur]) => {
             if (!active) return;
-            setSlimes(mobs.filter((mob) => (SURVIVAL_SLIME_IDS as readonly string[]).includes(mob.id)));
+            // Waves draw from the mob folder; only mobs that actually ship
+            // sprites in `public/images/entities/mobs` can stand in the arena.
+            setWaveMobs(mobs.filter((mob) => (
+                getEntityImages({ type: 'mob', id: mob.id, name: mob.name }).length > 0
+            )));
             setArthurMaxHp(arthur ? arthur.base_stats.hp : 0);
         });
 
@@ -83,10 +87,10 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
 
     const maxHp = survivalMaxHp(run, arthurMaxHp ?? 1);
     const currentHp = survivalCurrentHp(run, maxHp);
-    const ready = arthurMaxHp !== null && slimes !== null && slimes.length > 0;
+    const ready = arthurMaxHp !== null && waveMobs !== null && waveMobs.length > 0;
 
     const startRound = useCallback(() => {
-        if (!ready || !slimes) return;
+        if (!ready || !waveMobs) return;
 
         const nextRun: SurvivalRun = {
             ...run,
@@ -100,12 +104,12 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
         setEncounter(createSurvivalEncounter({
             round: nextRun.round,
             run: nextRun,
-            mobs: slimes,
+            mobs: waveMobs,
             name: t('survival.round', { round: nextRun.round }),
         }));
         setPhase('combat');
         void persist(nextRecord);
-    }, [ready, slimes, run, maxHp, record, t, persist]);
+    }, [ready, waveMobs, run, maxHp, record, t, persist]);
 
     // A fresh run opens directly on round 1; later rounds open on the market.
     useEffect(() => {

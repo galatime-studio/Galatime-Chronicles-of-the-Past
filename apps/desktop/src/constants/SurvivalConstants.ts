@@ -12,8 +12,20 @@ export const SURVIVAL_HEAL_FRACTION = 0.5;
 /** How much every enemy stat grows per round, on top of the previous round. */
 export const SURVIVAL_ROUND_SCALING = 0.12;
 
-/** The slime family Survival Mode draws its waves from. */
-export const SURVIVAL_SLIME_IDS = ['small_slime', 'slime', 'big_slime'] as const;
+/** Difficulty points a round-1 wave starts with. */
+export const SURVIVAL_WAVE_BUDGET_BASE = 4;
+
+/** Extra difficulty points every round adds to the wave budget. */
+export const SURVIVAL_WAVE_BUDGET_GROWTH = 3;
+
+/** Threat points that make up one wave difficulty point. */
+export const SURVIVAL_WAVE_COST_DIVISOR = 50;
+
+/** Defence a mob's attack pressure is measured against (Arthur's defence band). */
+export const SURVIVAL_PRESSURE_REFERENCE_DEFENSE = 50;
+
+/** Attack a mob's durability is measured against (Arthur's attack band). */
+export const SURVIVAL_DURABILITY_REFERENCE_ATTACK = 80;
 
 /** One of the six supplies shown in the marketplace. */
 export interface SurvivalShopItem {

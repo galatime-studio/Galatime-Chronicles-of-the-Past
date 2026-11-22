@@ -9,11 +9,16 @@
 
 import {
     SURVIVAL_CHARACTER_ID,
+    SURVIVAL_DURABILITY_REFERENCE_ATTACK,
     SURVIVAL_HEAL_COST,
     SURVIVAL_HEAL_FRACTION,
+    SURVIVAL_PRESSURE_REFERENCE_DEFENSE,
     SURVIVAL_ROUND_SCALING,
-    SURVIVAL_SLIME_IDS,
+    SURVIVAL_WAVE_BUDGET_BASE,
+    SURVIVAL_WAVE_BUDGET_GROWTH,
+    SURVIVAL_WAVE_COST_DIVISOR,
 } from '../../../constants/SurvivalConstants';
+import { attackDefenseFactor } from '../../../services/combat/damageCalculator';
 import type { MobData } from '../../../types/EntityDataType';
 import type { SurvivalRun } from '../../../types/SurvivalType';
 import type {
@@ -28,7 +33,7 @@ import type {
 export interface SurvivalWaveOptions {
     round: number;
     run: SurvivalRun;
-    /** The whole mob catalogue; only the slime family is used. */
+    /** The mob catalogue (`src/data/entities/mobs`); every entry may be drawn. */
     mobs: readonly MobData[];
     /** The encounter name shown in the arena. */
     name: string;
@@ -87,8 +92,8 @@ function holdLaneSize(round: number): number {
     return Math.min(3, 1 + Math.floor((round - 3) / 4));
 }
 
-/** The stat block a slime fights with at this round's scale. */
-function scaledSlimeStats(mob: MobData, scale: number): Partial<CombatStats> {
+/** The stat block a mob fights with at this round's scale. */
+function scaledMobStats(mob: MobData, scale: number): Partial<CombatStats> {
     const base = mob.base_stats;
     const scaled = (value: number) => Math.max(0, Math.round(value * scale));
 
@@ -105,27 +110,71 @@ function scaledSlimeStats(mob: MobData, scale: number): Partial<CombatStats> {
     };
 }
 
-/** The slime kinds available on a round, weighted towards bigger bodies later. */
-function slimeForRound(round: number, mobs: readonly MobData[], random: () => number): MobData | null {
-    const available = SURVIVAL_SLIME_IDS
-        .map((id) => mobs.find((mob) => mob.id === id))
-        .filter((mob): mob is MobData => mob !== undefined);
+/**
+ * How much pressure a mob applies before it dies — the wave's threat score.
+ *
+ * Both terms ride the engine's own mitigation ratio
+ * (`attackDefenseFactor`, see `combat-damage-formula`), so the score reads
+ * like the combat it describes:
+ *
+ * - **pressure** — the mob's strongest attack (`max(physical, magical)`)
+ *   against a reference defence, because the mob swings with its best stat
+ *   while Arthur's player exploits the weaker axis.
+ * - **durability** — the mob's HP divided by the hits-to-kill through its
+ *   weakest defence against a reference attack: effective HP against Arthur.
+ *
+ * The product approximates how much damage the mob can apply over its
+ * lifetime, which is what a wave budget should buy.
+ */
+export function mobThreat(mob: MobData): number {
+    const base = mob.base_stats;
+    const bestAttack = Math.max(base.physical_attack, base.magical_attack);
+    const worstDefense = Math.min(base.physical_defense, base.magical_defense);
 
-    if (available.length === 0) return null;
+    const pressure = attackDefenseFactor(bestAttack, SURVIVAL_PRESSURE_REFERENCE_DEFENSE);
+    const durability = base.hp / attackDefenseFactor(SURVIVAL_DURABILITY_REFERENCE_ATTACK, worstDefense);
 
-    const bigChance = round < 3 ? 0 : Math.min(0.35, (round - 2) * 0.05);
-    const slimeChance = round < 3 ? 0.6 : 0.45;
-    const roll = random();
+    return pressure * durability;
+}
 
-    if (roll < bigChance) {
-        return available.find((mob) => mob.id === 'big_slime')
-            ?? available[available.length - 1];
-    }
-    if (roll < bigChance + slimeChance) {
-        return available.find((mob) => mob.id === 'slime')
-            ?? available[available.length - 1];
-    }
-    return available.find((mob) => mob.id === 'small_slime') ?? available[0];
+/** A mob's price in wave difficulty points; every mob costs at least one. */
+export function mobWaveCost(mob: MobData): number {
+    return Math.max(1, Math.round(mobThreat(mob) / SURVIVAL_WAVE_COST_DIVISOR));
+}
+
+/** The difficulty points a round's wave may spend on enemies. */
+export function survivalWaveBudget(round: number): number {
+    return SURVIVAL_WAVE_BUDGET_BASE + Math.max(0, round - 1) * SURVIVAL_WAVE_BUDGET_GROWTH;
+}
+
+/**
+ * The wave pool, weakest first.
+ *
+ * The catalogue the caller passes *is* the pool — no id list lives here — so a
+ * new mob in `src/data/entities/mobs` joins the waves without a code change.
+ * Sorting by threat gives the draws a stable order (and reads like a bestiary
+ * entry order: fodder first, bosses last).
+ */
+function wavePool(mobs: readonly MobData[]): MobData[] {
+    return [...mobs].sort((a, b) => mobThreat(a) - mobThreat(b) || a.id.localeCompare(b.id));
+}
+
+/**
+ * One random mob the remaining budget can afford.
+ *
+ * No pick may cost more than half of what is left, so a wave is never one
+ * expensive body eating the whole round: the budget always buys at least two
+ * mobs while the pool has anything cheap enough.
+ */
+function pickWaveMob(pool: readonly MobData[], remaining: number, random: () => number): MobData | null {
+    if (pool.length === 0 || remaining <= 0) return null;
+
+    const cap = Math.ceil(remaining / 2);
+    const affordable = pool.filter((mob) => mobWaveCost(mob) <= cap);
+    if (affordable.length === 0) return null;
+
+    const index = Math.min(affordable.length - 1, Math.floor(random() * affordable.length));
+    return affordable[index];
 }
 
 function memberOf(mob: MobData, line: 'front' | 'rear', scale: number, hold?: number): CombatEncounterMember {
@@ -134,7 +183,7 @@ function memberOf(mob: MobData, line: 'front' | 'rear', scale: number, hold?: nu
         entityType: 'mob',
         line,
         ...(hold === undefined ? {} : { hold }),
-        stats: scaledSlimeStats(mob, scale),
+        stats: scaledMobStats(mob, scale),
     };
 }
 
@@ -142,8 +191,12 @@ function memberOf(mob: MobData, line: 'front' | 'rear', scale: number, hold?: nu
  * Builds the encounter for one round.
  *
  * Arthur stands alone, controlled by the player, with the health the run
- * carried over. The enemies are random slimes: a growing field group plus, from
- * the third round on, off-field waves that deploy as the rear line empties.
+ * carried over. The enemies are drawn from the mob catalogue the caller passes
+ * until the round's difficulty budget runs out: a growing field group plus,
+ * from the third round on, off-field waves that deploy as the rear line
+ * empties. Each pick costs {@link mobWaveCost} points and may cost at most half
+ * of the remaining budget, so stronger bodies only appear on later rounds — and
+ * only alongside cheaper ones.
  */
 export function createSurvivalEncounter({
     round,
@@ -155,22 +208,36 @@ export function createSurvivalEncounter({
     const scale = 1 + Math.max(0, round - 1) * SURVIVAL_ROUND_SCALING;
     const fieldCount = fieldEnemyCount(Math.max(1, round));
     const frontCount = Math.ceil(fieldCount / 2);
+    const pool = wavePool(mobs);
+    let remaining = survivalWaveBudget(Math.max(1, round));
+
+    const takeMob = (): MobData | null => {
+        const mob = pickWaveMob(pool, remaining, random);
+        if (mob) remaining -= mobWaveCost(mob);
+        return mob;
+    };
 
     const enemies: CombatEncounterMember[] = [];
     for (let index = 0; index < fieldCount; index += 1) {
-        const slime = slimeForRound(round, mobs, random);
-        if (!slime) break;
-        enemies.push(memberOf(slime, index < frontCount ? 'front' : 'rear', scale));
+        const mob = takeMob();
+        if (!mob) break;
+        enemies.push(memberOf(mob, index < frontCount ? 'front' : 'rear', scale));
     }
 
     const lanes = holdLaneCount(Math.max(1, round));
     const laneSize = holdLaneSize(Math.max(1, round));
     for (let lane = 1; lane <= lanes; lane += 1) {
         for (let index = 0; index < laneSize; index += 1) {
-            const slime = slimeForRound(round, mobs, random);
-            if (!slime) break;
-            enemies.push(memberOf(slime, 'rear', scale, lane));
+            const mob = takeMob();
+            if (!mob) break;
+            enemies.push(memberOf(mob, 'rear', scale, lane));
         }
+    }
+
+    // A pool whose cheapest mob exceeds the cap still has to field a fight.
+    if (enemies.length === 0 && pool.length > 0) {
+        const cheapest = pool.reduce((best, mob) => (mobWaveCost(mob) < mobWaveCost(best) ? mob : best));
+        enemies.push(memberOf(cheapest, 'front', scale));
     }
 
     return {
