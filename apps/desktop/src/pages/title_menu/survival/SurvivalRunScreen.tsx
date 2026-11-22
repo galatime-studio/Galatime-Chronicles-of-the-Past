@@ -24,7 +24,6 @@ import { SurvivalVictory, type SurvivalVictorySummary } from './SurvivalVictory'
 import {
     buySurvivalItem,
     canHealSurvivalRun,
-    countDefeatedEnemies,
     countGoldCoins,
     createSurvivalEncounter,
     healSurvivalRun,
@@ -70,6 +69,8 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
     const [arthurMaxHp, setArthurMaxHp] = useState<number | null>(null);
     // The first-round launch must happen once, even across the state updates it causes.
     const autoStarted = useRef(false);
+    /** Enemies authored into the current wave, fixed before any split can add units. */
+    const waveEnemiesPlaced = useRef(0);
 
     const run = record.survival;
 
@@ -126,12 +127,14 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
         setClearedRound(null);
         setSummary(null);
         setVictory(null);
-        setEncounter(createSurvivalEncounter({
+        const nextEncounter = createSurvivalEncounter({
             round: nextRun.round,
             run: nextRun,
             mobs: waveMobs,
             name: t('survival.round', { round: nextRun.round }),
-        }));
+        });
+        waveEnemiesPlaced.current = nextEncounter.enemies.length;
+        setEncounter(nextEncounter);
         setPhase('combat');
         void persist(nextRecord);
     }, [ready, waveMobs, run, maxHp, record, t, persist]);
@@ -149,6 +152,9 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
     };
 
     const finishRound = (outcome: CombatOutcome, state: CombatState) => {
+        // The authored roster, not `state.units`: a slime that split added units
+        // that must not be paid for again.
+        const enemiesPlaced = waveEnemiesPlaced.current;
         setEncounter(null);
 
         if (outcome === 'victory') {
@@ -166,11 +172,11 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
                 )
                 : undefined;
 
-            const nextRun = resolveSurvivalVictory(run, state, run.round, inventory);
+            const nextRun = resolveSurvivalVictory(run, state, run.round, enemiesPlaced, inventory);
             setVictory({
                 round: run.round,
-                defeated: countDefeatedEnemies(state),
-                roundReward: survivalRoundCoinReward(state),
+                defeated: enemiesPlaced,
+                roundReward: survivalRoundCoinReward(enemiesPlaced),
                 loot: countGoldCoins(state),
                 coins: nextRun.coins,
                 nextRound: nextRun.round,

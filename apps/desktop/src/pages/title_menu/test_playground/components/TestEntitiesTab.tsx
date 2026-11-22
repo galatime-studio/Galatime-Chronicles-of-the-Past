@@ -370,7 +370,7 @@ function GalleryChevron({ direction, disabled, onClick }: {
     return (
         <CommonButton
             variant="ghost"
-            icon={<Chevron className="h-[0.80em] w-auto block" />}
+            icon={<Chevron />}
             disabled={disabled}
             aria-label={direction === 'left' ? 'Previous image' : 'Next image'}
             className={`shrink-0 ${disabled

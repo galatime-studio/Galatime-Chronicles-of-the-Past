@@ -166,23 +166,14 @@ export function countGoldCoins(state: CombatState): number {
 }
 
 /**
- * Enemies left defeated when the wave ended.
+ * The round-completion purse: one coin for every enemy the wave placed.
  *
- * The final unit state is authoritative instead of the log: a mob that was
- * revived before the last blow was not actually defeated, and off-field hold
- * lanes that never deployed must not be paid for.
+ * The authored roster is the unit of payment, not the final battlefield. A big
+ * slime that splits leaves several slimes behind, but it was still one enemy
+ * placed at the start; split units must never inflate the reward.
  */
-export function countDefeatedEnemies(state: CombatState): number {
-    return state.units.reduce((total, unit) => (
-        unit.side === 'enemies' && (unit.status === 'defeated' || unit.currentHp <= 0)
-            ? total + 1
-            : total
-    ), 0);
-}
-
-/** The round-completion purse: one coin for every enemy actually defeated. */
-export function survivalRoundCoinReward(state: CombatState): number {
-    return countDefeatedEnemies(state) * SURVIVAL_COIN_PER_DEFEATED_MOB;
+export function survivalRoundCoinReward(enemiesPlaced: number): number {
+    return Math.max(0, Math.floor(enemiesPlaced)) * SURVIVAL_COIN_PER_DEFEATED_MOB;
 }
 
 /** How many enemies stand on the battlefield this round. */
@@ -366,12 +357,16 @@ export function createSurvivalEncounter({
 /**
  * The run after clearing one wave: health, coins and whatever is left in the
  * bag carry; everything else resets. The purse gains the loot log plus the
- * round-completion reward for every enemy defeated.
+ * round-completion reward for the enemies the wave placed.
+ *
+ * `enemiesPlaced` is the encounter's authored enemy roster, not the final field:
+ * a split adds units mid-fight but does not add enemies to pay for.
  */
 export function resolveSurvivalVictory(
     run: SurvivalRun,
     state: CombatState,
     round: number,
+    enemiesPlaced: number,
     inventory: EntityInventoryState = run.inventory,
 ): SurvivalRun {
     const arthur = state.units.find((unit) => (
@@ -383,7 +378,7 @@ export function resolveSurvivalVictory(
         round: round + 1,
         hp: arthur ? Math.max(1, Math.round(arthur.currentHp)) : run.hp,
         maxHp: arthur ? Math.max(1, Math.round(arthur.stats.maxHp)) : run.maxHp,
-        coins: run.coins + countGoldCoins(state) + survivalRoundCoinReward(state),
+        coins: run.coins + countGoldCoins(state) + survivalRoundCoinReward(enemiesPlaced),
         inventory: { ...inventory },
         bestRound: Math.max(run.bestRound, round),
         active: true,

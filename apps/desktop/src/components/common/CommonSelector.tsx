@@ -120,7 +120,7 @@ const CommonSelector: React.FC<CommonSelectorProps> = ({
                                 }`}
                             aria-label={t('selector.previous')}
                         >
-                            <ChevronLeft className="h-[0.80em] w-auto block" />
+                            <ChevronLeft />
                         </button>
 
                         {/* Selected Option Title */}
@@ -139,7 +139,7 @@ const CommonSelector: React.FC<CommonSelectorProps> = ({
                                 }`}
                             aria-label={t('selector.next')}
                         >
-                            <ChevronRight className="h-[0.80em] w-auto block" />
+                            <ChevronRight />
                         </button>
                     </div>
                 </CommonTooltip>

@@ -15,6 +15,10 @@ import fitUrl from './images/ui/outline/fit.svg';
 import removeUrl from './images/ui/outline/remove.svg';
 import selectorUrl from './images/ui/outline/selector.svg';
 import trashUrl from './images/ui/outline/trash.svg';
+import chevronUrl from './images/ui/outline/chevron.svg';
+import switchOnUrl from './images/ui/outline/switch_on.svg';
+import switchOffUrl from './images/ui/outline/switch_off.svg';
+import loadingUrl from './images/ui/outline/loading.svg';
 import gtStudioSvgUrl from './images/gt-studio.svg';
 import defendUrl from './images/combat/extra/defend.svg';
 import restUrl from './images/combat/extra/rest.svg';
@@ -59,7 +63,6 @@ export const UNKNOWN_ELEMENT_ICON: string = elementUnknownUrl;
  * `public/GT_Team_logo.png`, which was the same square art rasterised at 3100×3100.
  */
 export const gtStudioLogoUrl: string = gtStudioSvgUrl;
-import loadingUrl from './images/ui/outline/loading.svg';
 
 // --- App Icon (Genérico) ---
 interface AppIconProps {
@@ -75,35 +78,6 @@ export const AppIcon: React.FC<AppIconProps> = ({ src, alt = '', className = '' 
     fallbackSrc={UNKNOWN_ELEMENT_ICON}
     className={`object-contain ${className}`}
   />
-);
-
-// --- Chevron Icons ---
-interface ChevronIconProps {
-  className?: string;
-}
-
-export const ChevronLeft: React.FC<ChevronIconProps> = ({ className = '' }) => (
-  <svg
-    version="1.1"
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 7 7"
-    className={`h-[0.80em] w-auto block ${className}`}
-    style={{ height: '0.80em' }}
-  >
-    <path d="M0,0 L2,0 L2,1 L1,1 L1,6 L2,6 L2,7 L0,7 L0,6 L-1,6 L-1,4 L-2,4 L-2,3 L-1,3 L-1,1 L0,1 Z" fill="currentColor" transform="translate(3,0)" />
-  </svg>
-);
-
-export const ChevronRight: React.FC<ChevronIconProps> = ({ className = '' }) => (
-  <svg
-    version="1.1"
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 7 7"
-    className={`h-[0.80em] w-auto block ${className}`}
-    style={{ height: '0.80em' }}
-  >
-    <path d="M0,0 L2,0 L2,1 L3,1 L3,3 L4,3 L4,4 L3,4 L3,6 L2,6 L2,7 L0,7 L0,6 L1,6 L1,1 L0,1 Z" fill="currentColor" transform="translate(2,0)" />
-  </svg>
 );
 
 // --- Mask Icon (shared glyph renderer) ---
@@ -148,13 +122,30 @@ const MaskIcon: React.FC<MaskIconProps & { src: string }> = ({ src, sizeClass = 
   />
 );
 
+// --- Chevron Icons ---
+interface ChevronIconProps {
+  className?: string;
+}
+
+/**
+ * The chevron from `src/assets/images/ui/outline/chevron.svg` points right in the source art, so
+ * the left variant is the same glyph rotated a half turn.
+ */
+export const ChevronRight: React.FC<ChevronIconProps> = ({ className = '' }) => (
+  <MaskIcon src={chevronUrl} sizeClass="h-[0.8em] w-[0.8em]" className={className} />
+);
+
+export const ChevronLeft: React.FC<ChevronIconProps> = ({ className = '' }) => (
+  <MaskIcon src={chevronUrl} sizeClass="h-[0.8em] w-[0.8em]" className={className} rotate={180} />
+);
+
 // --- Arrow Icons ---
 interface ArrowIconProps {
   className?: string;
 }
 
 /**
- * One arrow from `src/assets/images/ui/arrow/`, applied as a CSS mask and filled with
+ * One arrow from `src/assets/images/ui/outline/arrow.svg`, applied as a CSS mask and filled with
  * `currentColor` so it follows the tone of whatever renders it.
  *
  * It is sized in `em`, so the font-size of the surrounding text decides how big it is — pass a
@@ -175,29 +166,17 @@ interface SwitchIconProps {
   className?: string;
 }
 
+/**
+ * The whooshed toggle glyph from `src/assets/images/ui/outline/switch_on.svg` /
+ * `switch_off.svg`, masked so it follows `currentColor` like the other outline icons. The source
+ * art is 14×7, so the size box keeps that 2:1 ratio.
+ */
 export const SwitchIcon: React.FC<SwitchIconProps> = ({ checked, className = '' }) => (
-  checked ? (
-    <svg
-      version="1.1"
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 14 7"
-      className={`h-[0.55em] w-auto block ${className}`}
-    >
-      <path d="M0,0 L7,0 L7,7 L0,7 L0,6 L-6,6 L-6,5 L0,5 L0,2 L-6,2 L-6,1 L0,1 Z M3,1 L3,6 L4,6 L4,1 Z" transform="translate(7,0)" fill="currentColor" />
-      <path d="M0,0 L1,0 L1,3 L0,3 Z" transform="translate(0,2)" fill="currentColor" />
-    </svg>
-  ) : (
-    <svg
-      version="1.1"
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 14 7"
-      className={`h-[0.55em] w-auto block ${className}`}
-    >
-      <path d="M0,0 L5,0 L5,1 L12,1 L12,2 L5,2 L5,3 L12,3 L12,4 L5,4 L5,5 L0,5 Z M1,1 L1,4 L4,4 L4,1 Z" transform="translate(1,1)" fill="currentColor" />
-      <path d="M0,0 L1,0 L1,1 L0,1 Z" transform="translate(13,3)" fill="currentColor" />
-      <path d="M0,0 L1,0 L1,1 L0,1 Z" transform="translate(3,3)" fill="currentColor" />
-    </svg>
-  )
+  <MaskIcon
+    src={checked ? switchOnUrl : switchOffUrl}
+    sizeClass="h-[0.55em] w-[1.1em]"
+    className={className}
+  />
 );
 
 // --- Music Note Icon ---
@@ -206,7 +185,7 @@ interface MusicNoteIconProps {
 }
 
 /**
- * Music note from `src/assets/images/ui/misc/music_note.svg`, used by the "now playing" card.
+ * Music note from `src/assets/images/ui/outline/music_note.svg`, used by the "now playing" card.
  *
  * The file paints its own path white, so it is applied as a CSS mask by {@link MaskIcon} and
  * filled with `currentColor` instead of being embedded with `<img>`: that keeps it following the
@@ -222,7 +201,7 @@ interface FolderIconProps {
 }
 
 /**
- * Folder from `src/assets/images/ui/misc/folder.svg`, used by the Settings header to open the
+ * Folder from `src/assets/images/ui/outline/folder.svg`, used by the Settings header to open the
  * folder that stores `settings.json`.
  *
  * Like {@link MusicNote}, the file paints its own path white, so {@link MaskIcon} applies it as
@@ -243,7 +222,7 @@ interface UnknownIconProps {
 }
 
 /**
- * Question mark from `src/assets/images/ui/misc/unknown.svg`, shown wherever an entity has no
+ * Question mark from `src/assets/images/ui/outline/unknown.svg`, shown wherever an entity has no
  * sprite of its own.
  *
  * Like {@link MusicNote}, the file paints its own path white, so {@link MaskIcon} applies it as
@@ -254,7 +233,7 @@ export const UnknownIcon: React.FC<UnknownIconProps> = ({ className = '' }) => (
   <MaskIcon src={unknownUrl} className={className} />
 );
 
-// --- Misc UI icons (imported from src/assets/images/ui/misc) ---
+// --- Misc UI icons (imported from src/assets/images/ui/outline) ---
 interface MiscIconProps {
   className?: string;
 }
