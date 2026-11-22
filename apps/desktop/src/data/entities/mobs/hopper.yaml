@@ -10,7 +10,7 @@ elements:
   - corporis
 
 base_stats:
-  hp: 36
+  hp: 360
   mana: 8
   stamina: 32
   physical_attack: 38

@@ -24,10 +24,10 @@ base_stats:
   magical_defense: 108
   speed: 44
 
-skills: #todo
+skills:
   - challenger_stance
-  - stone_fortress
-  - granite_hide
+  - rock_throw
+  - rock_fall
   - bark_aegis
 
 weapon: peace_maker

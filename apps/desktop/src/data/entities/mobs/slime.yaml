@@ -10,7 +10,7 @@ elements:
   - aqua
 
 base_stats:
-  hp: 98
+  hp: 200
   mana: 19
   stamina: 15
   physical_attack: 17
