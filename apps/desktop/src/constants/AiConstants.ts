@@ -220,6 +220,22 @@ export const AI_TARGET_BIAS_FLOOR = 0.5;
  */
 export const AI_PREFERENCE_DISCRIMINATION = 0.25;
 
+/**
+ * How many recent allied actions the crowd check reads.
+ *
+ * One turn of focus is a plan; a whole fight of it is a pile-on. The window is
+ * short enough that an early target choice stops mattering after the line has
+ * traded a few blows, and long enough that every unit in a normal party sees the
+ * same picture.
+ */
+export const AI_TARGET_CROWD_WINDOW = 8;
+
+/** How much each extra allied aim on the same target discounts it. */
+export const AI_TARGET_CROWD_PENALTY = 0.25;
+
+/** The lowest multiplier a heavily focused target can reach. */
+export const AI_TARGET_CROWD_FLOOR = 0.35;
+
 /** Guards the threat normalisation against a divide by zero. */
 export const AI_MIN_THREAT = 1;
 

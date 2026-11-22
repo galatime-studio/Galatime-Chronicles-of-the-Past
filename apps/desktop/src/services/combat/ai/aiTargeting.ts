@@ -13,9 +13,21 @@
  * bypasses it (an item action). Without it, a tie between a full-health ally and
  * a full-health enemy would be broken by candidate key, and a unit would happily
  * punch itself.
+ *
+ * The last bias is also implicit: a single-target attack aimed where the actor's
+ * living allies have already committed is discounted, so a party spreads its
+ * attention instead of turning every fight into a pile-on. It is a nudge, not a
+ * rule — the least-crowded aim keeps its full value, a lethal blow is never
+ * discounted, and a lone legal target is always worth attacking.
  */
 
-import { AI_PREFERENCE_DISCRIMINATION, AI_TARGET_BIAS_FLOOR } from '../../../constants/AiConstants';
+import {
+    AI_PREFERENCE_DISCRIMINATION,
+    AI_TARGET_BIAS_FLOOR,
+    AI_TARGET_CROWD_FLOOR,
+    AI_TARGET_CROWD_PENALTY,
+    AI_TARGET_CROWD_WINDOW,
+} from '../../../constants/AiConstants';
 import type { AiCandidate, AiDecisionContext, AiTargetPreference } from '../../../types/AiType';
 import type { AbilityCondition } from '../../../types/AbilityType';
 import type { CombatAction, CombatUnit } from '../../../types/CombatType';
@@ -129,7 +141,69 @@ function biasForTarget(
     }
 
     if (isWrongSideTarget(context.actor, actionIntent(action), target)) bias *= WRONG_SIDE_BIAS;
+    bias *= crowdBias(context, action, target, pool);
     return bias;
+}
+
+/**
+ * The discount for attacking a target the actor's allies already committed to.
+ *
+ * Read against the least-crowded legal aim rather than an absolute count: two
+ * enemies both under fire are a fair choice, and the unit that happens to act
+ * last should not be taxed for the party's opening. A lethal blow keeps its full
+ * value so focus fire can still finish a kill, and only offensive single-target
+ * actions take part — an AoE that catches the crowd is not a pile-on.
+ */
+function crowdBias(
+    context: AiDecisionContext,
+    action: CombatAction,
+    target: CombatUnit,
+    pool: readonly CombatUnit[],
+): number {
+    if (action.targeting !== 'any_one' || actionIntent(action) !== 'offensive') return 1;
+    if (pool.length <= 1) return 1;
+
+    const history = context.history?.recentEvents;
+    if (!history || history.length === 0) return 1;
+
+    // Securing the kill is the one reason to keep hitting the same body.
+    if (impactFor(context, action, target).finalDamage >= target.currentHp) return 1;
+
+    const allies = new Set(
+        context.state.units
+            .filter((unit) => (
+                unit.status === 'alive'
+                && unit.side === context.actor.side
+                && unit.id !== context.actor.id
+            ))
+            .map((unit) => unit.id),
+    );
+    if (allies.size === 0) return 1;
+
+    const counts = new Map<string, number>();
+    let read = 0;
+    for (let index = history.length - 1; index >= 0 && read < AI_TARGET_CROWD_WINDOW; index -= 1) {
+        const event = history[index];
+        if (event.type !== 'action_used' || !allies.has(event.actorId)) continue;
+
+        read += 1;
+        for (const id of new Set(event.targetIds)) {
+            counts.set(id, (counts.get(id) ?? 0) + 1);
+        }
+    }
+    if (read === 0) return 1;
+
+    const legal = pool.filter((unit) => (
+        unit.status === 'alive' && !isAvoided(context, action, unit)
+    ));
+    if (legal.length <= 1) return 1;
+
+    const countFor = (unit: CombatUnit) => counts.get(unit.id) ?? 0;
+    const least = Math.min(...legal.map(countFor));
+    const excess = countFor(target) - least;
+    if (excess <= 0) return 1;
+
+    return Math.max(AI_TARGET_CROWD_FLOOR, 1 - excess * AI_TARGET_CROWD_PENALTY);
 }
 
 /** The strongest authored preference for one target, before pool ranking. */
