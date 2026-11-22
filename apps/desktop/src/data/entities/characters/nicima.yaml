@@ -13,13 +13,13 @@ elements:
   - lux
 
 base_stats:
-  hp: 920
+  hp: 510
   mana: 84
   stamina: 24
   physical_attack: 25
   magical_attack: 44
   physical_defense: 42
-  magical_defense: 63
+  magical_defense: 68
   speed: 71
 
 skills: #todo
