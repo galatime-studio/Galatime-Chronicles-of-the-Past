@@ -5,11 +5,12 @@
  * start of the fight (see `unitBlueprint.preloadAbilityBlueprints`), which is
  * what lets a death or a turn end spawn somebody synchronously.
  *
- * Placement mirrors the summoner: its own line is tried first, then the other one. A
- * multi-unit summon flanks the original — one branch to each side of the slot it burst
- * from — instead of piling up at one end of the line or spilling into the other lane. A
- * line already holding {@link MAX_UNITS_PER_LINE} units has no room — dead or alive, their
- * sprites still occupy the board.
+ * A single summon mirrors the summoner: its own line is tried first, then the other one.
+ * A multi-unit summon never leaves the summoner's line — the brood flanks the slot it
+ * burst from, so a split cannot send half its children to the wrong lane. A dead
+ * summoner's slot counts as free for its own brood (the body is already leaving the
+ * board), and a line with no room left runs the brood past its last slot instead of
+ * crossing lanes. Dead or alive, a sprite still occupies the board.
  */
 
 import { MAX_UNITS_PER_LINE } from '../../constants/CombatConstants';
@@ -63,26 +64,46 @@ export function findSummonPlacement(
 }
 
 /**
- * The free slot nearest the summoner, alternating sides.
+ * Slots a multi-unit summon takes in the summoner's own line, nearest first.
  *
- * A multi-unit summon flanks the original: one branch to each side of the slot it
- * burst from, not a pile at one end of the line. The offsets walk outward (−1/+1,
- * −2/+2, …) and the first free slot in the summoner's own line wins; `null` when
- * that line is full, which the caller answers with the other line.
+ * The brood flanks the slot it burst from: the summoner's slot first, then outward
+ * (−1/+1, −2/+2, …), so a split surfaces where its parent stood instead of skipping
+ * to the end of the line. A dead summoner does not hold its own slot — the body is
+ * already leaving the board — while a living one still stands in it. The whole brood
+ * always stays in this line: when it has no free slot left, the extra units run past
+ * the line's last slot rather than crossing to the other lane.
  */
-function findFlankingPlacement(state: CombatState, summoner: CombatUnit): SummonPlacement | null {
-    const occupied = occupiedSlots(state, summoner.side, summoner.line);
-    if (!canPlaceInLine(state.units, summoner.side, summoner.line)) return null;
+function planFlankingSlots(state: CombatState, summoner: CombatUnit, count: number): number[] {
+    const taken = new Set(
+        unitsInLine(state.units, summoner.side, summoner.line)
+            .filter((unit) => unit.id !== summoner.id || summoner.status === 'alive')
+            .map((unit) => unit.slot),
+    );
+    const slots: number[] = [];
 
-    for (let offset = 1; offset <= MAX_UNITS_PER_LINE; offset += 1) {
-        for (const slot of [summoner.slot - offset, summoner.slot + offset]) {
-            if (slot >= 0 && slot < MAX_UNITS_PER_LINE && !occupied.has(slot)) {
-                return { side: summoner.side, line: summoner.line, slot };
-            }
-        }
+    const take = (slot: number) => {
+        if (slots.length >= count) return;
+        if (slot < 0 || slot >= MAX_UNITS_PER_LINE || taken.has(slot)) return;
+        taken.add(slot);
+        slots.push(slot);
+    };
+
+    take(summoner.slot);
+    for (let offset = 1; offset <= MAX_UNITS_PER_LINE && slots.length < count; offset += 1) {
+        take(summoner.slot - offset);
+        take(summoner.slot + offset);
     }
 
-    return null;
+    // The line is full: the brood spills past its end, but never into the other lane.
+    let overflow = MAX_UNITS_PER_LINE;
+    while (slots.length < count) {
+        while (taken.has(overflow)) overflow += 1;
+        taken.add(overflow);
+        slots.push(overflow);
+        overflow += 1;
+    }
+
+    return slots;
 }
 
 /** The derived id, with a numeric suffix when another unit already holds it. */
@@ -107,16 +128,18 @@ export function summonUnits(
     if (!blueprint) return abilityNotFired();
 
     const count = Math.max(1, Math.round(readNumber(definition.action.parameters?.count, 1)));
+    // A split's slots are planned once, so every child stays in the summoner's line.
+    const flankingSlots = count > 1 ? planFlankingSlots(state, summoner, count) : [];
     const targetIds: string[] = [];
     const events: CombatEvent[] = [];
 
     for (let index = 0; index < count; index += 1) {
-        // A split flanks the original — one branch to each side of its slot, in the
-        // summoner's own line. A single summon keeps the plain placement: the first
-        // free slot of the summoner's line, the other line when there is no room.
-        const placement = (count > 1
-            ? findFlankingPlacement(state, summoner)
-            : null) ?? findSummonPlacement(state, summoner);
+        // A multi-unit summon flanks the original in its own line; a single summon
+        // keeps the plain placement: the first free slot of the summoner's line, the
+        // other line when there is no room.
+        const placement: SummonPlacement | null = index < flankingSlots.length
+            ? { side: summoner.side, line: summoner.line, slot: flankingSlots[index] }
+            : findSummonPlacement(state, summoner);
         if (!placement) break;
 
         const unit = instantiateUnit(blueprint, {

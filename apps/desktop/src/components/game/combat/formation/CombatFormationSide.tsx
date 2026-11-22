@@ -295,6 +295,11 @@ export function CombatFormationSide({
     /** Screen-reader label of the side: the field names sides by position, `left`/`right`. */
     const sideLabel = side === 'allies' ? 'left' : 'right';
 
+    // Birth travel is read off the spot each unit held on the *previous* render: the
+    // table below is rewritten for the current one (the brood re-spaces the line), so
+    // a snapshot keeps the corpse's true last spot instead of its re-spaced position.
+    const previousSlots = new Map(lastSlots.current);
+
     return (
         <div ref={boardRef} role="group" aria-label={`${sideLabel} formation`} className="relative h-full min-w-0">
             {rows.map((lane) => {
@@ -389,7 +394,7 @@ export function CombatFormationSide({
                                 ? birthGroups.get(birthBeat.sourceId)?.start ?? birthBeat.delayMs
                                 : 0;
                             const source = birthBeat
-                                ? lastSlots.current.get(`${side}:${birthBeat.sourceId}`)
+                                ? previousSlots.get(`${side}:${birthBeat.sourceId}`)
                                 : undefined;
                             const birth = birthBeat
                                 ? {
