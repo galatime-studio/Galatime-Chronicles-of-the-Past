@@ -23,7 +23,7 @@ base_stats:
   magical_attack: 73
   physical_defense: 60
   magical_defense: 83
-  speed: 59
+  speed: 89
 
 skills: #todo
   - frostbite

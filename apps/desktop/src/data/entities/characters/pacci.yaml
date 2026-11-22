@@ -22,7 +22,7 @@ base_stats:
   magical_attack: 68
   physical_defense: 75
   magical_defense: 122
-  speed: 66
+  speed: 76
 
 skills: #todo
   - garden_of_renewal
