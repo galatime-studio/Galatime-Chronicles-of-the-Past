@@ -26,8 +26,14 @@ export interface CombatFormationSideProps {
     targetableIds?: ReadonlySet<string> | null;
     /** What the pending action would do to each unit, keyed by unit id. */
     targetPreviews?: ReadonlyMap<string, CombatActionImpact>;
-    /** Draws every HP meter, used while a target is being chosen. */
-    revealHealth?: boolean;
+    /**
+     * Whether the player is choosing a target.
+     *
+     * Only the units in `targetableIds` stay live: everybody else is drawn dimmed and
+     * stops answering the pointer, so a unit that cannot be picked cannot be mistaken
+     * for one that can.
+     */
+    targetingActive?: boolean;
     onFocus: (value: { key: string; entity: CombatFormationEntityData } | null) => void;
     onTogglePin: (key: string, entity: CombatFormationEntityData) => void;
     onClearHover: (key: string) => void;
@@ -93,7 +99,7 @@ export function CombatFormationSide({
     animationsEnabled = true,
     targetableIds,
     targetPreviews,
-    revealHealth = false,
+    targetingActive = false,
     onFocus,
     onTogglePin,
     onClearHover,
@@ -392,6 +398,10 @@ export function CombatFormationSide({
                                     delayMs: birthBeat.delayMs - groupStart,
                                 }
                                 : undefined;
+                            // A target choice only keeps its own candidates live: everyone else
+                            // is inert and dimmed, with neither health nor a preview on them.
+                            const isTargetable = targetableIds?.has(entity.id) === true;
+                            const inert = targetingActive && !isTargetable;
 
                             return (
                                 <CombatFormationEntity
@@ -410,9 +420,11 @@ export function CombatFormationSide({
                                     hasFocus={focusedKey !== null}
                                     isPinned={pinnedKey === key}
                                     isActive={entity.id === activeUnitId}
-                                    isTargetable={targetableIds?.has(entity.id) === true}
-                                    preview={targetPreviews?.get(entity.id)}
-                                    revealHealth={revealHealth}
+                                    isTargetable={isTargetable}
+                                    isTargeting={targetingActive}
+                                    inert={inert}
+                                    preview={isTargetable ? targetPreviews?.get(entity.id) : undefined}
+                                    revealHealth={targetingActive && isTargetable}
                                     sequence={sequence}
                                     animationsEnabled={animationsEnabled}
                                     showDetails={showDetails}

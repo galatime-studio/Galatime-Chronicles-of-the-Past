@@ -68,9 +68,27 @@ export function CombatFormationHUD({
         () => (targetableIds ? new Set(targetableIds) : null),
         [targetableIds],
     );
-    // Choosing a target compares units, so their health is drawn for the whole
-    // board instead of only under the pointer.
-    const revealHealth = targetable !== null && showDetails;
+    /** Whether the player is choosing a target, i.e. only `targetableIds` stay live. */
+    const targeting = targetable !== null;
+    /**
+     * On entering a target choice, drop any inspection the player had open.
+     *
+     * While choosing, only the selectable units answer the pointer. A tooltip pinned before
+     * the choice began would otherwise hover over a unit that is no longer live, and a
+     * hovered one would keep the whole board dimmed for a sprite the player cannot pick.
+     */
+    const wasTargeting = useRef(false);
+    useEffect(() => {
+        if (!targeting) {
+            wasTargeting.current = false;
+            return;
+        }
+        if (wasTargeting.current) return;
+
+        wasTargeting.current = true;
+        setHoveredEntity(null);
+        setPinnedEntity(null);
+    }, [targeting]);
 
     /** Whether each unit is still fighting, by id. */
     const aliveById = useMemo(() => {
@@ -196,7 +214,7 @@ export function CombatFormationHUD({
                     animationsEnabled={animationsEnabled}
                     targetableIds={targetable}
                     targetPreviews={targetPreviews}
-                    revealHealth={revealHealth}
+                    targetingActive={targeting}
                     onFocus={setHoveredEntity}
                     onTogglePin={togglePin}
                     onClearHover={(key) => setHoveredEntity((current) => current?.key === key ? null : current)}
@@ -213,7 +231,7 @@ export function CombatFormationHUD({
                     animationsEnabled={animationsEnabled}
                     targetableIds={targetable}
                     targetPreviews={targetPreviews}
-                    revealHealth={revealHealth}
+                    targetingActive={targeting}
                     onFocus={setHoveredEntity}
                     onTogglePin={togglePin}
                     onClearHover={(key) => setHoveredEntity((current) => current?.key === key ? null : current)}

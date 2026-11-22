@@ -192,6 +192,16 @@ interface CombatFormationEntityProps {
     isActive?: boolean;
     /** The current action can be aimed at this unit. */
     isTargetable?: boolean;
+    /** The player is choosing a target, so only `isTargetable` units stay live. */
+    isTargeting?: boolean;
+    /**
+     * A target choice is running and this unit is not one of its candidates.
+     *
+     * The unit is dimmed and removed from interaction entirely: no hover, no tooltip,
+     * no health meter and no effectiveness reading — nothing that could pass for a
+     * selectable sprite.
+     */
+    inert?: boolean;
     /** What the pending action would do to this unit; absent outside targeting. */
     preview?: CombatActionImpact;
     /**
@@ -244,6 +254,8 @@ export function CombatFormationEntity({
     isPinned,
     isActive = false,
     isTargetable = false,
+    isTargeting = false,
+    inert = false,
     preview,
     revealHealth = false,
     sequence,
@@ -446,14 +458,14 @@ export function CombatFormationEntity({
     useEffect(() => () => cancelPendingClear(), []);
 
     const handlePointerEnter = () => {
-        if (isDefeated) return;
+        if (isDefeated || inert) return;
         pointerOnEntity.current = true;
         cancelPendingClear();
         onFocus();
     };
 
     const handlePointerLeave = () => {
-        if (isDefeated) return;
+        if (isDefeated || inert) return;
         pointerOnEntity.current = false;
         scheduleHoverClear();
     };
@@ -480,13 +492,14 @@ export function CombatFormationEntity({
                 type="button"
                 data-unit-id={entity.id}
                 disabled={isDefeated || undefined}
+                inert={inert || undefined}
                 aria-label={`${entity.name}, ${side === 'allies' ? 'left' : 'right'} ${lane} line${isPinned ? ', pinned' : ''}${isTargetable ? ', target' : ''}${statusLabel}`}
                 aria-pressed={isPinned}
                 aria-describedby={isFocused ? tooltipId : undefined}
                 onPointerEnter={handlePointerEnter}
                 onPointerLeave={handlePointerLeave}
                 onFocus={(event) => {
-                    if (isDefeated) return;
+                    if (isDefeated || inert) return;
                     cancelPendingClear();
                     setKeyboardFocused(event.currentTarget.matches(':focus-visible'));
                     onFocus();
@@ -531,7 +544,7 @@ export function CombatFormationEntity({
                 <div style={lungeStyle} className="relative">
                     <div style={hitStyle} className="relative">
                         <div
-                            className={`pointer-events-none relative flex flex-col items-center transition-[transform,opacity,filter] duration-200 motion-reduce:transition-none motion-reduce:translate-y-0 motion-reduce:scale-100 ${isDefeated ? 'motion-reduce:translate-y-0' : isFocused ? `-translate-y-1 scale-110 ${isPinned ? 'drop-shadow-[0_6px_14px_rgba(255,255,255,0.75)]' : 'drop-shadow-[0_5px_9px_rgba(255,255,255,0.2)]'}` : hasFocus ? 'opacity-40 grayscale' : 'group-hover:-translate-y-0.5 motion-reduce:group-hover:translate-y-0'} ${isRearLine && !isFocused ? 'brightness-70 saturate-75' : ''}`}
+                            className={`pointer-events-none relative flex flex-col items-center transition-[transform,opacity,filter] duration-200 motion-reduce:transition-none motion-reduce:translate-y-0 motion-reduce:scale-100 ${isDefeated ? 'motion-reduce:translate-y-0' : inert ? 'opacity-40 saturate-50' : isFocused ? `-translate-y-1 scale-110 ${isPinned ? 'drop-shadow-[0_6px_14px_rgba(255,255,255,0.75)]' : 'drop-shadow-[0_5px_9px_rgba(255,255,255,0.2)]'}` : hasFocus ? 'opacity-40 grayscale' : isTargeting && isTargetable ? 'drop-shadow-[0_0_12px_rgba(255,255,255,0.5)]' : 'group-hover:-translate-y-0.5 motion-reduce:group-hover:translate-y-0'} ${isRearLine && !isFocused ? 'brightness-70 saturate-75' : ''}`}
                         >
                             {/* The patch of ground the unit stands on. It rides the same
                                 layer that scales and dims the sprite, so a deeper line
