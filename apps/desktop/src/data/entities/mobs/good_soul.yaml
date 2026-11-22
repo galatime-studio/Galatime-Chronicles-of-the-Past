@@ -4,7 +4,7 @@ height: "128 cm"
 weight: "0 kg"
 description: >
   A charitable soul that learned to wield its light with precision.
-  Its glow restores allies while weakening hostile intent.
+  Its glow restores allies and turns hostile force back on the attacker.
 
 elements:
   - lux
@@ -51,6 +51,21 @@ skills:
         shield: { percent_of_max_hp: 15 }
         buff: { physical_defense: 6, magical_defense: 6 }
 
+  - id: soul_mend_II
+    name: Soul Mend II
+    description: "A steady pulse of light restores 26 HP to every ally."
+    element_id: lux
+    kind: heal
+    targeting: allies_all
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: soul_mend_effect
+        status_effect: Soul Mend
+        apply_to: allies_all
+        turns: 1
+        heal: 26
+        polarity: positive
+
 loot:
   - item_id: gold_coin
     quantity: 2
@@ -80,20 +95,15 @@ abilities:
 
   - id: radiant_reflection
     name: Radiant Reflection
-    description: Magical attacks are partly thrown back at the attacker.
+    description: Any attack is partly thrown back at the attacker.
     trigger:
       event: after_damage
-    condition:
-      all:
-        - damage:
-            type: magical
-            operator: eq
     action:
       type: reflect_damage
       target: attacker
       parameters:
-        fraction: 0.35
-        accuracy: 40
+        fraction: 0.4
+        accuracy: 60
     display:
       visible: true
       priority: 50

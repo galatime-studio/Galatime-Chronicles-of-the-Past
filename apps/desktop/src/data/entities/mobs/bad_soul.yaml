@@ -4,7 +4,7 @@ height: "128 cm"
 weight: "0 kg"
 description: >
   A greedy soul that has abandoned all restraint. It tears at life
-  energy with ruthless hunger and grows stronger with every theft.
+  energy with ruthless hunger, mending its own wounds with every theft.
 
 elements:
   - umbra
@@ -20,25 +20,9 @@ base_stats:
   speed: 42
 
 skills:
-  - id: darkness_II
-    name: Darkness II
-    description: "A thicker black mist smothers the target: ACC −15% and Evasion −5 for 2 turns."
-    element_id: umbra
-    kind: control
-    targeting: any_one
-    range: medium
-    costs: { mana: 3, stamina: 0, cooldown: 0 }
-    effects:
-      - effect_id: darkness_effect
-        status_effect: Darkness
-        apply_to: target
-        turns: 2
-        polarity: negative
-        debuff: { accuracy: 15, evasion: 5 }
-
-  - id: dark_ball
-    name: Dark Ball
-    description: "A sphere of devouring shadow deals power 10 magical damage at 95% accuracy."
+  - id: soul_drain_II
+    name: Soul Drain II
+    description: "Tears deeper into a target's life: power 14 magical damage at 95% accuracy, healing the caster for 55% of the damage dealt."
     element_id: umbra
     kind: attack
     targeting: any_one
@@ -46,10 +30,39 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 10 }
+      power: { kind: fixed, value: 14 }
     accuracy: 95
     hit_count: 1
-    costs: { mana: 4, stamina: 0, cooldown: 0 }
+    costs: { mana: 5, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: soul_drain_effect
+        status_effect: Soul Drain
+        apply_to: target
+        turns: 1
+        polarity: negative
+        drain_percent_of_damage: 0.55
+
+  - id: soul_siphon_II
+    name: Soul Siphon II
+    description: "Draws a greedy draught of life: power 20 magical damage at 95% accuracy, healing the caster for 45% of the damage dealt."
+    element_id: umbra
+    kind: attack
+    targeting: any_one
+    range: medium
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 20 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 8, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: soul_siphon_effect
+        status_effect: Soul Siphon
+        apply_to: target
+        turns: 1
+        polarity: negative
+        drain_percent_of_damage: 0.45
 
 loot:
   - item_id: gold_coin

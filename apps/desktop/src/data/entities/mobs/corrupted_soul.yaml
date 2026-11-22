@@ -3,8 +3,8 @@ rarity: epic
 height: "140 cm"
 weight: "0 kg"
 description: >
-  A soul consumed by endless avarice. Its touch withers resolve, and
-  its hunger feeds on any fading spark nearby.
+  A soul consumed by endless avarice. Its hunger drains the life from
+  every nearby spark to sustain its own withering form.
 
 elements:
   - umbra
@@ -20,25 +20,9 @@ base_stats:
   speed: 47
 
 skills:
-  - id: darkness_III
-    name: Darkness III
-    description: "A void-black shroud smothers the target: ACC −20% and Evasion −8 for 3 turns."
-    element_id: umbra
-    kind: control
-    targeting: any_one
-    range: medium
-    costs: { mana: 4, stamina: 0, cooldown: 0 }
-    effects:
-      - effect_id: darkness_effect
-        status_effect: Darkness
-        apply_to: target
-        turns: 3
-        polarity: negative
-        debuff: { accuracy: 20, evasion: 8 }
-
-  - id: dark_ball_II
-    name: Dark Ball II
-    description: "A denser sphere of devouring shadow deals power 14 magical damage at 95% accuracy and ignores 10% of the target's defence."
+  - id: soul_drain_III
+    name: Soul Drain III
+    description: "Rends life from a target: power 20 magical damage at 95% accuracy, healing the caster for 55% of the damage dealt."
     element_id: umbra
     kind: attack
     targeting: any_one
@@ -46,11 +30,38 @@ skills:
     damage:
       kind: magical
       damage_type: magical
-      power: { kind: fixed, value: 14 }
+      power: { kind: fixed, value: 20 }
     accuracy: 95
     hit_count: 1
-    defense_pierce: 0.1
-    costs: { mana: 6, stamina: 0, cooldown: 0 }
+    costs: { mana: 7, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: soul_drain_effect
+        status_effect: Soul Drain
+        apply_to: target
+        turns: 1
+        polarity: negative
+        drain_percent_of_damage: 0.55
+
+  - id: soul_tide
+    name: Soul Tide
+    description: "A tide of hungry shadow washes over every enemy: power 12 magical damage at 95% accuracy, healing the caster for 35% of the damage dealt."
+    element_id: umbra
+    kind: attack
+    targeting: enemies_all
+    damage:
+      kind: magical
+      damage_type: magical
+      power: { kind: fixed, value: 12 }
+    accuracy: 95
+    hit_count: 1
+    costs: { mana: 11, stamina: 0, cooldown: 0 }
+    effects:
+      - effect_id: soul_tide_effect
+        status_effect: Soul Tide
+        apply_to: target
+        turns: 1
+        polarity: negative
+        drain_percent_of_damage: 0.35
 
 loot:
   - item_id: gold_coin
