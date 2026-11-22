@@ -20,9 +20,11 @@ import type { SurvivalRun } from '@/types/SurvivalType';
 import { SettingsScreen } from '../SettingsScreen';
 import { SurvivalDefeat, type SurvivalDefeatSummary } from './SurvivalDefeat';
 import { SurvivalMarket } from './SurvivalMarket';
+import { SurvivalVictory, type SurvivalVictorySummary } from './SurvivalVictory';
 import {
     buySurvivalItem,
     canHealSurvivalRun,
+    countDefeatedEnemies,
     countGoldCoins,
     createSurvivalEncounter,
     healSurvivalRun,
@@ -30,6 +32,7 @@ import {
     resolveSurvivalVictory,
     survivalCurrentHp,
     survivalMaxHp,
+    survivalRoundCoinReward,
     survivalShopStock,
 } from './survivalModel';
 
@@ -41,7 +44,7 @@ interface SurvivalRunScreenProps {
     onQuit: () => void;
 }
 
-type SurvivalPhase = 'market' | 'combat' | 'defeat';
+type SurvivalPhase = 'market' | 'combat' | 'victory' | 'defeat';
 
 /**
  * Survival Mode: fight a wave, return to the marketplace, fight the next one.
@@ -61,6 +64,7 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [encounter, setEncounter] = useState<CombatEncounterData | null>(null);
     const [summary, setSummary] = useState<SurvivalDefeatSummary | null>(null);
+    const [victory, setVictory] = useState<SurvivalVictorySummary | null>(null);
     const [clearedRound, setClearedRound] = useState<number | null>(null);
     const [waveMobs, setWaveMobs] = useState<MobData[] | null>(null);
     const [arthurMaxHp, setArthurMaxHp] = useState<number | null>(null);
@@ -121,6 +125,7 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
 
         setClearedRound(null);
         setSummary(null);
+        setVictory(null);
         setEncounter(createSurvivalEncounter({
             round: nextRun.round,
             run: nextRun,
@@ -162,8 +167,16 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
                 : undefined;
 
             const nextRun = resolveSurvivalVictory(run, state, run.round, inventory);
+            setVictory({
+                round: run.round,
+                defeated: countDefeatedEnemies(state),
+                roundReward: survivalRoundCoinReward(state),
+                loot: countGoldCoins(state),
+                coins: nextRun.coins,
+                nextRound: nextRun.round,
+            });
             setClearedRound(run.round);
-            setPhase('market');
+            setPhase('victory');
             void persist({ ...record, survival: nextRun });
             return;
         }
@@ -209,6 +222,27 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
                     inventoryPicker
                     onFinish={finishRound}
                     className="h-full"
+                />
+            </motion.div>
+        );
+    }
+
+    if (phase === 'victory' && victory) {
+        return (
+            <motion.div
+                key="survival-victory"
+                className="relative h-full overflow-hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={PAGE_FADE_TRANSITION}
+            >
+                <SurvivalVictory
+                    summary={victory}
+                    onContinue={() => {
+                        setVictory(null);
+                        setPhase('market');
+                    }}
                 />
             </motion.div>
         );

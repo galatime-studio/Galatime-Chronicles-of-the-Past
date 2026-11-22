@@ -28,6 +28,9 @@ export const SURVIVAL_PRESSURE_REFERENCE_DEFENSE = 50;
 /** Attack a mob's durability is measured against (Arthur's attack band). */
 export const SURVIVAL_DURABILITY_REFERENCE_ATTACK = 80;
 
+/** Coins paid for every enemy left defeated when a wave is cleared. */
+export const SURVIVAL_COIN_PER_DEFEATED_MOB = 1;
+
 /** How many distinct supplies a round's shelf holds. */
 export const SURVIVAL_SHOP_SIZE = 6;
 

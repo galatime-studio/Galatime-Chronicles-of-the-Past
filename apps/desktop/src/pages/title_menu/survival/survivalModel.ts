@@ -9,6 +9,7 @@
 
 import {
     SURVIVAL_CHARACTER_ID,
+    SURVIVAL_COIN_PER_DEFEATED_MOB,
     SURVIVAL_DURABILITY_REFERENCE_ATTACK,
     SURVIVAL_HEAL_COST,
     SURVIVAL_HEAL_FRACTION,
@@ -162,6 +163,26 @@ export function countGoldCoins(state: CombatState): number {
             ? total + event.quantity
             : total
     ), 0);
+}
+
+/**
+ * Enemies left defeated when the wave ended.
+ *
+ * The final unit state is authoritative instead of the log: a mob that was
+ * revived before the last blow was not actually defeated, and off-field hold
+ * lanes that never deployed must not be paid for.
+ */
+export function countDefeatedEnemies(state: CombatState): number {
+    return state.units.reduce((total, unit) => (
+        unit.side === 'enemies' && (unit.status === 'defeated' || unit.currentHp <= 0)
+            ? total + 1
+            : total
+    ), 0);
+}
+
+/** The round-completion purse: one coin for every enemy actually defeated. */
+export function survivalRoundCoinReward(state: CombatState): number {
+    return countDefeatedEnemies(state) * SURVIVAL_COIN_PER_DEFEATED_MOB;
 }
 
 /** How many enemies stand on the battlefield this round. */
@@ -344,7 +365,8 @@ export function createSurvivalEncounter({
 
 /**
  * The run after clearing one wave: health, coins and whatever is left in the
- * bag carry; everything else resets.
+ * bag carry; everything else resets. The purse gains the loot log plus the
+ * round-completion reward for every enemy defeated.
  */
 export function resolveSurvivalVictory(
     run: SurvivalRun,
@@ -361,7 +383,7 @@ export function resolveSurvivalVictory(
         round: round + 1,
         hp: arthur ? Math.max(1, Math.round(arthur.currentHp)) : run.hp,
         maxHp: arthur ? Math.max(1, Math.round(arthur.stats.maxHp)) : run.maxHp,
-        coins: run.coins + countGoldCoins(state),
+        coins: run.coins + countGoldCoins(state) + survivalRoundCoinReward(state),
         inventory: { ...inventory },
         bestRound: Math.max(run.bestRound, round),
         active: true,

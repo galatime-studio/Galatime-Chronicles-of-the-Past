@@ -49,6 +49,16 @@
 			"epic": "Epic",
 			"legendary": "Legendary"
 		},
+		"victory": {
+			"kicker": "Round {{round}} cleared",
+			"title": "Victory",
+			"subtitle": "The wave is broken. Spoils counted.",
+			"defeated": "Mobs defeated",
+			"roundReward": "Round reward",
+			"loot": "Loot collected",
+			"purse": "Purse",
+			"continue": "Continue to round {{round}}"
+		},
 		"defeat": {
 			"kicker": "The run ends",
 			"title": "Run over",
