@@ -17,6 +17,7 @@ import type {
     CombatState,
 } from '@/types/CombatType';
 import type { SurvivalRun } from '@/types/SurvivalType';
+import { useControlListener } from '@/context/GameContext';
 import { SettingsScreen } from '../SettingsScreen';
 import { SurvivalDefeat, type SurvivalDefeatSummary } from './SurvivalDefeat';
 import { SurvivalMarket } from './SurvivalMarket';
@@ -198,14 +199,27 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
         void persist({ ...record, survival: resolveSurvivalDefeat(run, run.round) });
     };
 
-    if (settingsOpen) {
-        return (
-            <SettingsScreen
-                onBack={() => setSettingsOpen(false)}
-                onExitGame={onQuit}
-            />
-        );
-    }
+    /**
+     * `deny` (Escape / the east face button) opens Settings over the run — in the
+     * marketplace and behind the fight alike.
+     *
+     * Combat keeps first claim on the key: its own Escape capture still cancels a
+     * pending selection or a pinned unit, so Settings is only reached with nothing
+     * left to back out of. A popup mutes this the same way it mutes Back.
+     */
+    useControlListener(
+        settingsOpen || (phase !== 'combat' && phase !== 'market')
+            ? {}
+            : { deny: () => setSettingsOpen(true) },
+        { mutedByModal: true },
+    );
+
+    const settingsScreen = (
+        <SettingsScreen
+            onBack={() => setSettingsOpen(false)}
+            onExitGame={onQuit}
+        />
+    );
 
     if (phase === 'combat' && encounter) {
         return (
@@ -226,11 +240,24 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
                     tooltipVisible={record.tooltips.fighting}
                     startOptions={{ difficulty: record.difficulty, persistInventories: false }}
                     inventoryPicker
+                    paused={settingsOpen}
                     onFinish={finishRound}
                     className="h-full"
                 />
+                {/* Settings covers the fight instead of replacing it: unmounting the
+                    encounter ends the session, and closing Settings would restart the
+                    wave from the beginning. */}
+                {settingsOpen && (
+                    <div className="absolute inset-0 z-9999 bg-galatime-background">
+                        {settingsScreen}
+                    </div>
+                )}
             </motion.div>
         );
+    }
+
+    if (settingsOpen) {
+        return settingsScreen;
     }
 
     if (phase === 'victory' && victory) {

@@ -116,6 +116,15 @@ export interface CombatEncounterProps {
      * fight on every render of the screen that owns it.
      */
     startOptions?: StartCombatOptions;
+    /**
+     * The fight is covered by another surface (Settings over a Survival run): the
+     * opponents hold their turns instead of playing on unseen.
+     *
+     * The session itself stays alive — only the timers that would move the fight
+     * forward are dropped — so closing the surface resumes the same wave rather
+     * than restarting it.
+     */
+    paused?: boolean;
     className?: string;
 }
 
@@ -352,6 +361,7 @@ export function CombatEncounter({
     aiDelayMs = DEFAULT_AI_DELAY_MS,
     inventoryPicker = false,
     startOptions,
+    paused = false,
     className = '',
 }: CombatEncounterProps) {
     const { t } = useTranslation('combat');
@@ -575,6 +585,9 @@ export function CombatEncounter({
 
     /** Everyone the player does not own takes their turn on a short timer. */
     useEffect(() => {
+        // Covered by another surface: the timer is cancelled rather than left
+        // running, so no opponent moves while the player cannot see the board.
+        if (paused) return undefined;
         if (!state || state.phase !== 'active' || !turnUnit || playerTurn) return undefined;
         // The next turn waits for the current one to finish playing.
         if (sequence) return undefined;
@@ -588,7 +601,7 @@ export function CombatEncounter({
         }, turnUnit.aiProfile?.pace ?? aiDelayMs);
 
         return () => window.clearTimeout(timer);
-    }, [state, turnUnit, playerTurn, aiDelayMs, submit, t, sequence]);
+    }, [state, turnUnit, playerTurn, aiDelayMs, submit, t, sequence, paused]);
 
     /* Reporting the end of the fight, once — after the last blow has been shown. */
     useEffect(() => {

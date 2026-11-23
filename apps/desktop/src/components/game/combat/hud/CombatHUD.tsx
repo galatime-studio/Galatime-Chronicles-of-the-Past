@@ -171,7 +171,7 @@ export const CombatHUD: React.FC<CombatHUDProps> = ({
     }, [mana.current, stamina.current]);
 
     return (
-        <div className={`flex flex-row items-stretch ${className}`}>
+        <div className={`mx-auto flex w-full max-w-5xl flex-row items-stretch ${className}`}>
 
             {/* Left Column: Attacks & Extra Movements */}
             <div className="flex flex-col gap-2 flex-1">
