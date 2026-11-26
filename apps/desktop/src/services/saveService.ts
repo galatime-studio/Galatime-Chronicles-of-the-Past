@@ -5,6 +5,7 @@ import { isDifficulty, type Difficulty } from '../constants/DifficultyConstants'
 import { isGameMode, type GameMode } from '../constants/GameModeConstants';
 import { normalizeSurvivalRun } from '../constants/SurvivalConstants';
 import type { SurvivalRun } from '../types/SurvivalType';
+import { resolveSeed } from '../utils/seedUtils';
 
 export const SAVE_SLOTS = [1, 2, 3, 4, 5] as const;
 export type SaveSlot = (typeof SAVE_SLOTS)[number];
@@ -30,6 +31,8 @@ export interface SaveTooltipSettings {
 export interface SaveData {
   version: number;
   name: string;
+  /** Fixed at creation; every random draw in the chronicle derives from it. */
+  seed: number;
   gameMode: GameMode;
   difficulty: Difficulty;
   allyControl: AllyControl;
@@ -78,10 +81,16 @@ function normalizeSaveData(raw: unknown): SaveData | null {
   const textSpeed = typeof data.dialogueTextSpeed === 'number' && Number.isFinite(data.dialogueTextSpeed)
     ? clampDialogueTextSpeed(data.dialogueTextSpeed)
     : DIALOGUE_DEFAULT_TEXT_SPEED;
+  // Saves written before seeds existed derive one from what they already say,
+  // so repeated reads agree instead of giving every visit a different run.
+  const seed = typeof data.seed === 'number' && Number.isFinite(data.seed)
+    ? data.seed >>> 0
+    : resolveSeed(`${data.name}:${typeof data.createdAt === 'string' ? data.createdAt : ''}`);
 
   return {
     version: SAVE_VERSION,
     name: data.name,
+    seed,
     gameMode: isGameMode(data.gameMode) ? data.gameMode : 'normal',
     difficulty: isDifficulty(data.difficulty) ? data.difficulty : 'normal',
     allyControl: isAllyControl(data.allyControl) ? data.allyControl : 'player',

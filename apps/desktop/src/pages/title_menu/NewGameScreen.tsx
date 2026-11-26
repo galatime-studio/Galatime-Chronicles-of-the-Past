@@ -251,6 +251,7 @@ export function NewGameScreen({ onBack }: { onBack: () => void }) {
                                                                         capabilities.configuresAllyControl ? t(ALLY_CONTROLS[save.allyControl].title) : t('newGame.labels.notApplicable'),
                                                                         t('newGame.labels.allies'),
                                                                     ],
+                                                                    [String(save.seed), t('newGame.labels.seed')],
                                                                 ] as [string, string][]).map(([info, label], idx) => (
                                                                     <Fragment key={label}>
                                                                         {idx > 0 && <Diamond />}

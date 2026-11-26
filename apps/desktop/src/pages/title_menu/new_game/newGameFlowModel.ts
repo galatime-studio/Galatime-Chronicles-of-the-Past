@@ -5,10 +5,13 @@ import { DIALOGUE_DEFAULT_TEXT_SPEED, flipDialogueTextSpeed } from '../../../con
 import { createDefaultSurvivalRun } from '../../../constants/SurvivalConstants';
 import type { Difficulty } from '../../../constants/DifficultyConstants';
 import { GAME_MODES, type GameMode } from '../../../constants/GameModeConstants';
+import { createRandomSeed, resolveSeed } from '../../../utils/seedUtils';
 
 /** The answers the New Game wizard collects. */
 export interface NewGameDraft {
   saveName: string;
+  /** The seed exactly as typed; `toSaveData` resolves it to the stored number. */
+  seedInput: string;
   gameMode: GameMode;
   difficulty: Difficulty;
   allyControl: AllyControl;
@@ -36,6 +39,7 @@ export type NewGameDefaults = Pick<
 export type NewGameStepId =
   | 'mode'
   | 'difficulty'
+  | 'seed'
   | 'tooltips'
   | 'allies'
   | 'presentation'
@@ -55,6 +59,9 @@ export function getNewGameSteps(mode: GameMode): readonly NewGameStepId[] {
   const steps: NewGameStepId[] = ['mode'];
 
   if (capabilities.hasCombat) steps.push('difficulty');
+  // Every mode owns a seed, even the ones without randomness yet, so future
+  // systems can derive from it without migrating saves.
+  steps.push('seed');
   steps.push('tooltips');
   if (capabilities.configuresAllyControl) steps.push('allies');
   steps.push('presentation');
@@ -66,6 +73,9 @@ export function getNewGameSteps(mode: GameMode): readonly NewGameStepId[] {
 export function createNewGameDraft(defaults: NewGameDefaults): NewGameDraft {
   return {
     saveName: '',
+    // Prefilled so the wizard already answers the question; the player may
+    // replace it with a number or any words they prefer.
+    seedInput: String(createRandomSeed()),
     // A new chronicle always starts on Normal; only an edit reopens a different mode.
     gameMode: 'normal',
     difficulty: defaults.difficulty,
@@ -83,6 +93,8 @@ export function createDraftFromSave(save: SaveData): NewGameDraft {
   return withGameMode(
     {
       saveName: save.name,
+      // The stored seed is already resolved; editing never changes it.
+      seedInput: String(save.seed),
       gameMode: save.gameMode,
       difficulty: save.difficulty,
       allyControl: save.allyControl,
@@ -143,6 +155,9 @@ export function toSaveData(draft: NewGameDraft, previous?: SaveData | null): Sav
   return {
     version: 1,
     name: draft.saveName.trim(),
+    // Editing keeps the author's seed: letting it change mid-chronicle would
+    // reroll the current round's shelves and waves.
+    seed: previous?.seed ?? resolveSeed(draft.seedInput),
     gameMode: draft.gameMode,
     difficulty: draft.difficulty,
     allyControl: draft.allyControl,

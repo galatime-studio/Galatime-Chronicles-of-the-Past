@@ -6,6 +6,7 @@ import { PAGE_FADE_TRANSITION } from '@/constants/AnimationConstants';
 import { SURVIVAL_CHARACTER_ID } from '@/constants/SurvivalConstants';
 import { fetchCombatInventory } from '@/controllers/combatController';
 import { fetchAllMobs, fetchCharacter } from '@/controllers/entityController';
+import { createSeededCombatRandom } from '@/services/combat/ai/training/seededRandom';
 import { resolveUnitSprite } from '@/services/combatSpriteService';
 import { getEntityImages } from '@/services/entityImageService';
 import { getItemDefinition, loadItemCatalogue } from '@/services/inventory/itemService';
@@ -99,12 +100,20 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
     const maxHp = survivalMaxHp(run, arthurMaxHp ?? 1);
     const currentHp = survivalCurrentHp(run, maxHp);
     const ready = arthurMaxHp !== null && waveMobs !== null && waveMobs.length > 0;
-    // The shelf is derived from the round alone, so it changes only when the
-    // run advances — never between two renders of the same visit.
+    // The shelf is derived from the chronicle seed and the round, so it changes
+    // only when the run advances — never between two renders of the same visit.
     const shopStock = useMemo(
-        () => survivalShopStock(run.round, [...loadItemCatalogue().values()]),
-        [run.round],
+        () => survivalShopStock(run.round, [...loadItemCatalogue().values()], record.seed),
+        [run.round, record.seed],
     );
+
+    // One stream per wave: reloading the same round restarts the same fight
+    // instead of rerolling its misses and crits.
+    const combatStartOptions = useMemo(() => ({
+        difficulty: record.difficulty,
+        persistInventories: false,
+        random: createSeededCombatRandom(`survival-combat:${record.seed}:${run.round}`),
+    }), [record.difficulty, record.seed, run.round]);
 
     const buyItem = useCallback((itemId: string) => {
         const item = getItemDefinition(itemId);
@@ -133,6 +142,7 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
             run: nextRun,
             mobs: waveMobs,
             name: t('survival.round', { round: nextRun.round }),
+            random: createSeededCombatRandom(`survival-wave:${record.seed}:${nextRun.round}`),
         });
         waveEnemiesPlaced.current = nextEncounter.enemies.length;
         setEncounter(nextEncounter);
@@ -238,7 +248,7 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
                     leftSide="enemies"
                     animationsEnabled={record.combatAnimations}
                     tooltipVisible={record.tooltips.fighting}
-                    startOptions={{ difficulty: record.difficulty, persistInventories: false }}
+                    startOptions={combatStartOptions}
                     inventoryPicker
                     paused={settingsOpen}
                     onFinish={finishRound}

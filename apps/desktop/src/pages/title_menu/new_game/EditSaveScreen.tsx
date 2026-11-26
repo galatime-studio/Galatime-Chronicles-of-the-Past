@@ -117,6 +117,14 @@ export function EditSaveScreen({ save, onSubmit, onCancel }: EditSaveScreenProps
                             <span className="shrink-0 text-white/75">{t(GAME_MODES[save.gameMode].title)}</span>
                         </div>
 
+                        <div className="setting-line border-b-game border-white/10 py-4">
+                            <div>
+                                <span className="text-lg text-white">{t('newGame.labels.seed')}</span>
+                                <p className="text-xs">{t('newGame.editSeedLocked')}</p>
+                            </div>
+                            <span className="shrink-0 text-white/75">{save.seed}</span>
+                        </div>
+
                         <div className="space-y-2">
                             {capabilities.hasCombat && (
                                 <CommonSelector

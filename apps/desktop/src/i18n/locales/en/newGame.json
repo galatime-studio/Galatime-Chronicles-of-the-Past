@@ -9,6 +9,7 @@
 		"edit": "Edit",
 		"editTitle": "Edit Save",
 		"editModeLocked": "The mode is fixed after the chronicle is created.",
+		"editSeedLocked": "The seed is fixed after the chronicle is created.",
 		"save": "Save",
 		"remove": "Remove",
 		"removeTitle": "Remove save?",
@@ -16,6 +17,7 @@
 		"labels": {
 			"mode": "Mode",
 			"difficulty": "Difficulty",
+			"seed": "Seed",
 			"allies": "Control",
 			"notApplicable": "—"
 		},
@@ -40,6 +42,11 @@
 			"saving": "Creating...",
 			"on": "On",
 			"off": "Off",
+			"seed": {
+				"label": "Seed",
+				"placeholder": "A number or any words",
+				"description": "The seed fixes this chronicle's waves, shelves and rolls. Type a number to replay a known run, or any words to name a new one."
+			},
 			"presentation": {
 				"speed": {
 					"fast": "Fast",

@@ -59,6 +59,7 @@ export function NewGameFlow({ initialDraft, onSubmit, onCancel }: NewGameFlowPro
     const [stepIndex, setStepIndex] = useState(0);
     const [saving, setSaving] = useState(false);
     const nameInputRef = useRef<HTMLInputElement>(null);
+    const seedInputRef = useRef<HTMLInputElement>(null);
 
     const steps = useMemo(() => getNewGameSteps(draft.gameMode), [draft.gameMode]);
     const activeIndex = Math.min(stepIndex, steps.length - 1);
@@ -102,13 +103,14 @@ export function NewGameFlow({ initialDraft, onSubmit, onCancel }: NewGameFlowPro
         setStepIndex(activeIndex + 1);
     }, [activeIndex, canContinue, draft, isLastStep, onSubmit]);
 
-    // Put the caret in the one question the player has to type an answer to.
+    // Put the caret in the typed questions, so answering needs no mouse.
     useEffect(() => {
-        if (step !== 'name') return;
+        if (step !== 'name' && step !== 'seed') return;
 
         const frame = requestAnimationFrame(() => {
-            nameInputRef.current?.focus();
-            nameInputRef.current?.select();
+            const input = step === 'seed' ? seedInputRef.current : nameInputRef.current;
+            input?.focus();
+            input?.select();
         });
         return () => cancelAnimationFrame(frame);
     }, [step]);
@@ -162,6 +164,24 @@ export function NewGameFlow({ initialDraft, onSubmit, onCancel }: NewGameFlowPro
             ns="game"
             containerClassName="py-2"
         />
+    );
+
+    const renderSeedStep = () => (
+        <div className="mx-auto flex max-w-md flex-col items-center">
+            <CommonInput
+                title={t('newGame.wizard.seed.label')}
+                description={t('newGame.wizard.seed.description')}
+                value={draft.seedInput}
+                onChange={(seedInput) => updateDraft({ seedInput })}
+                placeholder={t('newGame.wizard.seed.placeholder')}
+                maxCharacters={64}
+                spellCheck={false}
+                showDescription
+                inputRef={seedInputRef}
+                containerClassName="w-full"
+                inputClassName="text-2xl"
+            />
+        </div>
     );
 
     const renderTooltipStep = () => (
@@ -324,6 +344,7 @@ export function NewGameFlow({ initialDraft, onSubmit, onCancel }: NewGameFlowPro
                                 <div className="mx-auto w-full max-w-3xl">
                                     {step === 'mode' && renderModeStep()}
                                     {step === 'difficulty' && renderDifficultyStep()}
+                                    {step === 'seed' && renderSeedStep()}
                                     {step === 'tooltips' && renderTooltipStep()}
                                     {step === 'allies' && renderAllyStep()}
                                     {step === 'presentation' && renderPresentationStep()}

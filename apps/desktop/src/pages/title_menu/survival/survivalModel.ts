@@ -86,14 +86,16 @@ function shopWeight(rarity: ItemDefinition['rarity'], round: number): number {
  *
  * The catalogue is the only source of stock: every consumable usable in combat
  * may appear (ammunition and key items are excluded), gated by its rarity's
- * first round and weighted against the rest. The draw is seeded by the round,
- * so the shelf is stable while the player shops and rolls over only when the
- * run advances. The first slot prefers a common supply, so a shelf is never six
- * luxury items the player cannot afford.
+ * first round and weighted against the rest. The draw is seeded by the round
+ * and, when the save has one, by its chronicle seed, so the shelf is stable
+ * while the player shops, differs between chronicles, and rolls over only when
+ * the run advances. The first slot prefers a common supply, so a shelf is
+ * never six luxury items the player cannot afford.
  */
 export function survivalShopStock(
     round: number,
     catalogue: readonly ItemDefinition[],
+    seed?: number,
 ): ItemDefinition[] {
     const safeRound = Math.max(1, Math.round(round));
     const pool = catalogue
@@ -108,7 +110,9 @@ export function survivalShopStock(
 
     if (pool.length === 0) return [];
 
-    const random = createSeededCombatRandom(`survival-shop:${safeRound}`);
+    const random = createSeededCombatRandom(
+        seed === undefined ? `survival-shop:${safeRound}` : `survival-shop:${seed}:${safeRound}`,
+    );
     const remaining = [...pool];
     const stock: ItemDefinition[] = [];
 
