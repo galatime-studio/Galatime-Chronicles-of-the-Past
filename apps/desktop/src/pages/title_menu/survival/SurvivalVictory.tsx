@@ -14,6 +14,16 @@ export interface SurvivalVictorySummary {
     loot: number;
     /** The purse after both gains. */
     coins: number;
+    /** Experience earned from the enemies defeated in the wave. */
+    xpGained: number;
+    /** Experience banked toward the next skill point. */
+    xp: number;
+    /** Experience the next skill point needs. */
+    xpToNext: number;
+    /** Skill points owned after the wave. */
+    skillPoints: number;
+    /** Skill points earned by filling the experience bar. */
+    skillPointsGained: number;
     nextRound: number;
 }
 
@@ -121,7 +131,7 @@ export function SurvivalVictory({ summary, onContinue }: SurvivalVictoryProps) {
 
                 <motion.div
                     variants={item}
-                    className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                    className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
                 >
                     <div className="border-game border-white/10 bg-galatime-dark p-4">
                         <p className="text-[0.6rem] uppercase tracking-[0.2em] text-white/40">
@@ -145,6 +155,29 @@ export function SurvivalVictory({ summary, onContinue }: SurvivalVictoryProps) {
                         <p className="mt-1 flex items-center gap-2 text-3xl text-galatime-accent">
                             <CommonImage src="/images/ui/coin.png" alt="" className="size-6" />
                             +{summary.loot}
+                        </p>
+                    </div>
+                    <div className="border-game border-white/10 bg-galatime-dark p-4">
+                        <p className="text-[0.6rem] uppercase tracking-[0.2em] text-white/40">
+                            {t('survival.victory.experience')}
+                        </p>
+                        <p className="mt-1 text-3xl text-galatime-primary">+{summary.xpGained}</p>
+                        <p className="mt-1 text-[0.6rem] uppercase tracking-[0.2em] text-white/40">
+                            {t('survival.victory.experienceProgress', {
+                                xp: summary.xp,
+                                next: summary.xpToNext,
+                            })}
+                        </p>
+                    </div>
+                    <div className="border-game border-galatime-accent/30 bg-galatime-dark p-4">
+                        <p className="text-[0.6rem] uppercase tracking-[0.2em] text-white/40">
+                            {t('survival.victory.skillPoints')}
+                        </p>
+                        <p className="mt-1 text-3xl text-galatime-accent">
+                            +{summary.skillPointsGained}
+                        </p>
+                        <p className="mt-1 text-[0.6rem] uppercase tracking-[0.2em] text-white/40">
+                            {t('survival.victory.skillPointsOwned', { total: summary.skillPoints })}
                         </p>
                     </div>
                     <div

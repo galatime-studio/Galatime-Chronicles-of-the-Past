@@ -11,6 +11,7 @@ import { resolveUnitSprite } from '@/services/combatSpriteService';
 import { getEntityImages } from '@/services/entityImageService';
 import { getItemDefinition, loadItemCatalogue } from '@/services/inventory/itemService';
 import type { SaveData } from '@/services/saveService';
+import { defeatedEnemyExperience, gainExperience } from '@/services/progressionService';
 import type { MobData } from '@/types/EntityDataType';
 import type {
     CombatEncounter as CombatEncounterData,
@@ -184,6 +185,7 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
                 : undefined;
 
             const nextRun = resolveSurvivalVictory(run, state, run.round, enemiesPlaced, inventory);
+            const gain = gainExperience(record.progression, defeatedEnemyExperience(state));
             setVictory({
                 round: run.round,
                 defeated: enemiesPlaced,
@@ -191,10 +193,15 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
                 loot: countGoldCoins(state),
                 coins: nextRun.coins,
                 nextRound: nextRun.round,
+                xpGained: gain.xpGained,
+                xp: gain.progression.xp,
+                xpToNext: gain.progression.xpToNext,
+                skillPoints: gain.progression.skillPoints,
+                skillPointsGained: gain.skillPointsGained,
             });
             setClearedRound(run.round);
             setPhase('victory');
-            void persist({ ...record, survival: nextRun });
+            void persist({ ...record, survival: nextRun, progression: gain.progression });
             return;
         }
 

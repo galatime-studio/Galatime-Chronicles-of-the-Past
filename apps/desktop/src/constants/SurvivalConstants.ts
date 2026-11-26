@@ -22,12 +22,6 @@ export const SURVIVAL_WAVE_BUDGET_GROWTH = 3;
 /** Threat points that make up one wave difficulty point. */
 export const SURVIVAL_WAVE_COST_DIVISOR = 50;
 
-/** Defence a mob's attack pressure is measured against (Arthur's defence band). */
-export const SURVIVAL_PRESSURE_REFERENCE_DEFENSE = 50;
-
-/** Attack a mob's durability is measured against (Arthur's attack band). */
-export const SURVIVAL_DURABILITY_REFERENCE_ATTACK = 80;
-
 /** Coins paid for every enemy left defeated when a wave is cleared. */
 export const SURVIVAL_COIN_PER_DEFEATED_MOB = 1;
 

@@ -56,6 +56,10 @@
 			"defeated": "Mobs defeated",
 			"roundReward": "Round reward",
 			"loot": "Loot collected",
+			"experience": "Experience",
+			"experienceProgress": "{{xp}} / {{next}} XP",
+			"skillPoints": "Skill points",
+			"skillPointsOwned": "{{total}} total",
 			"purse": "Purse",
 			"continue": "Continue to round {{round}}"
 		},

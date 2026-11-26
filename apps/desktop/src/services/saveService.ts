@@ -3,7 +3,9 @@ import { clampDialogueTextSpeed, DIALOGUE_DEFAULT_TEXT_SPEED } from '../constant
 import { isAllyControl, type AllyControl } from '../constants/AllyControlConstants';
 import { isDifficulty, type Difficulty } from '../constants/DifficultyConstants';
 import { isGameMode, type GameMode } from '../constants/GameModeConstants';
+import { normalizeProgression } from '../constants/ProgressionConstants';
 import { normalizeSurvivalRun } from '../constants/SurvivalConstants';
+import type { PlayerProgression } from '../types/ProgressionType';
 import type { SurvivalRun } from '../types/SurvivalType';
 import { resolveSeed } from '../utils/seedUtils';
 
@@ -42,6 +44,8 @@ export interface SaveData {
   showNowPlayingMusic: boolean;
   /** Survival Mode's carried state; unused by the other modes. */
   survival: SurvivalRun;
+  /** Experience and skill points earned across the chronicle. */
+  progression: PlayerProgression;
   /** ISO timestamp of the first creation; preserved when the save is edited. */
   createdAt: string;
 }
@@ -103,6 +107,7 @@ function normalizeSaveData(raw: unknown): SaveData | null {
     dialogueTextSpeed: textSpeed,
     showNowPlayingMusic: data.showNowPlayingMusic !== false,
     survival: normalizeSurvivalRun(data.survival),
+    progression: normalizeProgression(data.progression),
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
   };
 }

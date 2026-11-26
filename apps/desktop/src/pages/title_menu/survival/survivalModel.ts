@@ -10,10 +10,8 @@
 import {
     SURVIVAL_CHARACTER_ID,
     SURVIVAL_COIN_PER_DEFEATED_MOB,
-    SURVIVAL_DURABILITY_REFERENCE_ATTACK,
     SURVIVAL_HEAL_COST,
     SURVIVAL_HEAL_FRACTION,
-    SURVIVAL_PRESSURE_REFERENCE_DEFENSE,
     SURVIVAL_ROUND_SCALING,
     SURVIVAL_SHOP_RARITY_MIN_ROUND,
     SURVIVAL_SHOP_RARITY_WEIGHTS,
@@ -22,7 +20,7 @@ import {
     SURVIVAL_WAVE_BUDGET_GROWTH,
     SURVIVAL_WAVE_COST_DIVISOR,
 } from '../../../constants/SurvivalConstants';
-import { attackDefenseFactor } from '../../../services/combat/damageCalculator';
+import { threatScore } from '../../../services/combat/threatScore';
 import { createSeededCombatRandom } from '../../../services/combat/ai/training/seededRandom';
 import { addItem } from '../../../services/inventory/entityInventoryService';
 import type { MobData } from '../../../types/EntityDataType';
@@ -231,13 +229,14 @@ function scaledMobStats(mob: MobData, scale: number): Partial<CombatStats> {
  */
 export function mobThreat(mob: MobData): number {
     const base = mob.base_stats;
-    const bestAttack = Math.max(base.physical_attack, base.magical_attack);
-    const worstDefense = Math.min(base.physical_defense, base.magical_defense);
 
-    const pressure = attackDefenseFactor(bestAttack, SURVIVAL_PRESSURE_REFERENCE_DEFENSE);
-    const durability = base.hp / attackDefenseFactor(SURVIVAL_DURABILITY_REFERENCE_ATTACK, worstDefense);
-
-    return pressure * durability;
+    return threatScore({
+        hp: base.hp,
+        physicalAttack: base.physical_attack,
+        magicalAttack: base.magical_attack,
+        physicalDefense: base.physical_defense,
+        magicalDefense: base.magical_defense,
+    });
 }
 
 /** A mob's price in wave difficulty points; every mob costs at least one. */
