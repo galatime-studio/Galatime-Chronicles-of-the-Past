@@ -6,10 +6,13 @@ import { ControlIcon, InventoryIcon, SelectorIcon, UnknownIcon } from '@/assets/
 import { SURVIVAL_HEAL_COST, SURVIVAL_HEAL_FRACTION } from '@/constants/SurvivalConstants';
 import { getEntityImages } from '@/services/entityImageService';
 import { getItemDefinition } from '@/services/inventory/itemService';
+import type { BaseStats } from '@/types/EntityDataType';
 import type { ItemDefinition, ItemRarity } from '@/types/InventoryType';
+import type { PlayerProgression, PlayerStatKey } from '@/types/ProgressionType';
 import type { SurvivalRun } from '@/types/SurvivalType';
 import { playSfx } from '@/controllers/audioController';
 import { canBuySurvivalItem } from './survivalModel';
+import { SurvivalCharacter } from './SurvivalCharacter';
 
 interface SurvivalMarketProps {
     run: SurvivalRun;
@@ -20,13 +23,18 @@ interface SurvivalMarketProps {
     clearedRound: number | null;
     /** The six supplies drawn for this round. */
     stock: readonly ItemDefinition[];
+    /** Experience and unspent skill points, shared with the character page. */
+    progression: PlayerProgression;
+    /** Arthur's authored stats, before bought increases. */
+    baseStats: BaseStats | null;
     onHeal: () => void;
     onBuy: (itemId: string) => void;
+    onImproveStat: (stat: PlayerStatKey) => void;
     onStart: () => void;
     onSettings: () => void;
 }
 
-type MarketTabId = 'shop' | 'inventory' | 'upgrades' | 'skillTree' | 'fountain';
+type MarketTabId = 'shop' | 'inventory' | 'character' | 'skillTree' | 'fountain';
 
 interface MarketTab {
     id: MarketTabId;
@@ -116,9 +124,9 @@ function ShelfItemArt() {
  * The Survival Mode marketplace, drawn as a game shop instead of a settings card.
  *
  * Everything here is presentation: the shelves, the item selection, the bag and
- * the tab rail. The screen above owns the run, persistence and combat. The Shop
- * and the Fountain of Life share the main panel with the Inventory; Upgrades and
- * the Skill Tree stay visible but disabled until those systems exist.
+ * the tab rail. The screen above owns the run, persistence and combat. The Shop,
+ * the Inventory, the Character page and the Fountain of Life share the main
+ * panel; the Skill Tree stays visible but disabled until that system exists.
  */
 export function SurvivalMarket({
     run,
@@ -128,8 +136,11 @@ export function SurvivalMarket({
     canHeal,
     clearedRound,
     stock,
+    progression,
+    baseStats,
     onHeal,
     onBuy,
+    onImproveStat,
     onStart,
     onSettings,
 }: SurvivalMarketProps) {
@@ -183,10 +194,10 @@ export function SurvivalMarket({
             disabled: false,
         },
         {
-            id: 'upgrades',
-            labelKey: 'survival.tabs.upgrades',
+            id: 'character',
+            labelKey: 'survival.tabs.character',
             icon: <ControlIcon className={TAB_ICON_CLASS} />,
-            disabled: true,
+            disabled: false,
         },
         {
             id: 'skillTree',
@@ -302,7 +313,15 @@ export function SurvivalMarket({
                 </aside>
 
                 <section className="flex flex-col gap-3 lg:min-h-0">
-                    {activeTab === 'fountain' ? (
+                    {activeTab === 'character' ? (
+                        <SurvivalCharacter
+                            progression={progression}
+                            baseStats={baseStats}
+                            currentHp={currentHp}
+                            maxHp={maxHp}
+                            onImproveStat={onImproveStat}
+                        />
+                    ) : activeTab === 'fountain' ? (
                         <div className="flex flex-col border-game border-white/10 bg-galatime-dark/50 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
                             <div className="flex shrink-0 items-center justify-between border-b-game border-white/10 px-3 py-2">
                                 <h2 className="text-[0.65rem] uppercase tracking-[0.3em] text-white/45">

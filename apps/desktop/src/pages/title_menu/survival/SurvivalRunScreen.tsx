@@ -11,13 +11,19 @@ import { resolveUnitSprite } from '@/services/combatSpriteService';
 import { getEntityImages } from '@/services/entityImageService';
 import { getItemDefinition, loadItemCatalogue } from '@/services/inventory/itemService';
 import type { SaveData } from '@/services/saveService';
-import { defeatedEnemyExperience, gainExperience } from '@/services/progressionService';
-import type { MobData } from '@/types/EntityDataType';
+import {
+    combatStatBonuses,
+    defeatedEnemyExperience,
+    gainExperience,
+    improveStat,
+} from '@/services/progressionService';
+import type { BaseStats, MobData } from '@/types/EntityDataType';
 import type {
     CombatEncounter as CombatEncounterData,
     CombatOutcome,
     CombatState,
 } from '@/types/CombatType';
+import type { PlayerStatKey } from '@/types/ProgressionType';
 import type { SurvivalRun } from '@/types/SurvivalType';
 import { useControlListener } from '@/context/GameContext';
 import { SettingsScreen } from '../SettingsScreen';
@@ -30,6 +36,7 @@ import {
     countGoldCoins,
     createSurvivalEncounter,
     healSurvivalRun,
+    raiseSurvivalMaxHp,
     resolveSurvivalDefeat,
     resolveSurvivalVictory,
     survivalCurrentHp,
@@ -69,7 +76,7 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
     const [victory, setVictory] = useState<SurvivalVictorySummary | null>(null);
     const [clearedRound, setClearedRound] = useState<number | null>(null);
     const [waveMobs, setWaveMobs] = useState<MobData[] | null>(null);
-    const [arthurMaxHp, setArthurMaxHp] = useState<number | null>(null);
+    const [arthurBaseStats, setArthurBaseStats] = useState<BaseStats | null>(null);
     // The first-round launch must happen once, even across the state updates it causes.
     const autoStarted = useRef(false);
     /** Enemies authored into the current wave, fixed before any split can add units. */
@@ -87,7 +94,7 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
             setWaveMobs(mobs.filter((mob) => (
                 getEntityImages({ type: 'mob', id: mob.id, name: mob.name }).length > 0
             )));
-            setArthurMaxHp(arthur ? arthur.base_stats.hp : 0);
+            setArthurBaseStats(arthur ? arthur.base_stats : null);
         });
 
         return () => { active = false; };
@@ -98,9 +105,16 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
         await onSave(next);
     }, [onSave]);
 
-    const maxHp = survivalMaxHp(run, arthurMaxHp ?? 1);
+    // Bought increases travel with Arthur into the arena but the health pool
+    // also lives on the run, so the camp bar survives between waves.
+    const characterStats = useMemo(
+        () => combatStatBonuses(record.progression.statBonuses),
+        [record.progression.statBonuses],
+    );
+    const baseMaxHp = (arthurBaseStats?.hp ?? 0) + (record.progression.statBonuses.maxHp ?? 0);
+    const maxHp = survivalMaxHp(run, Math.max(1, baseMaxHp));
     const currentHp = survivalCurrentHp(run, maxHp);
-    const ready = arthurMaxHp !== null && waveMobs !== null && waveMobs.length > 0;
+    const ready = arthurBaseStats !== null && waveMobs !== null && waveMobs.length > 0;
     // The shelf is derived from the chronicle seed and the round, so it changes
     // only when the run advances — never between two renders of the same visit.
     const shopStock = useMemo(
@@ -125,6 +139,23 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
         void persist({ ...record, survival: nextRun });
     }, [run, record, persist]);
 
+    const improveCharacterStat = useCallback((stat: PlayerStatKey) => {
+        const improvement = improveStat(record.progression, stat);
+        if (!improvement.improved) return;
+
+        // The health pool is also carried on the run, so a health purchase has
+        // to raise the camp maximum and the current health, not only the unit.
+        const nextRun = stat === 'maxHp'
+            ? raiseSurvivalMaxHp(run, improvement.amount, Math.max(1, arthurBaseStats?.hp ?? 0))
+            : run;
+
+        void persist({
+            ...record,
+            progression: improvement.progression,
+            survival: nextRun,
+        });
+    }, [record, run, arthurBaseStats, persist]);
+
     const startRound = useCallback(() => {
         if (!ready || !waveMobs) return;
 
@@ -143,13 +174,14 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
             run: nextRun,
             mobs: waveMobs,
             name: t('survival.round', { round: nextRun.round }),
+            characterStats,
             random: createSeededCombatRandom(`survival-wave:${record.seed}:${nextRun.round}`),
         });
         waveEnemiesPlaced.current = nextEncounter.enemies.length;
         setEncounter(nextEncounter);
         setPhase('combat');
         void persist(nextRecord);
-    }, [ready, waveMobs, run, maxHp, record, t, persist]);
+    }, [ready, waveMobs, run, maxHp, characterStats, record, t, persist]);
 
     // A fresh run opens directly on round 1; later rounds open on the market.
     useEffect(() => {
@@ -348,8 +380,11 @@ export function SurvivalRunScreen({ save, onSave, onExit, onQuit }: SurvivalRunS
                 canHeal={canHealSurvivalRun(run, maxHp)}
                 clearedRound={clearedRound}
                 stock={shopStock}
+                progression={record.progression}
+                baseStats={arthurBaseStats}
                 onHeal={heal}
                 onBuy={buyItem}
+                onImproveStat={improveCharacterStat}
                 onStart={startRound}
                 onSettings={() => setSettingsOpen(true)}
             />

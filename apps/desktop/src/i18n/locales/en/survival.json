@@ -16,9 +16,29 @@
 			"label": "Market sections",
 			"shop": "Shop",
 			"inventory": "Inventory",
-			"upgrades": "Upgrades",
+			"character": "Character",
 			"skillTree": "Skill Tree",
 			"fountain": "Fountain of Life"
+		},
+		"characterPage": {
+			"title": "Character",
+			"experience": "Experience",
+			"experienceProgress": "{{xp}} / {{next}} XP",
+			"skillPointsOwned": "{{total}} SKP",
+			"hint": "Each improvement costs {{cost}} SKP.",
+			"noPoints": "No skill points to spend. Clear waves to earn more.",
+			"improve": "Improve · {{cost}} SKP",
+			"improveAria": "Spend {{cost}} SKP to improve {{stat}}",
+			"stats": {
+				"maxHp": "Health",
+				"maxMana": "Mana",
+				"maxStamina": "Stamina",
+				"physicalAttack": "Physical attack",
+				"magicalAttack": "Magical attack",
+				"physicalDefense": "Physical defense",
+				"magicalDefense": "Magical defense",
+				"speed": "Speed"
+			}
 		},
 		"fountain": {
 			"title": "Fountain of Life",

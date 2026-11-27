@@ -42,8 +42,30 @@ export interface SurvivalWaveOptions {
     mobs: readonly MobData[];
     /** The encounter name shown in the arena. */
     name: string;
+    /** Bought stat increases applied to Arthur on top of his authored stats. */
+    characterStats?: Partial<CombatStats>;
     /** Injectable randomness, so tests can pin a composition. */
     random?: () => number;
+}
+
+/**
+ * Adds a bought health increase to the carried run.
+ *
+ * The new maximum has to live on the run, not only on the next combat unit:
+ * the camp bar and the Fountain of Life read `run.maxHp` between rounds. The
+ * current health rises by the same amount so the purchase is felt immediately;
+ * an untouched run (`hp === null`) stays at full health.
+ */
+export function raiseSurvivalMaxHp(run: SurvivalRun, amount: number, fallbackMaxHp: number): SurvivalRun {
+    const gain = Math.max(0, Math.round(amount));
+    if (gain <= 0) return run;
+
+    const maxHp = Math.max(1, run.maxHp > 0 ? run.maxHp : fallbackMaxHp) + gain;
+    return {
+        ...run,
+        maxHp,
+        hp: run.hp === null ? null : Math.min(maxHp, run.hp + gain),
+    };
 }
 
 /** Health shown in the camp; `0` means the run has not recorded it yet. */
@@ -305,6 +327,7 @@ export function createSurvivalEncounter({
     run,
     mobs,
     name,
+    characterStats,
     random = Math.random,
 }: SurvivalWaveOptions): CombatEncounter {
     const scale = 1 + Math.max(0, round - 1) * SURVIVAL_ROUND_SCALING;
@@ -351,6 +374,7 @@ export function createSurvivalEncounter({
             line: 'front',
             isPlayerControlled: true,
             inventory: { ...run.inventory },
+            ...(characterStats ? { stats: characterStats } : {}),
             ...(run.hp === null ? {} : { currentHp: run.hp }),
         }],
         enemies,

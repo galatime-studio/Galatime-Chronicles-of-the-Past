@@ -8,11 +8,14 @@
  */
 
 import {
+    PLAYER_STAT_COST,
+    PLAYER_STAT_GAINS,
+    PLAYER_STAT_ORDER,
     PLAYER_XP_THREAT_DIVISOR,
     xpThresholdAfter,
 } from '../constants/ProgressionConstants';
 import type { CombatState, CombatStats } from '../types/CombatType';
-import type { PlayerProgression } from '../types/ProgressionType';
+import type { PlayerProgression, PlayerStatKey } from '../types/ProgressionType';
 import { threatScore } from './combat/threatScore';
 
 /** What one award of experience did to the bar. */
@@ -23,6 +26,72 @@ export interface ExperienceGain {
     xpGained: number;
     /** Skill points earned by filling the bar, possibly more than one. */
     skillPointsGained: number;
+}
+
+/** What one skill point bought. */
+export interface StatImprovement {
+    /** The progression after the purchase. */
+    progression: PlayerProgression;
+    /** Whether a skill point was actually spent. */
+    improved: boolean;
+    /** The stat raised. */
+    stat: PlayerStatKey;
+    /** How much the stat rose. */
+    amount: number;
+}
+
+/** How much one skill point raises the given stat. */
+export function statGain(stat: PlayerStatKey): number {
+    return PLAYER_STAT_GAINS[stat];
+}
+
+/** Whether the player has a skill point to spend. */
+export function canImproveStat(progression: PlayerProgression): boolean {
+    return progression.skillPoints >= PLAYER_STAT_COST;
+}
+
+/**
+ * Spends one skill point on a permanent stat increase.
+ *
+ * An unaffordable purchase returns the progression untouched, so callers can
+ * persist only when `improved` is true.
+ */
+export function improveStat(progression: PlayerProgression, stat: PlayerStatKey): StatImprovement {
+    const amount = statGain(stat);
+    if (!canImproveStat(progression)) {
+        return { progression, improved: false, stat, amount };
+    }
+
+    return {
+        progression: {
+            ...progression,
+            skillPoints: progression.skillPoints - PLAYER_STAT_COST,
+            statBonuses: {
+                ...progression.statBonuses,
+                [stat]: (progression.statBonuses[stat] ?? 0) + amount,
+            },
+        },
+        improved: true,
+        stat,
+        amount,
+    };
+}
+
+/**
+ * The bought stat increases as a combat-unit overlay.
+ *
+ * `PlayerStatKey` uses the same names as the matching `CombatStats` fields, so
+ * the overlay is the bonuses themselves; only positive entries are carried.
+ */
+export function combatStatBonuses(bonuses: PlayerProgression['statBonuses']): Partial<CombatStats> {
+    const overlay: Partial<CombatStats> = {};
+
+    for (const stat of PLAYER_STAT_ORDER) {
+        const amount = bonuses[stat] ?? 0;
+        if (amount > 0) overlay[stat] = amount;
+    }
+
+    return overlay;
 }
 
 /** Experience a body of the given threat is worth; every body pays at least one. */
@@ -77,7 +146,7 @@ export function gainExperience(progression: PlayerProgression, amount: number): 
     }
 
     return {
-        progression: { xp, xpToNext, skillPoints },
+        progression: { ...progression, xp, xpToNext, skillPoints },
         xpGained,
         skillPointsGained,
     };
